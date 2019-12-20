@@ -72,6 +72,31 @@ def selects_per_concept(concepts: dict):
     return {concept_id: [select_dict.get('id') for select_dict in concept.get('selects', [])] for (concept_id, concept) in concepts.items()}
 
 
+def filters_per_concept(concepts: dict):
+    """ Aggregates a dict of concepts to a dict of available filters per concept.
+
+    Used to declutter the concepts dict returned from a ConqueryConnection.get_concepts('dataset') call.
+
+    Usage example:
+        # lets say you're interested in all available filters (specifically their ids) for a specific concept
+        concepts = await cq.get_concepts('dataset')
+        filters_of_concept_x = filters_per_concept(concepts).get('concept_x')
+        type(filters_of_concept)  # = list, because of the above .get() call on the dictionary
+
+        # filters_of_concept is applicable also to concepts returned by cq.get_concept('dataset', 'specific_concept')
+        concepts = await cq.get_concept('dataset', 'specific_concept')
+        filters_by_concept = filters_per_concept(concepts)
+        type(filters_by_concept)  # = dict
+
+    :param concepts: dict of concepts as returned by ConqueryConnection.get_concept and .get_concepts calls.
+    :return: dict of list of available filters, i.e. a mapping from concept to its available filters.
+    """
+    return {concept_id: [
+        (table.get('id'), [table_filter.get('id') for table_filter in table.get('filters')])
+        for table in concept.get('tables')]
+        for (concept_id, concept) in concepts.items()}
+
+
 def add_selects_to_concept_query(query, target_concept_id: str, selects: list):
     """ Add select ids to CONCEPT nodes in queries.
 
@@ -173,7 +198,7 @@ def add_date_restriction_to_concept_query(query, target_concept_id: str, date_st
         raise Exception(f"Unknown type in query_object: {query_object.get('type')}")
 
 
-def concept_query_from_concept(concept_id, concept_object):
+def concept_query_from_concept(concept_id, concept_object, concept_label = ""):
     """ Create CONCEPT_QUERY with a given CONCEPT as it root node.
 
     For simple query generation from a single concept.
@@ -205,6 +230,7 @@ def concept_query_from_concept(concept_id, concept_object):
         'root': {
             'type': 'CONCEPT',
             'ids': [concept_id],
+            'label': concept_label,
             'tables': [{'id': table.get('connectorId')} for table in concept_object.get('tables')]
         }
     }
@@ -234,12 +260,60 @@ def add_subquery_to_concept_query(query, subquery):
         }
         return query
 
+
+def create_frontend_query(and_queries: list, date_restrictions: list = None):
+    if type(and_queries) is dict:
+        and_queries = [and_queries]
+
+    for and_query_ind in range(0, len(and_queries)):
+        if type(and_queries[and_query_ind]) is not list:
+            and_queries[and_query_ind] = [and_queries[and_query_ind]]
+
+    children_and = [
+        {'type': 'OR',
+         'children': [
+             or_query['root'] for or_query in and_query
+         ]
+         } for and_query in and_queries
+    ]
+
+    if date_restrictions is not None:
+
+        if len(date_restrictions) == 2 and all(
+                [type(date_restriction) is str for date_restriction in date_restrictions]):
+            date_restrictions = [date_restrictions] * len(and_queries)
+        elif len(date_restrictions) == 1 and type(date_restrictions[0]) is list:
+            date_restrictions = date_restrictions * len(and_queries)
+        elif any([type(date_restriction) is not list for date_restriction in date_restrictions]):
+            raise ValueError('an element of date_restrictions is not a list')
+        elif len(date_restrictions) != len(and_queries):
+            raise ValueError('date_restrictions must be of length 1 or same length as and_queries')
+
+        children_and = [
+            {
+                'type': 'DATE_RESTRICTION',
+                'dateRange': {
+                    'min': date_restrictions[and_query_ind][0],
+                    'max': date_restrictions[and_query_ind][1]
+                },
+                'child': children
+            } for and_query_ind, children in enumerate(children_and)
+        ]
+
+    return {
+        'type': 'CONCEPT_QUERY',
+        'root': {
+            'type': 'AND',
+            'children': children_and
+        }
+    }
+
 def create_absolute_form_query(query_id, feature_queries: list, dateRange: list):
 
     """ Create an ABSOLUTE_FORM_QUERY
     :param query_id: ID of the query that will be used to get the patient group
     :param feature_queries: list of concept queries to add columns
-    :param dateRange: date range with list containing first and last date, dates have to be in format %Y-%m-%d 
+    :param dateRange: date range with list containing first and last date, dates have to be in format %Y-%m-%d
     :return:
     """
 
