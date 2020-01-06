@@ -68,6 +68,8 @@ def selects_per_concept(concepts: dict):
 
     :param concepts: dict of concepts as returned by ConqueryConnection.get_concept and .get_concepts calls.
     :return: dict of list of available selects, i.e. a mapping from concept to its available selects.
+
+    TODO: get all selects, not only root selects
     """
     return {concept_id: [select_dict.get('id') for select_dict in concept.get('selects', [])] for (concept_id, concept) in concepts.items()}
 
@@ -262,6 +264,25 @@ def add_subquery_to_concept_query(query, subquery):
 
 
 def create_frontend_query(and_queries: list, date_restrictions: list = None):
+    """ Create a more complex query from a two-dimensional list of concept queries.
+
+    :example:
+    >>> # create concept queries
+    >>> concepts = await cq.get_concepts('some_dataset')
+    >>> concept_object_1_1 = concepts.get('my_concept_1_1')
+    >>> concept_query_1_1 = util.concept_query_from_concept('my_concept_1_1', concept_object_1_1)
+    >>> concept_object_1_2 = concepts.get('my_concept_1_2')
+    >>> concept_query_1_2 = util.concept_query_from_concept('my_concept_1_2', concept_object_1_2)
+    >>> concept_object_2 = concepts.get('my_concept_2')
+    >>> concept_query_2 = util.concept_query_from_concept('my_concept_2', concept_object_2)
+    >>> # place "or" between first to queries and "and" between the result of that and the next query
+    >>> cq.create_frontend_query([[concept_object_1_1, concept_object_1_2],[concept_object_2]])
+
+    :param and_queries: one or two-dimensional list of concept_queries
+    :param date_restrictions: list of lists, containing start and end date for each element in list and_queries
+    :return: a concept query with AND between each element in and_queries and OR between each element of a list in
+            and_queries. The date restrictions are added to the corresponding concept query
+    """
     if type(and_queries) is dict:
         and_queries = [and_queries]
 
