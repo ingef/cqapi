@@ -318,7 +318,8 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
                     'max': date_restrictions[and_query_ind][1]
                 },
                 'child': children
-            } for and_query_ind, children in enumerate(children_and)
+            } if date_restrictions[and_query_ind] else children
+            for and_query_ind, children in enumerate(children_and)
         ]
 
     return {
