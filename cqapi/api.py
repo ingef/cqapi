@@ -13,33 +13,28 @@ class ConqueryClientConnectionError(CqApiError):
         self.message = msg
 
 
-async def get(session, url, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    async with session.get(url, headers=headers) as response:
+async def get(session, url):
+    async with session.get(url) as response:
         return await response.json()
 
 
-async def get_text(session, url, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    async with session.get(url, headers=headers) as response:
+async def get_text(session, url):
+    async with session.get(url) as response:
         return await response.text()
 
 
-async def post(session, url, data, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    async with session.post(url, headers=headers, json=data) as response:
+async def post(session, url, data):
+    async with session.post(url, json=data) as response:
         return await response.json()
 
 
-async def patch(session, url, data, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    async with session.patch(url, headers=headers, json=data) as response:
+async def patch(session, url, data):
+    async with session.patch(url, json=data) as response:
         return await response.json()
 
 
-async def delete(session, url, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    async with session.delete(url, headers=headers) as response:
+async def delete(session, url):
+    async with session.delete(url) as response:
         return await response.text()
 
 
@@ -49,77 +44,66 @@ class ConqueryConnection(object):
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
             try:
-                await get(self._session, f"{self._url}/api/datasets", self._token)
+                await get(self._session, f"{self._url}/api/datasets")
             except ClientConnectorError:
                 error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
                 raise ConqueryClientConnectionError(error_msg)
-        # Check if token is known to conquery and if it has access to any dataset
-        if self._check_permission:
-            headers = {'Authorization': f'Bearer {self._token}'}
-            async with self._session.get(f"{self._url}/api/datasets", headers=headers) as response:
-                if response.status == 401 or not await response.json():
-                    error_msg = f"There is no permission for accessing any dataset."
-                    raise ConqueryClientConnectionError(error_msg)
-
+        
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._session.close()
 
-    def __init__(self, url, token="", requests_timout=5, check_connection=True, check_permission=True):
+    def __init__(self, url="", requests_timout=5, check_connection=True, check_permission=True):
         self._url = url.strip('/')
-        self._token = token
         self._check_connection = check_connection
         self._check_permission = check_permission
         self._timeout = requests_timout
 
     async def get_datasets(self):
-        response_list = await get(self._session, f"{self._url}/api/datasets", self._token)
+        response_list = await get(self._session, f"{self._url}/api/datasets")
         return [d['id'] for d in response_list]
 
     async def get_concepts(self, dataset):
-        response = await get(self._session, f"{self._url}/api/datasets/{dataset}/concepts", self._token)
+        response = await get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['concepts']
 
     async def get_concept(self, dataset, concept_id):
-        response_dict = await get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}",
-                                  self._token)
+        response_dict = await get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
     async def get_stored_queries(self, dataset):
-        response_list = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries", self._token)
+        response_list = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
 
     async def get_stored_query(self, dataset, query_id):
-        result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
+        result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
 
     async def delete_stored_query(self, dataset, query_id):
-        result = await delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}",
-                              self._token)
+        result = await delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result
 
     async def get_query(self, dataset, query_id, is_form_query):
         if is_form_query:
-            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/form-queries/{query_id}",
-                               self._token)
+            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/form-queries/{query_id}")
         else:
-            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}", self._token)
+            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
 
     async def execute_query(self, dataset, query, label=None):
-        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query, self._token)
+        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
         try:
             if label is not None:
                 await patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
-                            {"label": label}, self._token)
+                            {"label": label})
             return result['id']
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
     async def execute_form_query(self, dataset, form_query):
-        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/form-queries", form_query, self._token)
+        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/form-queries", form_query)
         try:
             return result['id']
         except KeyError:
@@ -142,7 +126,7 @@ class ConqueryConnection(object):
         return list(csv.reader(result_string.splitlines(), delimiter=';'))
 
     async def _download_query_results(self, url):
-        return await get_text(self._session, url, self._token)
+        return await get_text(self._session, url)
 
     async def create_concept_query_with_selects(self, dataset: str, concept_id: str, selects: list = None):
         concepts = await self.get_concepts(dataset)
