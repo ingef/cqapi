@@ -263,6 +263,24 @@ def add_subquery_to_concept_query(query, subquery):
         return query
 
 
+def create_absolute_form_query(query_id, feature_queries: list, dateRange: list):
+
+    """ Create an ABSOLUTE_FORM_QUERY
+    :param query_id: ID of the query that will be used to get the patient group
+    :param feature_queries: list of concept queries to add columns
+    :param dateRange: date range with list containing first and last date, dates have to be in format %Y-%m-%d
+    :return:
+    """
+
+    if datetime.strptime(dateRange[0],'%Y-%m-%d') > datetime.strptime(dateRange[1],'%Y-%m-%d'):
+        raise ValueError(f"Invalid dateRange. {dateRange[0]} is after {dateRange[1]}")
+    for feature_query in feature_queries:
+        if 'root' not in feature_query.keys():
+            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root")
+
+    features = [ {'type' : 'OR', 'children' : [ feature_query['root'] ] } for feature_query in feature_queries ]
+
+
 def create_frontend_query(and_queries: list, date_restrictions: list = None):
     """ Create a more complex query from a two-dimensional list of concept queries.
 
@@ -270,9 +288,8 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     >>> # create concept queries
     >>> concepts = await cq.get_concepts('some_dataset')
     >>> concept_object_1_1 = concepts.get('my_concept_1_1')
-    >>> concept_query_1_1 = util.concept_query_from_concept('my_concept_1_1', concept_object_1_1)
-    >>> concept_object_1_2 = concepts.get('my_concept_1_2')
     >>> concept_query_1_2 = util.concept_query_from_concept('my_concept_1_2', concept_object_1_2)
+    >>> concept_query_1_1 dd= concepts.get('my_concept_1_2')
     >>> concept_object_2 = concepts.get('my_concept_2')
     >>> concept_query_2 = util.concept_query_from_concept('my_concept_2', concept_object_2)
     >>> # place "or" between first to queries and "and" between the result of that and the next query
@@ -293,7 +310,7 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     children_and = [
         {'type': 'OR',
          'children': [
-             or_query['root'] for or_query in and_query
+             or_query['root'] if 'root' in or_query.keys() else or_query for or_query in and_query
          ]
          } for and_query in and_queries
     ]
@@ -327,36 +344,6 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
         'root': {
             'type': 'AND',
             'children': children_and
-        }
-    }
-
-def create_absolute_form_query(query_id, feature_queries: list, dateRange: list):
-
-    """ Create an ABSOLUTE_FORM_QUERY
-    :param query_id: ID of the query that will be used to get the patient group
-    :param feature_queries: list of concept queries to add columns
-    :param dateRange: date range with list containing first and last date, dates have to be in format %Y-%m-%d
-    :return:
-    """
-
-    if datetime.strptime(dateRange[0],'%Y-%m-%d') > datetime.strptime(dateRange[1],'%Y-%m-%d'):
-        raise ValueError(f"Invalid dateRange. {dateRange[0]} is after {dateRange[1]}")
-    for feature_query in feature_queries:
-        if 'root' not in feature_query.keys():
-            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root")
-
-    features = [ {'type' : 'OR', 'children' : [ feature_query['root'] ] } for feature_query in feature_queries ]
-
-    return {
-        'type' : 'EXPORT_FORM',
-        'queryGroup' : query_id,
-        'timeMode' : {
-            "value" : 'ABSOLUTE',
-            'dateRange' : {
-                'min' : dateRange[0],
-                'max' : dateRange[1]
-            },
-            'features' : features
         }
     }
 
