@@ -280,6 +280,18 @@ def create_absolute_form_query(query_id, feature_queries: list, dateRange: list)
 
     features = [ {'type' : 'OR', 'children' : [ feature_query['root'] ] } for feature_query in feature_queries ]
 
+    return {
+        'type': 'EXPORT_FORM',
+        'queryGroup': query_id,
+        'timeMode': {
+            "value": 'ABSOLUTE',
+            'dateRange': {
+                'min': dateRange[0],
+                'max': dateRange[1]
+            },
+            'features': features
+        }
+    }
 
 def create_frontend_query(and_queries: list, date_restrictions: list = None):
     """ Create a more complex query from a two-dimensional list of concept queries.
