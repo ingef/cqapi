@@ -312,7 +312,7 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     children_and = [
         {'type': 'OR',
          'children': [
-             or_query['root'] for or_query in and_query
+             or_query['root'] if 'root' in or_query.keys() else or_query for or_query in and_query
          ]
          } for and_query in and_queries
     ]
