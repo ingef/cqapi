@@ -71,7 +71,11 @@ def selects_per_concept(concepts: dict):
 
     TODO: get all selects, not only root selects
     """
-    return {concept_id: [select_dict.get('id') for select_dict in concept.get('selects', [])] for (concept_id, concept) in concepts.items()}
+    return {
+        concept_id: [select_dict.get('id')
+                     for select_dict in concept.get('selects', [])]
+        for (concept_id, concept) in concepts.items()
+    }
 
 
 def filters_per_concept(concepts: dict):
@@ -118,10 +122,16 @@ def add_selects_to_concept_query(query, target_concept_id: str, selects: list):
         query_object['root'] = add_selects_to_concept_query(query_object.get('root'), target_concept_id, selects)
         return query_object
     elif query_object_node_type == 'AND':
-        query_object['children'] = [add_selects_to_concept_query(child, target_concept_id, selects) for child in query_object.get('children')]
+        query_object['children'] = [
+            add_selects_to_concept_query(child, target_concept_id, selects)
+            for child in query_object.get('children')
+        ]
         return query_object
     elif query_object_node_type == 'OR':
-        query_object['children'] = [add_selects_to_concept_query(child, target_concept_id, selects) for child in query_object.get('children')]
+        query_object['children'] = [
+            add_selects_to_concept_query(child, target_concept_id, selects)
+            for child in query_object.get('children')
+        ]
         return query_object
     elif query_object_node_type == 'NEGATION':
         query_object['child'] = add_selects_to_concept_query(query_object.get('child'), target_concept_id, selects)
@@ -170,19 +180,28 @@ def add_date_restriction_to_concept_query(query, target_concept_id: str, date_st
     query_object_node_type = query_object.get('type')
 
     if query_object_node_type == 'CONCEPT_QUERY':
-        query_object['root'] = add_date_restriction_to_concept_query(query_object.get('root'), target_concept_id, start, end)
+        query_object['root'] = add_date_restriction_to_concept_query(
+            query_object.get('root'), target_concept_id, start, end)
         return query_object
     elif query_object_node_type == 'AND':
-        query_object['children'] = [add_date_restriction_to_concept_query(child, target_concept_id, start, end) for child in query_object.get('children')]
+        query_object['children'] = [
+            add_date_restriction_to_concept_query(child, target_concept_id, start, end)
+            for child in query_object.get('children')
+        ]
         return query_object
     elif query_object_node_type == 'OR':
-        query_object['children'] = [add_date_restriction_to_concept_query(child, target_concept_id, start, end) for child in query_object.get('children')]
+        query_object['children'] = [
+            add_date_restriction_to_concept_query(child, target_concept_id, start, end)
+            for child in query_object.get('children')
+        ]
         return query_object
     elif query_object_node_type == 'NEGATION':
-        query_object['child'] = add_date_restriction_to_concept_query(query_object.get('child'), target_concept_id, start, end)
+        query_object['child'] = add_date_restriction_to_concept_query(
+            query_object.get('child'), target_concept_id, start, end)
         return query_object
     elif query_object_node_type == 'DATE_RESTRICTION':
-        query_object['child'] = add_date_restriction_to_concept_query(query_object.get('child'), target_concept_id, start, end)
+        query_object['child'] = add_date_restriction_to_concept_query(
+            query_object.get('child'), target_concept_id, start, end)
         return query_object
     elif query_object_node_type == 'CONCEPT':
         if target_concept_id in query_object.get('ids'):
@@ -330,35 +349,39 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
         }
     }
 
-def create_absolute_form_query(query_id, feature_queries: list, dateRange: list):
+
+def create_absolute_form_query(query_id, feature_queries: list, date_range: list):
 
     """ Create an ABSOLUTE_FORM_QUERY
     :param query_id: ID of the query that will be used to get the patient group
     :param feature_queries: list of concept queries to add columns
-    :param dateRange: date range with list containing first and last date, dates have to be in format %Y-%m-%d
+    :param date_range: date range with list containing first and last date, dates have to be in format %Y-%m-%d
     :return:
     """
 
-    if datetime.strptime(dateRange[0],'%Y-%m-%d') > datetime.strptime(dateRange[1],'%Y-%m-%d'):
-        raise ValueError(f"Invalid dateRange. {dateRange[0]} is after {dateRange[1]}")
+    if datetime.strptime(date_range[0], '%Y-%m-%d') > datetime.strptime(date_range[1], '%Y-%m-%d'):
+        raise ValueError(f"Invalid dateRange. {date_range[0]} is after {date_range[1]}")
     for feature_query in feature_queries:
-        if 'root' not in feature_query.keys():
-            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root")
+        if 'root' not in feature_query.keys() and 'children' not in feature_query.keys():
+            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root or children")
 
-    features = [ {'type' : 'OR', 'children' : [ feature_query['root'] ] } for feature_query in feature_queries ]
+    features = [{'type': 'OR', 'children': [feature_query['root']]}
+                if 'root' in feature_query.keys() else feature_query
+                for feature_query in feature_queries]
 
     return {
-        'type' : 'EXPORT_FORM',
-        'queryGroup' : query_id,
-        'timeMode' : {
-            "value" : 'ABSOLUTE',
-            'dateRange' : {
-                'min' : dateRange[0],
-                'max' : dateRange[1]
+        'type': 'EXPORT_FORM',
+        'queryGroup': query_id,
+        'timeMode': {
+            "value": 'ABSOLUTE',
+            'dateRange': {
+                'min': date_range[0],
+                'max': date_range[1]
             },
-            'features' : features
+            'features': features
         }
     }
+
 
 def create_relative_query(index_query, before_query, after_query, time_before, time_after,
                           index_selector='FIRST', index_placement='NEUTRAL', time_unit='QUARTERS'):
@@ -405,6 +428,7 @@ def create_relative_query(index_query, before_query, after_query, time_before, t
         'timeCountAfter': time_after,
         'timeUnit': time_unit
     }
+
 
 def _parse_iso_date(datestring: str):
     y, m, d = map(lambda x: int(x), datestring.split('-'))
