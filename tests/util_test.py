@@ -3,6 +3,7 @@ from cqapi.util import _parse_iso_date
 import copy
 from datetime import date
 import pytest
+import json
 
 concepts = {
     "no_selects": {
@@ -13,7 +14,7 @@ concepts = {
     "single_selects": {
         "selects": [{
             "id": "select.id"
-         }]
+        }]
     },
     "multiple_selects": {
         "selects": [
@@ -78,14 +79,14 @@ query_with_concept = {
                 "children": [
                     {
                         "excludeFromTimeAggregation": False,
-                        "ids": [ "other.id"],
+                        "ids": ["other.id"],
                         "label": "3771",
                         "tables": [{"id": "demo.table"}],
                         "type": "CONCEPT"
                     },
                     {
                         "excludeFromTimeAggregation": False,
-                        "ids": [ "yet_another.id"],
+                        "ids": ["yet_another.id"],
                         "label": "1617",
                         "tables": [{"id": "demo.table"}],
                         "type": "CONCEPT"
@@ -113,14 +114,14 @@ query_with_concept_and_preexisting_selects = {
                 "children": [
                     {
                         "excludeFromTimeAggregation": False,
-                        "ids": [ "other.id"],
+                        "ids": ["other.id"],
                         "label": "3771",
                         "tables": [{"id": "demo.table"}],
                         "type": "CONCEPT"
                     },
                     {
                         "excludeFromTimeAggregation": False,
-                        "ids": [ "yet_another.id"],
+                        "ids": ["yet_another.id"],
                         "label": "1617",
                         "tables": [{"id": "demo.table"}],
                         "type": "CONCEPT"
@@ -230,7 +231,8 @@ def test_add_select_to_concept_with_match():
 
 
 def test_add_selects_to_concept_with_match_with_preexisting():
-    enriched_query = add_selects_to_concept_query(query_with_concept_and_preexisting_selects, target_concept_id, [select_id])
+    enriched_query = add_selects_to_concept_query(query_with_concept_and_preexisting_selects, target_concept_id,
+                                                  [select_id])
     assert select_id in enriched_query['root']['children'][1]['selects']
 
 
@@ -250,7 +252,8 @@ def test_add_date_restriction_to_concept_bad_dateranges():
 
 
 def test_add_date_restriction_to_concept():
-    enriched_query = add_date_restriction_to_concept_query(query_with_concept, target_concept_id, "1992-02-18", "2019-08-23")
+    enriched_query = add_date_restriction_to_concept_query(query_with_concept, target_concept_id, "1992-02-18",
+                                                           "2019-08-23")
     assert query_with_daterange == enriched_query
 
 
@@ -315,8 +318,8 @@ def test_create_relative_query():
         'query': index_query,
         'features': before,
         'outcomes': after,
-        'indexSelector': 'FIRST', # FIRST, LAST, RANDOM
-        'indexPlacement': 'NEUTRAL', # BEFORE, AFTER, NEUTRAL
+        'indexSelector': 'FIRST',  # FIRST, LAST, RANDOM
+        'indexPlacement': 'NEUTRAL',  # BEFORE, AFTER, NEUTRAL
         'timeCountBefore': 4,
         'timeCountAfter': 4,
         'timeUnit': 'QUARTERS'
@@ -338,6 +341,42 @@ valid_date_strings = [
         'expected': date(1922, 12, 24)
     }
 ]
+
+
+def test_edit_concept_query():
+    query1 = json.load(open("./data_util/concept_query1.json", 'r'))
+
+    query1_assert_1 = json.load(open("./data_util/concept_query1_assert1.json", 'r'))
+    assert edit_concept_query(
+        query1,
+        concept_id="dataset1.wirkstoff",
+        select_ids="select_1",
+        date_column_id="date_column_1",
+        filter_ids=["filter_1, filter_2"],
+        concept_select_ids="concept_select_1") == query1_assert_1
+
+    query1_assert_2 = json.load(open("./data_util/concept_query1_assert2.json", 'r'))
+    assert edit_concept_query(
+        query1,
+        concept_id="dataset1.icd",
+        date_column_id="date_column_1",
+        concept_select_ids="concept_select_1") == query1_assert_2
+
+    query1_assert_3 = json.load(open("./data_util/concept_query1_assert3.json", 'r'))
+    assert edit_concept_query(
+        query1,
+        concept_id="dataset1.icd",
+        connector_ids="dataset1.icd.arzt_diagnose_icd_code",
+        select_ids=["select_1", "select_2"]) == query1_assert_3
+
+    query1_assert_4 = json.load(open("./data_util/concept_query1_assert4.json", 'r'))
+    assert edit_concept_query(
+        query1,
+        concept_id="dataset1.icd",
+        connector_ids="new_connector_id",
+        date_column_id="date_column_id",
+        select_ids=["select_1", "select_2"]) == query1_assert_4
+
 
 @pytest.mark.parametrize("param", valid_date_strings)
 def test_parse_iso_date(param):
@@ -368,6 +407,7 @@ invalid_date_strings = [
         'expected': ValueError
     }
 ]
+
 
 @pytest.mark.parametrize("param", invalid_date_strings)
 def test_parse_iso_date_failures(param):

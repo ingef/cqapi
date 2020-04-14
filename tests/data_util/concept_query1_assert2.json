@@ -1,0 +1,88 @@
+{
+    "type": "CONCEPT_QUERY",
+    "root": {
+        "type": "AND",
+        "children": [
+            {
+                "type": "OR",
+                "children": [
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "dataset1.wirkstoff"
+                        ],
+                        "label": "Wirkstoff",
+                        "tables": [
+                            {
+                                "id": "dataset1.wirkstoff.atc",
+                                "dateColumn": {
+                                    "value": "dataset1.wirkstoff.atc.abgabedatum"
+                                },
+                                "selects": [],
+                                "filters": []
+                            }
+                        ],
+                        "selects": []
+                    },
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "dataset1.atc"
+                        ],
+                        "label": "ATC",
+                        "tables": [
+                            {
+                                "id": "dataset1.atc.atc",
+                                "dateColumn": {
+                                    "value": "dataset1.atc.atc.abgabedatum"
+                                },
+                                "selects": [
+                                    "dataset1.atc.atc.anzahl_apotheken"
+                                ],
+                                "filters": []
+                            }
+                        ],
+                        "selects": [
+                            "dataset1.atc.liegt_vor"
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "OR",
+                "children": [
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "dataset1.icd"
+                        ],
+                        "label": "ICD",
+                        "tables": [
+                            {
+                                "id": "dataset1.icd.kh_diagnose_icd_code",
+                                "dateColumn": {
+                                    "value": "date_column_1"
+                                },
+                                "selects": [],
+                                "filters": []
+                            },
+                            {
+                                "id": "dataset1.icd.arzt_diagnose_icd_code",
+                                "dateColumn": {
+                                    "value": "date_column_1"
+                                },
+                                "selects": [
+                                    "dataset1.icd.arzt_diagnose_icd_code.count_bsnrs"
+                                ],
+                                "filters": []
+                            }
+                        ],
+                        "selects": [
+                            "dataset1.icd.icd_exists", "concept_select_1"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
