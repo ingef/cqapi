@@ -3,6 +3,7 @@ from datetime import datetime
 from copy import deepcopy
 import utility.process_description as u_pd
 
+
 def object_to_dict(obj):
     """ Convert object to dict with __class__ and __module__ members.
 
@@ -259,9 +260,10 @@ def concept_query_from_concept(concept_id, concept_object, concept_label=""):
 
 
 def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_column_id='', filter_ids=[],
-                       select_ids=[], concept_select_ids=[]):
+                       select_ids=[], concept_select_ids=[], remove_connector=False):
     """
     Adds selects, filters, dateColumns and concept_selects to query.
+    :param remove_connector: When set True, tables with given connector_ids are removed
     :param concept_query_object: Either of type 'CONCEPT-QUERY', 'OR', 'AND' or 'CONCEPT'
     :param concept_id: id of the concept-object that should be edited or added
     :param connector_ids: connector_ids ob the tables of the concept-object that should be edited.
@@ -285,7 +287,7 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
         concept_query_object['root'] = edit_concept_query(concept_query_object.get('root'), concept_id,
                                                           connector_ids,
                                                           date_column_id, filter_ids, select_ids,
-                                                          concept_select_ids)
+                                                          concept_select_ids, remove_connector)
         return concept_query_object
 
     children = concept_query_object.get('children', [])
@@ -296,7 +298,8 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     if concept_query_object.get("type") in ["AND", "OR"]:
         for child_ind, child in enumerate(children):
             children[child_ind] = edit_concept_query(child, concept_id, connector_ids,
-                                                     date_column_id, filter_ids, select_ids, concept_select_ids)
+                                                     date_column_id, filter_ids, select_ids, concept_select_ids,
+                                                     remove_connector)
         concept_query_object['children'] = children
         return concept_query_object
 
@@ -312,6 +315,13 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     # when no connector_ids are defined, edit all tables of all concepts
     if not connector_ids:
         connector_ids = concept_connector_ids
+
+    # remove connector
+    if remove_connector:
+        concept_tables = [concept_table for concept_table in concept_tables
+                          if concept_table.get('id') not in connector_ids]
+        concept_query_object['tables'] = concept_tables
+        return concept_query_object
 
     # add tables for connector_ids that are not found
     # add first without filters and selects and add them later
