@@ -1,7 +1,7 @@
 from datetime import date
 from datetime import datetime
 from copy import deepcopy
-
+import utility.process_description as u_pd
 
 def object_to_dict(obj):
     """ Convert object to dict with __class__ and __module__ members.
@@ -219,7 +219,7 @@ def add_date_restriction_to_concept_query(query, target_concept_id: str, date_st
         raise Exception(f"Unknown type in query_object: {query_object.get('type')}")
 
 
-def concept_query_from_concept(concept_id, concept_object, concept_label = ""):
+def concept_query_from_concept(concept_id, concept_object, concept_label=""):
     """ Create CONCEPT_QUERY with a given CONCEPT as it root node.
 
     For simple query generation from a single concept.
@@ -256,6 +256,92 @@ def concept_query_from_concept(concept_id, concept_object, concept_label = ""):
         }
     }
     return query
+
+
+def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_column_id='', filter_ids=[],
+                       select_ids=[], concept_select_ids=[]):
+    """
+    Adds selects, filters, dateColumns and concept_selects to query.
+    :param concept_query_object: Either of type 'CONCEPT-QUERY', 'OR', 'AND' or 'CONCEPT'
+    :param concept_id: id of the concept-object that should be edited or added
+    :param connector_ids: connector_ids ob the tables of the concept-object that should be edited.
+    When none is given, all tables of the concept are edited
+    :param date_column_id: has to be given when new table is added.
+    :param filter_ids: filters to add on table level
+    :param select_ids: selects to add on table level
+    :param concept_select_ids: selects to add on concept level
+    :return:
+    """
+    concept_query_object = deepcopy(concept_query_object)
+    connector_ids = u_pd.check_input_list(connector_ids, entry_type=str)
+    filter_ids = u_pd.check_input_list(filter_ids, entry_type=str)
+    select_ids = u_pd.check_input_list(select_ids, entry_type=str)
+    concept_select_ids = u_pd.check_input_list(concept_select_ids, entry_type=str)
+
+    if not connector_ids and not filter_ids and not select_ids and not date_column_id and not concept_select_ids:
+        return concept_query_object
+
+    if concept_query_object.get("type") == "CONCEPT_QUERY":
+        concept_query_object['root'] = edit_concept_query(concept_query_object.get('root'), concept_id,
+                                                          connector_ids,
+                                                          date_column_id, filter_ids, select_ids,
+                                                          concept_select_ids)
+        return concept_query_object
+
+    children = concept_query_object.get('children', [])
+
+    if type(children) is not list:
+        raise TypeError(f"Value to key 'children' must be of type list, not {type(children)}")
+
+    if concept_query_object.get("type") in ["AND", "OR"]:
+        for child_ind, child in enumerate(children):
+            children[child_ind] = edit_concept_query(child, concept_id, connector_ids,
+                                                     date_column_id, filter_ids, select_ids, concept_select_ids)
+        concept_query_object['children'] = children
+        return concept_query_object
+
+    if concept_query_object.get("type") != "CONCEPT":
+        raise TypeError(f"Unknown type {concept_query_object.get('type')} \n Expected type: 'CONCEPT'")
+
+    if concept_id not in concept_query_object.get('ids', []):
+        return concept_query_object
+
+    concept_tables = concept_query_object.get('tables', [])
+    concept_connector_ids = [table.get('id') for table in concept_tables]
+
+    # when no connector_ids are defined, edit all tables of all concepts
+    if not connector_ids:
+        connector_ids = concept_connector_ids
+
+    # add tables for connector_ids that are not found
+    # add first without filters and selects and add them later
+    for connector_id in connector_ids:
+        if connector_id not in concept_connector_ids:
+            if not date_column_id:
+                raise Exception(f"date_column_id must be defined when adding new table {connector_id}")
+            concept_tables.append({
+                "id": connector_id,
+                "dateColumn": None,
+                "selects": [],
+                "filters": []
+            })
+
+    # add selects and filters on connector level
+    for concept_table in concept_tables:
+        if concept_table.get('id') in connector_ids:
+            if date_column_id:
+                # dateColumn Value may be None
+                date_column_obj = {"value": date_column_id}
+                concept_table['dateColumn'] = date_column_obj
+            concept_table['selects'] = [*concept_table.get('selects', []), *select_ids]
+            concept_table['filters'] = [*concept_table.get('filters', []), *filter_ids]
+    concept_query_object['tables'] = concept_tables
+
+    # add selects on concept level
+    if concept_select_ids:
+        concept_query_object['selects'] = [*concept_query_object.get('selects', []), *concept_select_ids]
+
+    return concept_query_object
 
 
 def add_subquery_to_concept_query(query, subquery):
@@ -351,7 +437,6 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
 
 
 def create_absolute_form_query(query_id, feature_queries: list, date_range: list):
-
     """ Create an ABSOLUTE_FORM_QUERY
     :param query_id: ID of the query that will be used to get the patient group
     :param feature_queries: list of concept queries to add columns
