@@ -1,0 +1,86 @@
+{
+    "type": "CONCEPT_QUERY",
+    "root": {
+        "type": "AND",
+        "children": [
+            {
+                "type": "OR",
+                "children": [
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "adb_bosch.wirkstoff"
+                        ],
+                        "label": "Wirkstoff",
+                        "tables": [
+                            {
+                                "id": "adb_bosch.wirkstoff.atc",
+                                "dateColumn": {
+                                    "value": "adb_bosch.wirkstoff.atc.abgabedatum"
+                                },
+                                "selects": [],
+                                "filters": []
+                            }
+                        ],
+                        "selects": []
+                    },
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "adb_bosch.atc"
+                        ],
+                        "label": "ATC",
+                        "tables": [
+                            {
+                                "id": "adb_bosch.atc.atc",
+                                "dateColumn": {
+                                    "value": "adb_bosch.atc.atc.abgabedatum"
+                                },
+                                "selects": [
+                                    "adb_bosch.atc.atc.anzahl_apotheken"
+                                ],
+                                "filters": []
+                            }
+                        ],
+                        "selects": [
+                            "adb_bosch.atc.liegt_vor"
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "OR",
+                "children": [
+                    {
+                        "type": "CONCEPT",
+                        "ids": [
+                            "adb_bosch.icd"
+                        ],
+                        "label": "ICD",
+                        "tables": [
+                            {
+                                "id": "adb_bosch.icd.kh_diagnose_icd_code",
+                                "dateColumn": {
+                                    "value": "adb_bosch.icd.kh_diagnose_icd_code.entlassungsdatum"
+                                },
+                                "selects": [],
+                                "filters": []
+                            },
+                            {
+                                "id": "adb_bosch.icd.arzt_diagnose_icd_code",
+                                "dateColumn": null,
+                                "selects": [
+                                    "adb_bosch.icd.arzt_diagnose_icd_code.count_bsnrs"
+                                ],
+                                "filters": []
+                            }
+                        ],
+                        "selects": [
+                            "adb_bosch.icd.icd_exists"
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
