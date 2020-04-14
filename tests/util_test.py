@@ -377,6 +377,13 @@ def test_edit_concept_query():
         date_column_id="date_column_id",
         select_ids=["select_1", "select_2"]) == query1_assert_4
 
+    query1_assert_5 = json.load(open("./data_util/concept_query1_assert5.json", 'r'))
+    assert edit_concept_query(
+        query1,
+        concept_id="adb_bosch.icd",
+        connector_ids="adb_bosch.icd.arzt_diagnose_icd_code",
+        remove_connector=True) == query1_assert_5
+
 
 @pytest.mark.parametrize("param", valid_date_strings)
 def test_parse_iso_date(param):
