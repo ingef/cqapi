@@ -268,7 +268,7 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     :param concept_id: id of the concept-object that should be edited or added
     :param connector_ids: connector_ids ob the tables of the concept-object that should be edited.
     When none is given, all tables of the concept are edited
-    :param date_column_id: has to be given when new table is added.
+    :param date_column_id: date_columns to add on table level
     :param filter_ids: filters to add on table level
     :param select_ids: selects to add on table level
     :param concept_select_ids: selects to add on concept level
@@ -276,12 +276,9 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     """
     concept_query_object = deepcopy(concept_query_object)
     connector_ids = u_pd.check_input_list(connector_ids, entry_type=str)
-    filter_ids = u_pd.check_input_list(filter_ids, entry_type=str)
+    filter_ids = u_pd.check_input_list(filter_ids, entry_type=dict)
     select_ids = u_pd.check_input_list(select_ids, entry_type=str)
     concept_select_ids = u_pd.check_input_list(concept_select_ids, entry_type=str)
-
-    if not connector_ids and not filter_ids and not select_ids and not date_column_id and not concept_select_ids:
-        return concept_query_object
 
     if concept_query_object.get("type") == "CONCEPT_QUERY":
         concept_query_object['root'] = edit_concept_query(concept_query_object.get('root'), concept_id,
@@ -291,6 +288,13 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
         return concept_query_object
 
     children = concept_query_object.get('children', [])
+
+    if concept_query_object.get("type") == "DATE_RESTRICTION":
+        concept_query_object['child'] = edit_concept_query(concept_query_object.get('child'), concept_id,
+                                                           connector_ids,
+                                                           date_column_id, filter_ids, select_ids,
+                                                           concept_select_ids, remove_connector)
+        return concept_query_object
 
     if type(children) is not list:
         raise TypeError(f"Value to key 'children' must be of type list, not {type(children)}")
@@ -327,8 +331,6 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     # add first without filters and selects and add them later
     for connector_id in connector_ids:
         if connector_id not in concept_connector_ids:
-            if not date_column_id:
-                raise Exception(f"date_column_id must be defined when adding new table {connector_id}")
             concept_tables.append({
                 "id": connector_id,
                 "dateColumn": None,
@@ -446,8 +448,9 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     }
 
 
-def create_absolute_form_query(query_id, feature_queries: list, date_range: list):
+def create_absolute_form_query(query_id, feature_queries: list, date_range: list, resolution='COMPLETE'):
     """ Create an ABSOLUTE_FORM_QUERY
+    :param resolution: Resolution for the output. Possible values: 'COMPLETE', 'QUARTERS', 'YEARS'
     :param query_id: ID of the query that will be used to get the patient group
     :param feature_queries: list of concept queries to add columns
     :param date_range: date range with list containing first and last date, dates have to be in format %Y-%m-%d
@@ -467,6 +470,7 @@ def create_absolute_form_query(query_id, feature_queries: list, date_range: list
     return {
         'type': 'EXPORT_FORM',
         'queryGroup': query_id,
+        'resolution': resolution,
         'timeMode': {
             "value": 'ABSOLUTE',
             'dateRange': {
