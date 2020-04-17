@@ -352,7 +352,18 @@ def test_edit_concept_query():
         concept_id="adb_bosch.wirkstoff",
         select_ids="select_1",
         date_column_id="date_column_1",
-        filter_ids=["filter_1, filter_2"],
+        filter_ids=[
+            {
+                "filter": "filter_1",
+                "type": "filter_type_1",
+                "value": ["filter_value_1"]
+            },
+            {
+                "filter": "filter_2",
+                "type": "filter_type_2",
+                "value": ["filter_value_2"]
+            }
+        ],
         concept_select_ids="concept_select_1") == query1_assert_1
 
     query1_assert_2 = json.load(open("./data_util/concept_query1_assert2.json", 'r'))

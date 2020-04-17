@@ -19,7 +19,18 @@
                                     "value": "date_column_1"
                                 },
                                 "selects": ["select_1"],
-                                "filters": ["filter_1, filter_2"]
+                                "filters": [
+                                    {
+                                        "filter": "filter_1",
+                                        "type": "filter_type_1",
+                                        "value": ["filter_value_1"]
+                                    },
+                                    {
+                                        "filter": "filter_2",
+                                        "type": "filter_type_2",
+                                        "value": ["filter_value_2"]
+                                    }
+                                ]
                             }
                         ],
                         "selects": ["concept_select_1"]
