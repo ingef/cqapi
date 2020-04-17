@@ -100,12 +100,8 @@ class ConqueryConnection(object):
                               self._token)
         return result
 
-    async def get_query(self, dataset, query_id, is_form_query):
-        if is_form_query:
-            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/form-queries/{query_id}",
-                               self._token)
-        else:
-            result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}", self._token)
+    async def get_query(self, dataset, query_id):
+        result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}", self._token)
         return result
 
     async def execute_query(self, dataset, query, label=None):
@@ -119,24 +115,23 @@ class ConqueryConnection(object):
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
     async def execute_form_query(self, dataset, form_query):
-        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/form-queries", form_query, self._token)
+        result = await post(self._session, f"{self._url}/api/datasets/{dataset}/queries", form_query, self._token)
         try:
             return result['id']
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    async def get_query_result(self, dataset, query_id, is_form_query=False):
+    async def get_query_result(self, dataset, query_id):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
         :param dataset:
         :param query_id:
-        :param is_form_query:
         :return: str containing the returned csv's
         """
-        response = await self.get_query(dataset, query_id, is_form_query)
+        response = await self.get_query(dataset, query_id)
         while not response['status'] == 'DONE':
-            response = await self.get_query(dataset, query_id, is_form_query)
+            response = await self.get_query(dataset, query_id)
 
         result_string = await self._download_query_results(response["resultUrl"])
         return list(csv.reader(result_string.splitlines(), delimiter=';'))
