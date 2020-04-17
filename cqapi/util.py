@@ -220,7 +220,7 @@ def add_date_restriction_to_concept_query(query, target_concept_id: str, date_st
         raise Exception(f"Unknown type in query_object: {query_object.get('type')}")
 
 
-def concept_query_from_concept(concept_id, concept_object, concept_label=""):
+def concept_query_from_concept(concept_ids: list, concept_object, concept_label=""):
     """ Create CONCEPT_QUERY with a given CONCEPT as it root node.
 
     For simple query generation from a single concept.
@@ -246,12 +246,16 @@ def concept_query_from_concept(concept_id, concept_object, concept_label=""):
     for table in concept_object.get('tables'):
         if 'connectorId' not in table:
             raise KeyError("Each table in 'concept_object.table' must have a 'connectorId'")
+    if type(concept_ids) is not list:
+        concept_ids = [concept_ids]
+        if any([type(concept_id) is not str for concept_id in concept_ids]):
+            raise ValueError("Parameter 'concept_ids' must be string or list of strings")
 
     query = {
         'type': 'CONCEPT_QUERY',
         'root': {
             'type': 'CONCEPT',
-            'ids': [concept_id],
+            'ids': concept_ids,
             'label': concept_label,
             'tables': [{'id': table.get('connectorId')} for table in concept_object.get('tables')]
         }
