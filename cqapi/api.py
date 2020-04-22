@@ -91,6 +91,10 @@ class ConqueryConnection(object):
         response_list = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries", self._token)
         return response_list
 
+    async def get_column_descriptions(self, dataset, query_id):
+        result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
+        return result.get('columnDescriptions')
+
     async def get_stored_query(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
         return result.get('query')
