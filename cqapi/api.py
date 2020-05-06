@@ -73,6 +73,10 @@ class ConqueryConnection(object):
         self._check_permission = check_permission
         self._timeout = requests_timout
 
+    async def get_user(self):
+        response = await get(self._session, f"{self._url}/api/me", self._token)
+        return response
+
     async def get_datasets(self):
         response_list = await get(self._session, f"{self._url}/api/datasets", self._token)
         return [d['id'] for d in response_list]
