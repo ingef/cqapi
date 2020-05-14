@@ -452,7 +452,7 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     }
 
 
-def create_form_query(form_query_type: str, query_id: str, feature_queries: list, outcome_queries: list,
+def create_form_query(form_query_type: str, query_id: str, feature_queries: list, outcome_queries: list = None,
                       resolution='COMPLETE', date_range: list = None,
                       time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                       index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
