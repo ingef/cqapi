@@ -452,84 +452,102 @@ def create_frontend_query(and_queries: list, date_restrictions: list = None):
     }
 
 
-def create_absolute_form_query(query_id, feature_queries: list, date_range: list, resolution='COMPLETE'):
-    """ Create an ABSOLUTE_FORM_QUERY
-    :param resolution: Resolution for the output. Possible values: 'COMPLETE', 'QUARTERS', 'YEARS'
+def create_form_query(form_query_type: str, query_id: str, feature_queries: list, outcome_queries: list,
+                      resolution='COMPLETE', date_range: list = None,
+                      time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
+                      index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
+    """
+    Create an form query
+    :param form_query_type: Possible values: 'ABSOLUTE', 'RELATIVE'
     :param query_id: ID of the query that will be used to get the patient group
-    :param feature_queries: list of concept queries to add columns
-    :param date_range: date range with list containing first and last date, dates have to be in format %Y-%m-%d
-    :return:
+    :param feature_queries: list of concept queries representing features
+    :param outcome_queries: list of concept queries representing outcomes
+    :param resolution: Resolution for the output. Possible values: 'COMPLETE' (default), 'QUARTERS', 'YEARS
+    :param date_range: time period for feature_queries - only necessary with absolut form query
+    :param time_unit: Possible values: 'QUARTERS' (default) , 'DAYS'
+    :param time_count_before: number of time-units in feature time period (default: 1)
+    :param time_count_after: number fo time -units in outcome time period (default: 1)
+    :param index_selector: which event to take as index. Possible values: 'EARLIEST', 'LAST', 'RANDOM'
+    :param index_placement: which time period the index time unit is associated with. Possible values: 'BEFORE', 'NEUTRAL', 'AFTER'
+    :return: Query of type RELATIVE_EXPORT_FORM
     """
 
-    if datetime.strptime(date_range[0], '%Y-%m-%d') > datetime.strptime(date_range[1], '%Y-%m-%d'):
-        raise ValueError(f"Invalid dateRange. {date_range[0]} is after {date_range[1]}")
-    for feature_query in feature_queries:
-        if 'root' not in feature_query.keys() and 'children' not in feature_query.keys():
-            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root or children")
+    form_query_type = form_query_type.upper()
+    absolute_form_flag = form_query_type == 'ABSOLUTE'
+    relative_form_flag = form_query_type == 'RELATIVE'
 
-    features = [{'type': 'OR', 'children': [feature_query['root']]}
-                if 'root' in feature_query.keys() else feature_query
-                for feature_query in feature_queries]
-
-    return {
-        'type': 'EXPORT_FORM',
-        'queryGroup': query_id,
-        'resolution': resolution,
-        'timeMode': {
-            "value": 'ABSOLUTE',
-            'dateRange': {
-                'min': date_range[0],
-                'max': date_range[1]
-            },
-            'features': features
-        }
-    }
-
-
-def create_relative_query(index_query, before_query, after_query, time_before, time_after,
-                          index_selector='FIRST', index_placement='NEUTRAL', time_unit='QUARTERS'):
-    """ Create a RELATIVE_FORM_QUERY for temporally relative data export.
-
-    :param index_query: Concept query describing the event that is to be used as the index date
-    :param before_query: Concept query to select which information will be requested for the time frame before the index
-        date
-    :param after_query: Concept query to select which information will be requested for time frame after the index date
-    :param time_before: Number of time units (see `time_unit`) before the index date to consider using the
-        `before_query`
-    :param time_after: Number of time units (see `time_unit`) after the index date to consider using the `after_query`
-    :param index_selector: One of `'FIRST'` (default), `'LAST'`, and `'RANDOM'`. Selects which index date to use in
-        case `index_query` matches multiple event occurrences
-    :param index_placement: One of `'BEFORE'`, `'NEUTRAL'` (default), and `'AFTER'`. Selects if the index event
-        should be considered for either of the before or after time frames' results
-    :param time_unit: One of `'QUARTERS'` (default) and `'DAYS'`. Time unit of `time_before` and `time_after`
-        respectively
-    :return:
-    """
+    # validate input
     valid_time_units = ['QUARTERS', 'DAYS']
-    valid_index_selectors = ['FIRST', 'LAST', 'RANDOM']
+    valid_index_selectors = ['EARLIEST', 'LAST', 'RANDOM']
     valid_index_placements = ['BEFORE', 'NEUTRAL', 'AFTER']
 
     if time_unit not in valid_time_units:
         raise ValueError(f"Invalid time_unit. Must be one of {valid_time_units}")
-    if time_before < 0:
+    if time_count_before < 0:
         raise ValueError("Invalid time_before. Must be positive")
-    if time_after < 0:
+    if time_count_after < 0:
         raise ValueError("Invalid time_after. Must be positive")
     if index_selector not in valid_index_selectors:
         raise ValueError(f"Invalid index_selector. Must be one of {valid_index_selectors}")
     if index_placement not in valid_index_placements:
         raise ValueError(f"Invalid index_placement. Must be one of {valid_index_placements}")
 
+    if not absolute_form_flag or relative_form_flag:
+        raise ValueError(f"form_query_type must be 'ABSOLUTE' or 'RELATIVE', not {form_query_type}")
+
+    if absolute_form_flag:
+        if date_range is None or \
+                datetime.strptime(date_range[0], '%Y-%m-%d') > datetime.strptime(date_range[1], '%Y-%m-%d'):
+            raise ValueError(f"Invalid dateRange. {date_range[0]} is after {date_range[1]}")
+
+    for feature_query in feature_queries:
+        if 'root' not in feature_query.keys() and 'children' not in feature_query.keys():
+            raise ValueError(f"Invalid feature query. Query {feature_query} has no key root or children")
+
+    for outcome_query in outcome_queries:
+        if 'root' not in outcome_query.keys() and 'children' not in outcome_query.keys():
+            raise ValueError(f"Invalid feature query. Query {outcome_query} has no key root or children")
+
+    # edit features and outcomes queries slightly to match restrictions
+
+    features = [{'type': 'OR', 'children': [feature_query['root']]}
+                if 'root' in feature_query.keys() else feature_query
+                for feature_query in feature_queries]
+
+    if relative_form_flag:
+        outcomes = [{'type': 'OR', 'children': [outcome_query['root']]}
+                    if 'root' in outcome_query.keys() else outcome_query
+                    for outcome_query in outcome_queries]
+
+    if absolute_form_flag:
+        return {
+            'type': 'EXPORT_FORM',
+            'queryGroup': query_id,
+            'resolution': resolution,
+            'timeMode': {
+                "value": form_query_type,
+                'dateRange': {
+                    'min': date_range[0],
+                    'max': date_range[1]
+                },
+                'features': features
+            }
+        }
+
     return {
-        'type': 'RELATIVE_FORM_QUERY',
-        'query': index_query,
-        'features': before_query,
-        'outcomes': after_query,
-        'indexSelector': index_selector,
-        'indexPlacement': index_placement,
-        'timeCountBefore': time_before,
-        'timeCountAfter': time_after,
-        'timeUnit': time_unit
+        'type': 'EXPORT_FORM',
+        'queryGroup': query_id,
+        'resolution': resolution,
+        'timeMode': {
+            'value': form_query_type,
+            'timeUnit': time_unit,
+            'timeCountBefore': time_count_before,
+            'timeCountAfter': time_count_after,
+            'indexSelector': index_selector,
+            'indexPlacement': index_placement,
+            'features': features,
+            'outcomes': outcomes
+        }
     }
 
 
