@@ -492,7 +492,7 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
     if index_placement not in valid_index_placements:
         raise ValueError(f"Invalid index_placement. Must be one of {valid_index_placements}")
 
-    if not absolute_form_flag or relative_form_flag:
+    if not (absolute_form_flag or relative_form_flag):
         raise ValueError(f"form_query_type must be 'ABSOLUTE' or 'RELATIVE', not {form_query_type}")
 
     if absolute_form_flag:
