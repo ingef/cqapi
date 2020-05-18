@@ -504,9 +504,10 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
         if 'root' not in feature_query.keys() and 'children' not in feature_query.keys():
             raise ValueError(f"Invalid feature query. Query {feature_query} has no key root or children")
 
-    for outcome_query in outcome_queries:
-        if 'root' not in outcome_query.keys() and 'children' not in outcome_query.keys():
-            raise ValueError(f"Invalid feature query. Query {outcome_query} has no key root or children")
+    if relative_form_flag:
+        for outcome_query in outcome_queries:
+            if 'root' not in outcome_query.keys() and 'children' not in outcome_query.keys():
+                raise ValueError(f"Invalid feature query. Query {outcome_query} has no key root or children")
 
     # edit features and outcomes queries slightly to match restrictions
 
