@@ -467,7 +467,7 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
     :param time_unit: Possible values: 'QUARTERS' (default) , 'DAYS'
     :param time_count_before: number of time-units in feature time period (default: 1)
     :param time_count_after: number fo time -units in outcome time period (default: 1)
-    :param index_selector: which event to take as index. Possible values: 'EARLIEST', 'LAST', 'RANDOM'
+    :param index_selector: which event to take as index. Possible values: 'EARLIEST', 'LATEST', 'RANDOM'
     :param index_placement: which time period the index time unit is associated with. Possible values: 'BEFORE', 'NEUTRAL', 'AFTER'
     :return: Query of type RELATIVE_EXPORT_FORM
     """
@@ -478,7 +478,7 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
 
     # validate input
     valid_time_units = ['QUARTERS', 'DAYS']
-    valid_index_selectors = ['EARLIEST', 'LAST', 'RANDOM']
+    valid_index_selectors = ['EARLIEST', 'LATEST', 'RANDOM']
     valid_index_placements = ['BEFORE', 'NEUTRAL', 'AFTER']
 
     if time_unit not in valid_time_units:
