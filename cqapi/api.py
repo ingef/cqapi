@@ -99,6 +99,10 @@ class ConqueryConnection(object):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
         return result.get('columnDescriptions')
 
+    async def get_query(self, dataset, query_id):
+        result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
+        return result.get('query')
+    
     async def get_stored_query(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
         return result.get('query')
@@ -108,7 +112,7 @@ class ConqueryConnection(object):
                               self._token)
         return result
 
-    async def get_query(self, dataset, query_id):
+    async def get_query_info(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}", self._token)
         return result
 
@@ -137,9 +141,9 @@ class ConqueryConnection(object):
         :param query_id:
         :return: str containing the returned csv's
         """
-        response = await self.get_query(dataset, query_id)
+        response = await self.get_query_info(dataset, query_id)
         while not response['status'] == 'DONE':
-            response = await self.get_query(dataset, query_id)
+            response = await self.get_query_info(dataset, query_id)
 
         result_string = await self._download_query_results(response["resultUrl"])
         return list(csv.reader(result_string.splitlines(), delimiter=';'))

@@ -22,7 +22,7 @@ attempt to keep a working version of this library.
 from cqapi import ConqueryConnection
 
 async with ConqueryConnection("http://conquery-base.url:9082") as cq:
-    query = await cq.get_query("demo", "query.id")
+    query = await cq.get_query_info("demo", "query.id")
     query_execution_id = await cq.execute_query("demo", query)
     query_result = await cq.get_query_result("demo", query_execution_id)
 ```
