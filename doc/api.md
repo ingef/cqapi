@@ -12,7 +12,7 @@ A connection is opened by providing the address (including the port) of a runnin
 from cqapi import ConqueryConnection
 
 async with ConqueryConnection("http://conquery-base.url:9082") as cq:
-    query = await cq.get_query("demo", "query.id")
+    query = await cq.get_query_info("demo", "query.id")
     query_execution_id = await cq.execute_query("demo", query)
     query_result = await cq.get_query_result("demo", query_execution_id)
 ```
@@ -106,7 +106,7 @@ query = await cq.get_stored_query('dataset', 'some_query_id')
 Will return the query description, including the query itself and its current status, for a given query id.
 
 ```python
-query_definition = await cq.get_query('dataset', 'some_query_id')
+query_definition = await cq.get_query_info('dataset', 'some_query_id')
 # {
 #   "createdAt": ...,
 #   "status": 'RUNNING',
