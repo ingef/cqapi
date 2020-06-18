@@ -2,6 +2,7 @@ from aiohttp import ClientSession
 from aiohttp import ClientConnectorError
 from cqapi import util
 import csv
+from time import sleep
 
 
 class CqApiError(BaseException):
@@ -144,17 +145,22 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    async def get_query_result(self, dataset, query_id):
+    async def get_query_result(self, dataset, query_id, requests_per_sec=None):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
         :param dataset:
         :param query_id:
+        :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
+        e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
         :return: str containing the returned csv's
         """
         response = await self.get_query_info(dataset, query_id)
         while not response['status'] == 'DONE':
             response = await self.get_query_info(dataset, query_id)
+            if requests_per_sec is None:
+                continue
+            sleep(1 / requests_per_sec)
 
         result_string = await self._download_query_results(response["resultUrl"])
         return list(csv.reader(result_string.splitlines(), delimiter=';'))
