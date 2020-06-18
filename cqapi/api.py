@@ -102,7 +102,7 @@ class ConqueryConnection(object):
     async def get_query(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
         return result.get('query')
-    
+
     async def get_stored_query(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}", self._token)
         return result.get('query')
@@ -111,6 +111,17 @@ class ConqueryConnection(object):
         result = await delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}",
                               self._token)
         return result
+
+    async def get_number_of_results(self, dataset, query_id):
+        response = await self.get_query_info(dataset, query_id)
+        while not response['status'] == 'DONE':
+            response = await self.get_query_info(dataset, query_id)
+
+        n_results = response.get('numberOfResults')
+        if n_results is None:
+            return -1
+
+        return int(n_results)
 
     async def get_query_info(self, dataset, query_id):
         result = await get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}", self._token)
