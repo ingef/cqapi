@@ -82,6 +82,10 @@ class ConqueryConnection(object):
         response_list = await get(self._session, f"{self._url}/api/datasets", self._token)
         return [d['id'] for d in response_list]
 
+    async def get_datasets_label_dict(self):
+        response_list = await get(self._session, f"{self._url}/api/datasets", self._token)
+        return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
+
     async def get_concepts(self, dataset):
         response = await get(self._session, f"{self._url}/api/datasets/{dataset}/concepts", self._token)
         return response['concepts']
