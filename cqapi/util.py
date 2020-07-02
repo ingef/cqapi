@@ -234,7 +234,7 @@ def concept_query_from_concept(concept_ids: list, concept_object, concept_label=
     >>> cq.execute_query('some_dataset', concept_query)
     >>> # or can be combined with other utility methods to add selects etc.
 
-    :param concept_id:
+    :param concept_ids:
     :param concept_object:
     :return: a concept query with the given concept as it's sole root node
     """
