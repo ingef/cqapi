@@ -1,7 +1,20 @@
 from datetime import date
 from datetime import datetime
 from copy import deepcopy
-import utility.process_description as u_pd
+
+
+def check_input_list(input_list, entry_type=None):
+    """
+    When type of input_list is not list, it returns list with element input_list.
+    When entry_type is set, it throws TypeError, when entry in input_list is not of type entry_type
+    """
+    if type(input_list) is not list:
+        input_list = [input_list]
+    if entry_type:
+        for entry in input_list:
+            if type(entry) is not entry_type:
+                raise TypeError(f"Entry {entry} is not of type {entry_type}")
+    return input_list
 
 
 def object_to_dict(obj):
@@ -279,10 +292,10 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     :return:
     """
     concept_query_object = deepcopy(concept_query_object)
-    connector_ids = u_pd.check_input_list(connector_ids, entry_type=str)
-    filter_ids = u_pd.check_input_list(filter_ids, entry_type=dict)
-    select_ids = u_pd.check_input_list(select_ids, entry_type=str)
-    concept_select_ids = u_pd.check_input_list(concept_select_ids, entry_type=str)
+    connector_ids = check_input_list(connector_ids, entry_type=str)
+    filter_ids = check_input_list(filter_ids, entry_type=dict)
+    select_ids = check_input_list(select_ids, entry_type=str)
+    concept_select_ids = check_input_list(concept_select_ids, entry_type=str)
 
     if concept_query_object.get("type") == "CONCEPT_QUERY":
         concept_query_object['root'] = edit_concept_query(concept_query_object.get('root'), concept_id,
