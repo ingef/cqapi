@@ -1,8 +1,10 @@
+import asyncio
 from aiohttp import ClientSession
 from aiohttp import ClientConnectorError
 from cqapi import util
 import csv
 from time import sleep
+import getpass
 
 
 class CqApiError(BaseException):
@@ -44,13 +46,50 @@ async def delete(session, url, token):
         return await response.text()
 
 
+async def test_protected(session, url, headers) :
+    async with session.get(f"{url}/api/me", headers = headers) as res :
+        return res.status
+
+async def send_login_get_token(session, url, login_data) :
+    async with session.post(f"{url}/auth", json=login_data) as res :
+        content = await res.json()
+        return content["access_token"]
+
+async def test_authentication(session, url, token):
+    headers = {}
+    headers["Authorization"] = f'Bearer {token}'
+    status = await test_protected(session, url, headers)
+    if status < 400 :
+        return token
+
+    print("Authentication needed")
+    login_data = {}
+    login_data['user'] = input('Username: ')
+    if not login_data['user']:
+        login_data['user'] = getpass.getuser()
+    attempts = 2
+    while status == 401 and attempts > 0 :
+        login_data['password'] = getpass.getpass("Password for %s: " % login_data['user'])
+        token = await send_login_get_token(session, url, login_data)
+        headers["Authorization"] = f'Bearer {token}'
+
+        status = await test_protected(session, url, headers)
+        attempts -= 1
+    
+    if status == 401 :
+        raise ConqueryClientConnectionError("Login failed")
+    print("Login successful")
+    return token
+
 class ConqueryConnection(object):
+
+
     async def __aenter__(self):
         self._session = ClientSession()
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
             try:
-                await get(self._session, f"{self._url}/api/datasets", self._token)
+                self._token = await test_authentication(self._session, self._url, self._token)
             except ClientConnectorError:
                 error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
                 raise ConqueryClientConnectionError(error_msg)
@@ -58,7 +97,9 @@ class ConqueryConnection(object):
         if self._check_permission:
             headers = {'Authorization': f'Bearer {self._token}'}
             async with self._session.get(f"{self._url}/api/datasets", headers=headers) as response:
-                if response.status == 401 or not await response.json():
+                if response.status == 401 :
+                    raise ConqueryClientConnectionError("Authentication failure")
+                if not await response.json():
                     error_msg = f"There is no permission for accessing any dataset."
                     raise ConqueryClientConnectionError(error_msg)
 
@@ -73,6 +114,7 @@ class ConqueryConnection(object):
         self._check_connection = check_connection
         self._check_permission = check_permission
         self._timeout = requests_timout
+
 
     async def get_user(self):
         response = await get(self._session, f"{self._url}/api/me", self._token)
