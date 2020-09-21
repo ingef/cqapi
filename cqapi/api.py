@@ -161,6 +161,9 @@ class ConqueryConnection(object):
         """
         response = await self.get_query_info(dataset, query_id)
         while not response['status'] == 'DONE':
+            if response['status'] == "FAILED":
+                raise Exception(f"Query with {query_id=} failed. Response: \n"
+                                f"{response=}")
             response = await self.get_query_info(dataset, query_id)
             if requests_per_sec is None:
                 continue
