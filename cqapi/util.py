@@ -249,6 +249,7 @@ def concept_query_from_concept(concept_ids: list, concept_object, concept_label=
 
     :param concept_ids:
     :param concept_object:
+    :param concept_label:
     :return: a concept query with the given concept as it's sole root node
     """
     # todo write tests
