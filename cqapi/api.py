@@ -62,6 +62,7 @@ class ConqueryConnection(object):
         if self._check_permission:
             # Check if token is known to conquery
             async with self.get_user() as response:
+                print(response)
                 if response.status == 401:
                     if self._login_on_auth_fail:
                         self._token = self.login()
