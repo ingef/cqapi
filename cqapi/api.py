@@ -67,7 +67,7 @@ class ConqueryConnection(object):
                 print(await resp.text())
                 if resp.status == 401:
                     if self._login_on_auth_fail:
-                        self._token = self.login()
+                        self._token = await self.login()
                         self.update_token_in_header()
                     else:
                         raise ConqueryClientConnectionError("Authentication failure")
@@ -76,7 +76,6 @@ class ConqueryConnection(object):
 
             # check if user has access to any dataset
             async with self._session.get(f"{self._url}/api/datasets") as response:
-                print(response)
                 if not await response.json():
                     error_msg = f"There is no permission for accessing any dataset."
                     raise ConqueryClientConnectionError(error_msg)
