@@ -117,9 +117,11 @@ class ConqueryConnection(object):
 
         login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
         auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
+        print(auth_response.status)
         while auth_response.status == 401 and number_of_attempts - 1 > 0:
             login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
             auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
+            print(auth_response.status)
             number_of_attempts += -1
 
         if auth_response.status == 401:
