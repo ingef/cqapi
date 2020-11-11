@@ -62,14 +62,12 @@ class ConqueryConnection(object):
         if self._check_permission:
             # Check if token is known to conquery
             async with self._session.get(f"{self._url}/api/me") as resp:
-                if resp.status == 401:
+                if resp.status > 400:
                     if self._login_on_auth_fail:
                         self._token = await self.login()
                         self.update_token_in_header()
                     else:
                         raise ConqueryClientConnectionError("Authentication failure")
-                elif resp.status > 400:
-                    raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {resp}")
 
             # check if user has access to any dataset
             async with self._session.get(f"{self._url}/api/datasets") as response:
@@ -114,19 +112,17 @@ class ConqueryConnection(object):
 
         login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
         auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
-        print(auth_response.status)
-        while auth_response.status == 401 and number_of_attempts - 1 > 0:
+        while auth_response.status > 400 and number_of_attempts - 1 > 0:
             login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
             auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
-            print(auth_response.status)
             number_of_attempts += -1
 
-        if auth_response.status == 401:
+        if auth_response.status > 400:
             raise ConqueryClientConnectionError("Login failed")
 
         auth_response_data = await auth_response.json()
         token = auth_response_data.get('access_token')
-        if token is None or auth_response.status >= 400:
+        if token is None:
             raise ConqueryClientConnectionError("Login failed")
 
         return token
