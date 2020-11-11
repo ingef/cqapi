@@ -63,6 +63,7 @@ class ConqueryConnection(object):
             # Check if token is known to conquery
             async with self._session.get(f"{self._url}/api/me") as resp:
                 print(resp.status)
+                print(type(resp.status))
                 print(await resp.text())
                 if resp.status == 401:
                     if self._login_on_auth_fail:
