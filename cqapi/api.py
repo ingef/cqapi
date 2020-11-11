@@ -49,6 +49,7 @@ async def delete(session, url):
 class ConqueryConnection(object):
 
     async def __aenter__(self):
+        print("test")
         self._session = ClientSession(headers=self._header)
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
@@ -74,6 +75,7 @@ class ConqueryConnection(object):
 
             # check if user has access to any dataset
             async with self._session.get(f"{self._url}/api/datasets", headers=self._header) as response:
+                print(response)
                 if not await response.json():
                     error_msg = f"There is no permission for accessing any dataset."
                     raise ConqueryClientConnectionError(error_msg)
