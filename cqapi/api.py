@@ -62,7 +62,7 @@ class ConqueryConnection(object):
         # check permissions
         if self._check_permission:
             # Check if token is known to conquery
-            response = await get(self._session, f"{self._url}/api/me")
+            response = await self._session.get(f"{self._url}/api/me")
             print(response)
             if response.status == 401:
                 if self._login_on_auth_fail:
