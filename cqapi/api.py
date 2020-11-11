@@ -49,7 +49,6 @@ async def delete(session, url):
 class ConqueryConnection(object):
 
     async def __aenter__(self):
-        print("test")
         self._session = ClientSession(headers=self._header)
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
@@ -62,19 +61,20 @@ class ConqueryConnection(object):
         # check permissions
         if self._check_permission:
             # Check if token is known to conquery
-            response = await self._session.get(f"{self._url}/api/me")
-            print(response)
-            if response.status == 401:
-                if self._login_on_auth_fail:
-                    self._token = self.login()
-                    self.update_token_in_header()
-                else:
-                    raise ConqueryClientConnectionError("Authentication failure")
-            elif response.status > 400:
-                raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {response}")
+            async with self._session.get(f"{self._url}/api/me") as resp:
+                print(resp.status)
+                print(await resp.text())
+                if resp.status == 401:
+                    if self._login_on_auth_fail:
+                        self._token = self.login()
+                        self.update_token_in_header()
+                    else:
+                        raise ConqueryClientConnectionError("Authentication failure")
+                elif resp.status > 400:
+                    raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {resp}")
 
             # check if user has access to any dataset
-            async with self._session.get(f"{self._url}/api/datasets", headers=self._header) as response:
+            async with self._session.get(f"{self._url}/api/datasets") as response:
                 print(response)
                 if not await response.json():
                     error_msg = f"There is no permission for accessing any dataset."
