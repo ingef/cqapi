@@ -1,12 +1,19 @@
+import asyncio
 from aiohttp import ClientSession
 from aiohttp import ClientConnectorError
 from cqapi import util
 import csv
 from time import sleep
+import getpass
 
 
 class CqApiError(BaseException):
     pass
+
+
+class AuthError(CqApiError):
+    def __init__(self, msg):
+        self.message = msg
 
 
 class ConqueryClientConnectionError(CqApiError):
@@ -24,8 +31,8 @@ async def get_text(session, url):
         return await response.text()
 
 
-async def post(session, url, data):
-    async with session.post(url, json=data) as response:
+async def post(session, url, json_data):
+    async with session.post(url, json=json_data) as response:
         return await response.json()
 
 
@@ -40,6 +47,7 @@ async def delete(session, url):
 
 
 class ConqueryConnection(object):
+
     async def __aenter__(self):
         self._session = ClientSession(headers=self._header)
         # try to fail early if conquery is not available at self._url
@@ -49,10 +57,23 @@ class ConqueryConnection(object):
             except ClientConnectorError:
                 error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
                 raise ConqueryClientConnectionError(error_msg)
-        # Check if token is known to conquery and if it has access to any dataset
+
+        # check permissions
         if self._check_permission:
-            async with self._session.get(f"{self._url}/api/datasets") as response:
-                if response.status == 401 or not await response.json():
+            # Check if token is known to conquery
+            async with self.get_user() as response:
+                if response.status == 401:
+                    if self._login_on_auth_fail:
+                        self._token = self.login()
+                        self.update_token_in_header()
+                    else:
+                        raise ConqueryClientConnectionError("Authentication failure")
+                elif response.status > 400:
+                    raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {response}")
+
+            # check if user has access to any dataset
+            async with self._session.get(f"{self._url}/api/datasets", headers=self._header) as response:
+                if not await response.json():
                     error_msg = f"There is no permission for accessing any dataset."
                     raise ConqueryClientConnectionError(error_msg)
 
@@ -61,14 +82,51 @@ class ConqueryConnection(object):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._session.close()
 
-    def __init__(self, url, token="", requests_timout=5, check_connection=True, check_permission=True):
+    def __init__(self, url, token: str = "", request_language: str = "de", requests_timout: int = 5,
+                 check_connection: bool = True,
+                 check_permission: bool = True,
+                 login_on_auth_fail: bool = True):
+
         self._url = url.strip('/')
         self._token = token
         self._check_connection = check_connection
         self._check_permission = check_permission
         self._timeout = requests_timout
+        self._login_on_auth_fail = login_on_auth_fail
+
+        if request_language == "de":
+            self._accepted_language = "de-DE,de;q=0.9"
+        elif request_language == "en":
+            self._accepted_language = "en-GB;q=0.8,en;q=0.7,en-US;q=0.6"
+        else:
+            raise ValueError(f"Unknown language {request_language}. Known: 'en', 'de'")
+
         self._header = {'Authorization': f'Bearer {self._token}',
-                        'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
+                        'Accept-Language': self._accepted_language}
+
+    def update_token_in_header(self):
+        self._header['Authorization'] = f'Bearer {self._token}'
+
+    async def login(self, number_of_attempts: int = 2):
+        login_data = {'user': input('Username: ')}
+        if login_data.get('user') is None:
+            login_data['user'] = getpass.getuser()
+
+        login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
+        auth_response = await post(self._session, f"{self._url}/auth", json_data=login_data)
+        while auth_response.status == 401 and number_of_attempts - 1 > 0:
+            login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
+            auth_response = await post(self._session, f"{self._url}/auth", json_data=login_data)
+            number_of_attempts += -1
+
+        if auth_response.status == 401:
+            raise ConqueryClientConnectionError("Login failed")
+
+        token = auth_response.json().get('access_token')
+        if token is None or auth_response >= 400:
+            raise ConqueryClientConnectionError("Login failed")
+
+        return token
 
     async def get_user(self):
         response = await get(self._session, f"{self._url}/api/me")
