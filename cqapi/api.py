@@ -62,16 +62,16 @@ class ConqueryConnection(object):
         # check permissions
         if self._check_permission:
             # Check if token is known to conquery
-            async with self.get_user() as response:
-                print(response)
-                if response.status == 401:
-                    if self._login_on_auth_fail:
-                        self._token = self.login()
-                        self.update_token_in_header()
-                    else:
-                        raise ConqueryClientConnectionError("Authentication failure")
-                elif response.status > 400:
-                    raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {response}")
+            response = await self.get_user()
+            print(response)
+            if response.status == 401:
+                if self._login_on_auth_fail:
+                    self._token = self.login()
+                    self.update_token_in_header()
+                else:
+                    raise ConqueryClientConnectionError("Authentication failure")
+            elif response.status > 400:
+                raise ConqueryClientConnectionError(f"Problems with Conquery Connection.\nPayload: {response}")
 
             # check if user has access to any dataset
             async with self._session.get(f"{self._url}/api/datasets", headers=self._header) as response:
