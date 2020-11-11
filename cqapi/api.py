@@ -116,17 +116,18 @@ class ConqueryConnection(object):
             login_data['user'] = getpass.getuser()
 
         login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
-        auth_response = await post(self._session, f"{self._url}/auth", json_data=login_data)
+        auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
         while auth_response.status == 401 and number_of_attempts - 1 > 0:
             login_data['password'] = getpass.getpass(f"Password for {login_data.get('user')}: ")
-            auth_response = await post(self._session, f"{self._url}/auth", json_data=login_data)
+            auth_response = await self._session.post(f"{self._url}/auth", json=login_data)
             number_of_attempts += -1
 
         if auth_response.status == 401:
             raise ConqueryClientConnectionError("Login failed")
 
-        token = auth_response.json().get('access_token')
-        if token is None or auth_response >= 400:
+        auth_response_data = await auth_response.json()
+        token = auth_response_data.get('access_token')
+        if token is None or auth_response.status >= 400:
             raise ConqueryClientConnectionError("Login failed")
 
         return token
