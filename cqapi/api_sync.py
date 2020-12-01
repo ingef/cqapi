@@ -1,5 +1,4 @@
-from aiohttp import ClientSession
-from aiohttp import ClientConnectorError
+import requests
 from cqapi import util
 import csv
 from time import sleep
@@ -41,18 +40,22 @@ def delete(session, url):
 
 class ConqueryConnection(object):
     def __enter__(self):
-        self._session = ClientSession(headers=self._header)
+        # open session and set header
+        self._session = requests.Session()
+        self._session.headers.update(self._header)
+
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
             try:
                 get(self._session, f"{self._url}/api/datasets")
-            except ClientConnectorError:
+            except ConnectionError:
                 error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
                 raise ConqueryClientConnectionError(error_msg)
+
         # Check if token is known to conquery and if it has access to any dataset
         if self._check_permission:
             with self._session.get(f"{self._url}/api/datasets") as response:
-                if response.status == 401 or not response.json():
+                if response.status_code == 401 or not response.json():
                     error_msg = f"There is no permission for accessing any dataset."
                     raise ConqueryClientConnectionError(error_msg)
 
