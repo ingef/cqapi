@@ -15,6 +15,7 @@ class ConqueryClientConnectionError(CqApiError):
 
 def get(session, url):
     with session.get(url) as response:
+        response.raise_for_status()
         return response.json()
 
 
@@ -75,13 +76,17 @@ class ConqueryConnection(object):
         self._session = None
 
     def open_session(self):
+        self.close_session()
         # open session and set header
         self._session = requests.Session()
         self._session.headers.update(self._header)
 
     def close_session(self):
-        if self._session is not None:
+        if self.has_open_session():
             self._session.close()
+
+    def has_open_session(self):
+        return self._session is None
 
     def get_user(self):
         response = get(self._session, f"{self._url}/api/me")
