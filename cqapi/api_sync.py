@@ -72,6 +72,16 @@ class ConqueryConnection(object):
         self._timeout = requests_timout
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
+        self._session = None
+
+    def open_session(self):
+        # open session and set header
+        self._session = requests.Session()
+        self._session.headers.update(self._header)
+
+    def close_session(self):
+        if self._session is not None:
+            self._session.close()
 
     def get_user(self):
         response = get(self._session, f"{self._url}/api/me")
