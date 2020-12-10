@@ -78,10 +78,9 @@ class ConqueryConnection(object):
         self._timeout = requests_timout
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
+        self._session = None
         if open_session:
             self.open_session()
-        else:
-            self._session = None
 
     def open_session(self):
         self.close_session()
