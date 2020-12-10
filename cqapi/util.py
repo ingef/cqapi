@@ -277,8 +277,8 @@ def concept_query_from_concept(concept_ids: list, concept_object, concept_label=
     return query
 
 
-def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_column_id='', filter_ids=[],
-                       select_ids=[], concept_select_ids=[], remove_connector=False):
+def edit_concept_query(concept_query_object, concept_id, connector_ids=None, date_column_id='', filter_ids=None,
+                       select_ids=None, concept_select_ids=None, remove_connector=False):
     """
     Adds selects, filters, dateColumns and concept_selects to query.
     :param remove_connector: When set True, tables with given connector_ids are removed
@@ -292,6 +292,11 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=[], date_
     :param concept_select_ids: selects to add on concept level
     :return:
     """
+    connector_ids = list() if connector_ids is None else connector_ids
+    filter_ids = list() if filter_ids is None else filter_ids
+    select_ids = list() if select_ids is None else select_ids
+    concept_select_ids = list() if concept_select_ids is None else concept_select_ids
+
     concept_query_object = deepcopy(concept_query_object)
     connector_ids = check_input_list(connector_ids, entry_type=str)
     filter_ids = check_input_list(filter_ids, entry_type=dict)
