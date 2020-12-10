@@ -22,7 +22,7 @@ def get(session, url):
 def get_text(session, url):
     with session.get(url) as response:
         response.raise_for_status()
-        return response.text()
+        return response.text
 
 
 def post(session, url, data):
