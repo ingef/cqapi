@@ -21,21 +21,25 @@ def get(session, url):
 
 def get_text(session, url):
     with session.get(url) as response:
+        response.raise_for_status()
         return response.text()
 
 
 def post(session, url, data):
     with session.post(url, json=data) as response:
+        response.raise_for_status()
         return response.json()
 
 
 def patch(session, url, data):
     with session.patch(url, json=data) as response:
+        response.raise_for_status()
         return response.json()
 
 
 def delete(session, url):
     with session.delete(url) as response:
+        response.raise_for_status()
         return response.text()
 
 
@@ -65,7 +69,8 @@ class ConqueryConnection(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._session.close()
 
-    def __init__(self, url, token="", requests_timout=5, check_connection=True, check_permission=True):
+    def __init__(self, url: str, token: str = "", requests_timout: int = 5, open_session: bool = False,
+                 check_connection: bool = True, check_permission: bool = True):
         self._url = url.strip('/')
         self._token = token
         self._check_connection = check_connection
@@ -73,7 +78,10 @@ class ConqueryConnection(object):
         self._timeout = requests_timout
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
-        self._session = None
+        if open_session:
+            self.open_session()
+        else:
+            self._session = None
 
     def open_session(self):
         self.close_session()
@@ -99,6 +107,12 @@ class ConqueryConnection(object):
     def get_datasets_label_dict(self):
         response_list = get(self._session, f"{self._url}/api/datasets")
         return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
+
+    def get_dataset_label(self, dataset):
+        dataset_label_dict = self.get_datasets_label_dict()
+        if dataset not in dataset_label_dict.keys():
+            raise ValueError(f"There is no permission on {dataset=}")
+        return dataset_label_dict.get(dataset)
 
     def get_concepts(self, dataset):
         response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
@@ -144,12 +158,16 @@ class ConqueryConnection(object):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
 
+    def get_query_label(self, dataset, query_id):
+        query_info = self.get_query_info(dataset, query_id)
+        return query_info.get("label")
+
     def execute_query(self, dataset, query, label=None):
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
         try:
             if label is not None:
                 patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
-                            {"label": label})
+                      {"label": label})
             return result['id']
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))

@@ -16,26 +16,31 @@ class ConqueryClientConnectionError(CqApiError):
 
 async def get(session, url):
     async with session.get(url) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def get_text(session, url):
     async with session.get(url) as response:
+        response.raise_for_status()
         return await response.text()
 
 
 async def post(session, url, data):
     async with session.post(url, json=data) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def patch(session, url, data):
     async with session.patch(url, json=data) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def delete(session, url):
     async with session.delete(url) as response:
+        response.raise_for_status()
         return await response.text()
 
 
@@ -128,6 +133,7 @@ class ConqueryConnection(object):
 
     async def execute_query(self, dataset, query, label=None):
         result = await post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
+
         try:
             if label is not None:
                 await patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
