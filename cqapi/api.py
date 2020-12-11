@@ -75,7 +75,7 @@ class ConqueryConnection(object):
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
 
-    async def get_user(self):
+    async def get_user_info(self):
         response = await get(self._session, f"{self._url}/api/me")
         return response
 
