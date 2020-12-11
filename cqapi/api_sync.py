@@ -95,7 +95,7 @@ class ConqueryConnection(object):
     def has_open_session(self):
         return self._session is not None
 
-    def get_user(self):
+    def get_user_info(self):
         response = get(self._session, f"{self._url}/api/me")
         return response
 
