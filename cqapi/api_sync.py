@@ -117,6 +117,10 @@ class ConqueryConnection(object):
         response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['concepts']
 
+    def get_secondary_ids(self, dataset):
+        response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
+        return response['secondaryIds']
+
     def get_concept(self, dataset, concept_id):
         response_dict = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
@@ -129,6 +133,14 @@ class ConqueryConnection(object):
     def get_column_descriptions(self, dataset, query_id):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('columnDescriptions')
+
+    def get_form_configs(self, dataset):
+        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
+        return result
+
+    def get_form_config(self, dataset, form_config_id):
+        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs/{form_config_id}")
+        return result
 
     def get_query(self, dataset, query_id):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
