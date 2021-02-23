@@ -121,6 +121,10 @@ class ConqueryConnection(object):
         response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['secondaryIds']
 
+    def secondary_id_exists(self, dataset: str, secondary_id: str) -> bool:
+        secondary_ids = self.get_secondary_ids(dataset)
+        return secondary_id in [_.get("id") for _ in secondary_ids]
+
     def get_concept(self, dataset, concept_id):
         response_dict = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
