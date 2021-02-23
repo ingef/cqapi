@@ -403,6 +403,16 @@ def add_subquery_to_concept_query(query, subquery):
         return query
 
 
+def create_secondary_id_query(query: dict, secondary_id: str):
+    if query["type"] in ["CONCEPT_QUERY"]:
+        query = query.get("root")
+    return {
+        "type": "SECONDARY_ID_QUERY",
+        "secondaryId": secondary_id,
+        "root": query
+    }
+
+
 def create_frontend_query(and_queries: list, date_restrictions: list = None):
     """ Create a more complex query from a two-dimensional list of concept queries.
 
