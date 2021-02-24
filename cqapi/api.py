@@ -160,6 +160,16 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
         response = await self.get_query_info(dataset, query_id)
+
+        # in some cases the query might not have been executed yet.
+        if response['status'] == 'NEW':
+            saved__query = {
+                'type': 'SAVED_QUERY',
+                'query': query_id
+            }
+            query_id = self.execute_query(dataset, saved__query)
+            return self.get_query_result(dataset, query_id)
+
         while not response['status'] == 'DONE':
             if response['status'] == "FAILED":
                 raise Exception(f"Query with {query_id=} failed. Response: \n"
