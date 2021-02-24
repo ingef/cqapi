@@ -539,16 +539,6 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
                 raise ValueError(f"Invalid feature query. Query {outcome_query} has no key root or children")
 
     # edit features and outcomes queries slightly to match restrictions
-
-    features = [{'type': 'OR', 'children': [feature_query['root']]}
-                if 'root' in feature_query.keys() else feature_query
-                for feature_query in feature_queries]
-
-    if relative_form_flag:
-        outcomes = [{'type': 'OR', 'children': [outcome_query['root']]}
-                    if 'root' in outcome_query.keys() else outcome_query
-                    for outcome_query in outcome_queries]
-
     if absolute_form_flag:
         return {
             'type': 'EXPORT_FORM',
@@ -560,7 +550,7 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
                     'min': date_range[0],
                     'max': date_range[1]
                 },
-                'features': features
+                'features': feature_queries
             }
         }
 
@@ -575,8 +565,8 @@ def create_form_query(form_query_type: str, query_id: str, feature_queries: list
             'timeCountAfter': time_count_after,
             'indexSelector': index_selector,
             'indexPlacement': index_placement,
-            'features': features,
-            'outcomes': outcomes
+            'features': feature_queries,
+            'outcomes': outcome_queries
         }
     }
 
