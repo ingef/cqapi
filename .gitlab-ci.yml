@@ -1,0 +1,13 @@
+stages:
+  - testing
+
+testing:
+  image: python:3.8
+  stage: testing
+  interruptible: true
+  script:
+      - pytest cqapi/tests
+  
+  before_script:
+      - pip install -r cqapi/requirements.txt
+      - pip install /builds/eva4/cqapi/
