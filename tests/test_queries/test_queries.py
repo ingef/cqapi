@@ -7,21 +7,6 @@ import os
 test_queries_path = Path(os.path.dirname(os.path.realpath(__file__))) / "test_queries"
 
 
-def test_add_label_to_query():
-    query_in = {
-        'root': {
-            'label': "test"
-        }
-    }
-    query_out = {
-        'root': {
-            'label': "new_label:test2@original_label:test"
-        }
-    }
-    queries.add_label_to_query(query_in, "new_label:test2")
-    assert query_in == query_out
-
-
 def test_get_selects_from_query():
     query = {
         "type": "OR",
