@@ -9,5 +9,5 @@ testing:
       - pytest cqapi/tests
   
   before_script:
-      - pip install -r cqapi/requirements.txt
+      - pip install -r /builds/eva4/cqapi/requirements.txt
       - pip install /builds/eva4/cqapi/
