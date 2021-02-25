@@ -1,4 +1,4 @@
-from utility.queries.validate import *
+from cqapi.queries.validate import *
 import pytest
 
 
