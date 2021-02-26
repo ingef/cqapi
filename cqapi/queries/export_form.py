@@ -1,4 +1,4 @@
-from utility.queries.validate import validate_date_range, validate_resolution, validate_time_unit, validate_time_count, \
+from cqapi.queries.validate import validate_date_range, validate_resolution, validate_time_unit, validate_time_count, \
     validate_index_plament, validate_index_selector
 
 def create_entitiy_date_form_query(query_id: str, date_range: list, feature_queries: list, resolution: str = "COMPLETE"):
