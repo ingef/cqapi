@@ -465,7 +465,7 @@ def edit_concept_query(concept_query_object, concept_id, connector_ids=None, dat
     if type(children) is not list:
         raise TypeError(f"Value to key 'children' must be of type list, not {type(children)}")
 
-    if concept_query_object.get("type") in ["AND", "OR", "MATCHED"]:
+    if concept_query_object.get("type") in ["AND", "OR"]:
         for child_ind, child in enumerate(children):
             children[child_ind] = edit_concept_query(child, concept_id, connector_ids,
                                                      date_column_id, filter_ids, select_ids, concept_select_ids,
