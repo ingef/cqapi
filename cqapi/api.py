@@ -1,6 +1,5 @@
 from aiohttp import ClientSession
 from aiohttp import ClientConnectorError
-from cqapi import util
 import csv
 from time import sleep
 
@@ -16,26 +15,31 @@ class ConqueryClientConnectionError(CqApiError):
 
 async def get(session, url):
     async with session.get(url) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def get_text(session, url):
     async with session.get(url) as response:
+        response.raise_for_status()
         return await response.text()
 
 
 async def post(session, url, data):
     async with session.post(url, json=data) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def patch(session, url, data):
     async with session.patch(url, json=data) as response:
+        response.raise_for_status()
         return await response.json()
 
 
 async def delete(session, url):
     async with session.delete(url) as response:
+        response.raise_for_status()
         return await response.text()
 
 
@@ -70,7 +74,7 @@ class ConqueryConnection(object):
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
 
-    async def get_user(self):
+    async def get_user_info(self):
         response = await get(self._session, f"{self._url}/api/me")
         return response
 
@@ -128,6 +132,7 @@ class ConqueryConnection(object):
 
     async def execute_query(self, dataset, query, label=None):
         result = await post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
+
         try:
             if label is not None:
                 await patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
@@ -154,6 +159,16 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
         response = await self.get_query_info(dataset, query_id)
+
+        # in some cases the query might not have been executed yet.
+        if response['status'] == 'NEW':
+            saved__query = {
+                'type': 'SAVED_QUERY',
+                'query': query_id
+            }
+            query_id = self.execute_query(dataset, saved__query)
+            return self.get_query_result(dataset, query_id)
+
         while not response['status'] == 'DONE':
             if response['status'] == "FAILED":
                 raise Exception(f"Query with {query_id=} failed. Response: \n"
@@ -169,11 +184,3 @@ class ConqueryConnection(object):
     async def _download_query_results(self, url):
         return await get_text(self._session, url)
 
-    async def create_concept_query_with_selects(self, dataset: str, concept_id: str, selects: list = None):
-        concepts = await self.get_concepts(dataset)
-
-        if selects is None:
-            selects = util.selects_per_concept(concepts).get(concept_id)
-
-        concept_query = util.concept_query_from_concept(concept_id, concepts.get(concept_id))
-        return util.add_selects_to_concept_query(concept_query, concept_id, selects)
