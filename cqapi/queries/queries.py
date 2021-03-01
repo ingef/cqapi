@@ -6,7 +6,7 @@ from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_data
 cq_element_description = {
     "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
     "cq_element_collections": ["AND", "OR"],
-    "cq_element_wrap": ["DATE_RESTRICTION", "NEGATION"]
+    "cq_element_wrap": ["DATE_RESTRICTION", "NEGATION", "CONCEPT_QUERY"]
 }
 cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
