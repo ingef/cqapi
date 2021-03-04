@@ -13,6 +13,8 @@ cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 def get_label_from_query(query: dict):
     """Returns label from query. If there are more than one child, only the label of the first child is returned"""
+    if query["type"] in cq_element_description["base_cq_elements"]:
+        return query.get('label', '')
     if 'root' in query.keys():
         return query.get('root').get('label')
     elif 'children' in query.keys():
@@ -249,6 +251,16 @@ def get_concept_elements_from_query(query: dict) -> list:
         return [query]
 
     raise ValueError(f"Unknown Type {query_type}")
+
+
+def add_matching_type_to_query(query: dict, matching_type: str, concept_id: str = None):
+    concept_elements = get_concept_elements_from_query(query)
+
+    for concept_element in concept_elements:
+        if concept_id is not None and not is_in_conquery_ids(concept_id, concept_element["ids"]):
+            continue
+
+        concept_element["matchingType"] = matching_type
 
 
 def add_connector_select_to_query(query: dict, select_id: str, concept_id: str = None,
