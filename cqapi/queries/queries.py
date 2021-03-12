@@ -314,6 +314,12 @@ def add_validity_date_to_query(query: dict, validity_date_id: str, concept_id: s
                                   connector_id=connector_id)
 
 
+def add_validity_date_to_queries(queries: list, validity_date_id: str, concept_id: str = None,
+                                 connector_id: str = None) -> list:
+    return [add_validity_date_to_query(query=query, validity_date_id=validity_date_id,
+                                       concept_id=concept_id, connector_id=connector_id) for query in queries]
+
+
 def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
                            concept_id: str = None, connector_id: str = None) -> dict:
     concept_elements = get_concept_elements_from_query(query)
