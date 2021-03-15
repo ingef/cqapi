@@ -412,7 +412,8 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         'type': 'CONCEPT',
         'ids': concept_ids,
         'label': label,
-        'tables': table_connector_id_dict_list
+        'tables': table_connector_id_dict_list,
+        'secondaryId': False
     }
 
 
