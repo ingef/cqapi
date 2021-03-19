@@ -1,5 +1,5 @@
 from copy import deepcopy
-from cqapi import check_input_list
+from cqapi.util import check_input_list
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
 
@@ -412,8 +412,7 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         'type': 'CONCEPT',
         'ids': concept_ids,
         'label': label,
-        'tables': table_connector_id_dict_list,
-        'secondaryId': False
+        'tables': table_connector_id_dict_list
     }
 
 
