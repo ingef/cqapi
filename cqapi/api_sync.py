@@ -39,7 +39,7 @@ def patch(session, url, data):
 def delete(session, url):
     with session.delete(url) as response:
         response.raise_for_status()
-        return response.text()
+        return response.text
 
 
 def check_query_status(query_info):
