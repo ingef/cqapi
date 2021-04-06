@@ -118,8 +118,13 @@ class ConqueryConnection(object):
             raise ValueError(f"There is no permission on {dataset=}")
         return dataset_label_dict.get(dataset)
 
-    def get_concepts(self, dataset):
+    def get_concepts(self, dataset, remove_structure_elements = True):
         response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
+
+        if remove_structure_elements:
+            return {concept_id: concept for (
+                concept_id, concept) in response['concepts'].items() if concept.get('active')}
+
         return response['concepts']
 
     def get_secondary_ids(self, dataset):
