@@ -147,8 +147,8 @@ class ConqueryConnection(object):
         return response_list
 
     def get_column_descriptions(self, dataset, query_id):
-        return result.get('columnDescriptions')
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        return result.get('columnDescriptions')
 
     def get_form_configs(self, dataset):
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
@@ -159,12 +159,12 @@ class ConqueryConnection(object):
         return result
 
     def get_query(self, dataset, query_id):
-        return result.get('query')
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        return result.get('query')
 
     def get_stored_query(self, dataset, query_id):
-        return result.get('query')
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        return result.get('query')
 
     def delete_stored_query(self, dataset, query_id):
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
