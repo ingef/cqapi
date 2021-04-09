@@ -13,9 +13,7 @@ class ConqueryClientConnectionError(CqApiError):
 
 
 def get_json(session, url):
-    with session.get_json(url) as response:
-        response.raise_for_status()
-        return response.json()
+    return get(session, url).json()
 
 
 def get(session, url):
