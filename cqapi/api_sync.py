@@ -111,8 +111,9 @@ class ConqueryConnection(object):
         return [d['id'] for d in response_list]
 
     def get_datasets_label_dict(self):
-        return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
         response_list = get_json(self._session, f"{self._url}/api/datasets")
+        return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
+
 
     def get_dataset_label(self, dataset):
         dataset_label_dict = self.get_datasets_label_dict()
