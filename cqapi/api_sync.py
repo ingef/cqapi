@@ -12,16 +12,18 @@ class ConqueryClientConnectionError(CqApiError):
         self.message = msg
 
 
+def get_json(session, url):
+    return get(session, url).json()
+
+
 def get(session, url):
-    with session.get(url) as response:
+    with session.get_json(url) as response:
         response.raise_for_status()
-        return response.json()
+        return response
 
 
 def get_text(session, url):
-    with session.get(url) as response:
-        response.raise_for_status()
-        return response.text
+    return get(session, url).text
 
 
 def post(session, url, data):
@@ -57,7 +59,7 @@ class ConqueryConnection(object):
         # try to fail early if conquery is not available at self._url
         if self._check_connection:
             try:
-                get(self._session, f"{self._url}/api/datasets")
+                get_json(self._session, f"{self._url}/api/datasets")
             except ConnectionError:
                 error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
                 raise ConqueryClientConnectionError(error_msg)
@@ -101,16 +103,16 @@ class ConqueryConnection(object):
         return self._session is not None
 
     def get_user_info(self):
-        response = get(self._session, f"{self._url}/api/me")
+        response = get_json(self._session, f"{self._url}/api/me")
         return response
 
     def get_datasets(self):
-        response_list = get(self._session, f"{self._url}/api/datasets")
+        response_list = get_json(self._session, f"{self._url}/api/datasets")
         return [d['id'] for d in response_list]
 
     def get_datasets_label_dict(self):
-        response_list = get(self._session, f"{self._url}/api/datasets")
         return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
+        response_list = get_json(self._session, f"{self._url}/api/datasets")
 
     def get_dataset_label(self, dataset):
         dataset_label_dict = self.get_datasets_label_dict()
@@ -118,8 +120,8 @@ class ConqueryConnection(object):
             raise ValueError(f"There is no permission on {dataset=}")
         return dataset_label_dict.get(dataset)
 
-    def get_concepts(self, dataset, remove_structure_elements = True):
-        response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
+    def get_concepts(self, dataset, remove_structure_elements=True):
+        response = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
 
         if remove_structure_elements:
             return {concept_id: concept for (
@@ -128,7 +130,7 @@ class ConqueryConnection(object):
         return response['concepts']
 
     def get_secondary_ids(self, dataset):
-        response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
+        response = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['secondaryIds']
 
     def secondary_id_exists(self, dataset: str, secondary_id: str) -> bool:
@@ -136,33 +138,33 @@ class ConqueryConnection(object):
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
     def get_concept(self, dataset, concept_id):
-        response_dict = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
+        response_dict = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
     def get_stored_queries(self, dataset):
-        response_list = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
+        response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
 
     def get_column_descriptions(self, dataset, query_id):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('columnDescriptions')
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
 
     def get_form_configs(self, dataset):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
         return result
 
     def get_form_config(self, dataset, form_config_id):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs/{form_config_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/form-configs/{form_config_id}")
         return result
 
     def get_query(self, dataset, query_id):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
 
     def get_stored_query(self, dataset, query_id):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
 
     def delete_stored_query(self, dataset, query_id):
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
@@ -182,7 +184,7 @@ class ConqueryConnection(object):
         return int(n_results)
 
     def get_query_info(self, dataset, query_id):
-        result = get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
 
     def query_succeeded(self, dataset, query_id):
