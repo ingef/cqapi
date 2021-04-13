@@ -229,7 +229,7 @@ class ConqueryConnection(object):
         """
         response = self.get_query_info(dataset, query_id)
 
-        while not response['status'] == 'RUNNING':
+        while response['status'] == 'RUNNING':
             response = self.get_query_info(dataset, query_id)
             if requests_per_sec is None:
                 continue
