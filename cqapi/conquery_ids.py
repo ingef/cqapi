@@ -1,5 +1,4 @@
 from cqapi.util import check_arg_type
-from cqapi.api_sync import ConqueryConnection
 
 # conquery id info
 conquery_id_separator = "."
@@ -127,52 +126,6 @@ def child_id_in_concept(child_id: str, concept: dict):
         if child_id in children_ids:
             return True
     return False
-
-
-@check_arg_type(["concept_id"])
-def find_concept_id(concept_id: str, concepts: dict, concept_obj: dict = None, eva_url: str = None,
-                    eva_token: str = None):
-    """
-    Searches for concept_id in concepts or concept_obj. If concept_id is found True is returned.
-    If eva access data is defined, concept_obj is loaded for concept_id level 3 or higher
-    :param concept_id: concept_id that should be found
-    :param concepts: dict with concept_ids
-    :param concept_obj: dict with concept data (optional)
-    :param eva_url: url to conquery server to download concept obj (optional)
-    :param eva_token: token to access concept_obj optional)
-    """
-    concept_id_list = concept_id.split(".")
-    root_concept_id = get_root_concept_id(concept_id)
-
-    if len(concept_id_list) < 2:
-        raise ValueError(f"Id has wrong shape. Id: {concept_id}")
-
-    if len(concept_id_list) == 2:
-        # root concepts can be looked up in concepts object (keys)
-        return root_concept_id in concepts.keys()
-
-    if len(concept_id_list) == 3:
-        # children of root concepts can be looked up in concepts object
-        if root_concept_id not in concepts.keys():
-            return False
-        return concept_id in concepts.get(root_concept_id).get('children', [])
-
-    if concept_obj is None and eva_url is None and eva_token is None:
-        raise ValueError(f"For concepts that are on level 3 and higher ({concept_id=}), "
-                         f"a concept_object or eva-request information has to be provided")
-
-    if concept_obj is None:
-        dataset_id = get_dataset(concept_id)
-        print(f"Establish connection: \n"
-              f"{dataset_id=} \n"
-              f"{eva_url=} \n"
-              f"{eva_token} \n"
-              f"{root_concept_id}")
-
-        with ConqueryConnection(eva_url, eva_token) as cq:
-            concept_obj = cq.get_concept(dataset_id, root_concept_id)
-
-    return child_id_in_concept(concept_id, concept_obj)
 
 
 def is_in_conquery_ids(conquery_id: str, conquery_ids: list):
