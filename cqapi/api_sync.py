@@ -3,6 +3,7 @@ import csv
 from time import sleep
 from cqapi.queries.queries import wrap_saved_query, wrap_concept_query
 
+
 class CqApiError(BaseException):
     pass
 
@@ -114,7 +115,6 @@ class ConqueryConnection(object):
         response_list = get_json(self._session, f"{self._url}/api/datasets")
         return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
 
-
     def get_dataset_label(self, dataset):
         dataset_label_dict = self.get_datasets_label_dict()
         if dataset not in dataset_label_dict.keys():
@@ -210,6 +210,10 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
+    def reexecute_query(self, dataset, query_id):
+        new_query = wrap_concept_query(wrap_saved_query(query_id=query_id))
+        return self.execute_query(dataset, new_query)
+
     def execute_form_query(self, dataset, form_query):
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", form_query)
         try:
@@ -240,8 +244,7 @@ class ConqueryConnection(object):
         if response_status == "FAILED":
             raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
         elif response_status == "NEW":
-            self.execute_query(dataset, wrap_concept_query(wrap_saved_query(query_id)))
-            return self.get_query_result(dataset, query_id)
+            raise ValueError(f"query stats NEW - query has to be reexecuted")
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
