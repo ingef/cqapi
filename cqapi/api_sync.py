@@ -1,7 +1,7 @@
 import requests
 import csv
 from time import sleep
-
+from cqapi.queries.queries import wrap_saved_query
 
 class CqApiError(BaseException):
     pass
@@ -240,7 +240,7 @@ class ConqueryConnection(object):
         if response_status == "FAILED":
             raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
         elif response_status == "NEW":
-            self.execute_query(dataset, query_id)
+            self.execute_query(dataset, wrap_saved_query(query_id))
             return self.get_query_result(dataset, query_id)
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
