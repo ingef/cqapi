@@ -217,7 +217,7 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    def get_query_result(self, dataset, query_id, requests_per_sec=None):
+    def get_query_result(self, dataset: str, query_id: str, requests_per_sec=None):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -228,17 +228,25 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
         response = self.get_query_info(dataset, query_id)
-        while not response['status'] == 'DONE':
-            if response['status'] == "FAILED":
-                raise Exception(f"Query with {query_id=} failed. Response: \n"
-                                f"{response=}")
+
+        while not response['status'] == 'RUNNING':
             response = self.get_query_info(dataset, query_id)
             if requests_per_sec is None:
                 continue
             sleep(1 / requests_per_sec)
 
-        result_string = self._download_query_results(response["resultUrl"])
-        return list(csv.reader(result_string.splitlines(), delimiter=';'))
+        response_status = response["status"]
+
+        if response_status == "FAILED":
+            raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
+        elif response_status == "NEW":
+            self.execute_query(dataset, query_id)
+            return self.get_query_result(dataset, query_id)
+        elif response_status == "DONE":
+            result_string = self._download_query_results(response["resultUrl"])
+            return list(csv.reader(result_string.splitlines(), delimiter=';'))
+        else:
+            raise ValueError(f"Unknown response status {response_status}")
 
     def _download_query_results(self, url):
         return get_text(self._session, url)
