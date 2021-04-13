@@ -99,13 +99,16 @@ def create_relative_form_query(query_id: str, resolution: str = "COMPLETE", befo
     validate_index_plament(index_placement)
 
     # extract concept from "CONCEPT_QUERY"-Objects
-    before_index_queries = [feature_query.get("root")
-                            if feature_query.get("type") == "CONCEPT_QUERY" else feature_query
-                            for feature_query in before_index_queries]
+    if before_index_queries is not None:
+        before_index_queries = [feature_query.get("root")
+                                if feature_query.get("type") == "CONCEPT_QUERY" else feature_query
+                                for feature_query in before_index_queries]
+        
     # extract concept from "CONCEPT_QUERY"-Objects
-    after_index_queries = [outcome_query.get("root")
-                           if outcome_query.get("type") == "CONCEPT_QUERY" else outcome_query
-                           for outcome_query in after_index_queries]
+    if after_index_queries is not None:
+        after_index_queries = [outcome_query.get("root")
+                               if outcome_query.get("type") == "CONCEPT_QUERY" else outcome_query
+                               for outcome_query in after_index_queries]
 
     return {
         'type': 'EXPORT_FORM',
