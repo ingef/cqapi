@@ -141,6 +141,16 @@ def wrap_saved_query(query_id: str) -> dict:
     }
 
 
+def wrap_secondary_id_query(query: dict, secondary_id: str):
+    if query["type"] in ["CONCEPT_QUERY"]:
+        query = query.get("root")
+    return {
+        "type": "SECONDARY_ID_QUERY",
+        "secondaryId": secondary_id,
+        "root": query
+    }
+
+
 def add_date_restriction(query: dict, start_date: str, end_date: str) -> dict:
     validate_date(start_date)
     validate_date(end_date)
@@ -566,16 +576,6 @@ def add_subquery_to_concept_query(query, subquery):
             ]
         }
         return query
-
-
-def create_secondary_id_query(query: dict, secondary_id: str):
-    if query["type"] in ["CONCEPT_QUERY"]:
-        query = query.get("root")
-    return {
-        "type": "SECONDARY_ID_QUERY",
-        "secondaryId": secondary_id,
-        "root": query
-    }
 
 
 def create_frontend_query(and_queries: list, date_restrictions: list = None):
