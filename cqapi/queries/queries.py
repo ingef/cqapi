@@ -171,10 +171,11 @@ def unwrap_concept_query(concept_query: dict) -> dict:
     return concept_query["root"]
 
 
-def wrap_concept_query(query: dict) -> dict:
+def wrap_concept_query(query: dict, date_aggregation_mode: str = "MERGE") -> dict:
     return {
         "type": "CONCEPT_QUERY",
-        "root": query
+        "root": query,
+        "dateAggregationMode": date_aggregation_mode
     }
 
 
