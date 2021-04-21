@@ -85,8 +85,7 @@ class ConqueryConnection(object):
         self._check_permission = check_permission
         self._timeout = requests_timout
         self._header = {'Authorization': f'Bearer {self._token}',
-                        'Accept-Language': 'de-DE,de;q=0.9',
-                        'pretty': 'false'}
+                        'Accept-Language': 'en-GB;q=0.8,en;q=0.7,en-US;q=0.6'}
         self._session = None
         if open_session:
             self.open_session()
