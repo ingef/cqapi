@@ -179,7 +179,7 @@ def wrap_concept_query(query: dict, date_aggregation_mode: str = "MERGE") -> dic
     }
 
 
-def wrap_and(*queries) -> dict:
+def wrap_and(*queries: dict) -> dict:
     return {
         'type': 'AND',
         'children': [*queries]
