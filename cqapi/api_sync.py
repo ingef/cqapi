@@ -48,7 +48,7 @@ def delete(session, url):
 def check_query_status(query_info):
     query_status = query_info["status"]
     if query_status in ["NEW", "FAILED"]:
-        raise (f"Query Status: {query_status} for query {query_info['id']}")
+        raise Exception(f"Query Status: {query_status} for query {query_info['id']}")
 
 
 class ConqueryConnection(object):
