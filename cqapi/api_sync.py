@@ -17,14 +17,14 @@ def get_json(session, url):
     return get(session, url).json()
 
 
-def get(session, url):
-    with session.get(url) as response:
+def get(session, url, params: dict = None):
+    with session.get(url, params=params) as response:
         response.raise_for_status()
         return response
 
 
-def get_text(session, url):
-    return get(session, url).text
+def get_text(session, url, params: dict = None):
+    return get(session, url, params=params).text
 
 
 def post(session, url, data):
@@ -253,4 +253,4 @@ class ConqueryConnection(object):
             raise ValueError(f"Unknown response status {response_status}")
 
     def _download_query_results(self, url):
-        return get_text(self._session, url)
+        return get_text(self._session, url, params={"pretty": "false"})
