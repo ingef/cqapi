@@ -141,6 +141,13 @@ def wrap_saved_query(query_id: str) -> dict:
     }
 
 
+def wrap_negation(query: dict) -> dict:
+    return {
+        "type": "NEGATION",
+        "child": query
+    }
+
+
 def wrap_secondary_id_query(query: dict, secondary_id: str):
     if query["type"] in ["CONCEPT_QUERY"]:
         query = query.get("root")
