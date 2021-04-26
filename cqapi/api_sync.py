@@ -1,6 +1,9 @@
-import requests
 import csv
 from time import sleep
+import pandas as pd
+import pyarrow as pa
+import requests
+from cqapi.conquery_ids import get_dataset
 from cqapi.queries.queries import wrap_saved_query, wrap_concept_query
 
 
@@ -249,6 +252,33 @@ class ConqueryConnection(object):
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
+        else:
+            raise ValueError(f"Unknown response status {response_status}")
+
+    def get_data(self, query_id: str) -> pd.DataFrame:
+        """ Returns results for given query.
+        Blocks until the query is DONE.
+
+        :param query_id:
+        :return: str containing the returned csv's
+        """
+
+        dataset = get_dataset(query_id)
+        response = self.get_query_info(dataset, query_id)
+
+        while response['status'] == 'RUNNING':
+            response = self.get_query_info(dataset, query_id)
+            sleep(1 / 100)
+
+        response_status = response["status"]
+
+        if response_status == "FAILED":
+            raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
+        elif response_status == "NEW":
+            raise ValueError(f"query stats NEW - query has to be reexecuted")
+        elif response_status == "DONE":
+            arrow_url = f'{".".join(response["resultUrl"].split(".")[:-1])}.arrf'
+            return pa.ipc.open_file(get(self._session, arrow_url).content).read_pandas()
         else:
             raise ValueError(f"Unknown response status {response_status}")
 
