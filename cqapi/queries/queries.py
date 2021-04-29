@@ -285,6 +285,16 @@ def add_matching_type_to_query(query: dict, matching_type: str, concept_id: str 
         concept_element["matchingType"] = matching_type
 
 
+def add_filter_to_query(query: dict, filter_id: str, filter_obj: dict,
+                        concept_id: str = None, connector_id: str = None) -> dict:
+    return _add_to_table_in_query(query=query,
+                                  conquery_id=filter_id,
+                                  conquery_id_type="filters",
+                                  concept_id=concept_id,
+                                  connector_id=connector_id,
+                                  filter_obj=filter_obj)
+
+
 def add_connector_select_to_query(query: dict, select_id: str, concept_id: str = None,
                                   connector_id: str = None) -> dict:
     return _add_to_table_in_query(query=query,
@@ -343,7 +353,7 @@ def add_validity_date_to_queries(queries: list, validity_date_id: str, concept_i
 
 
 def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
-                           concept_id: str = None, connector_id: str = None) -> dict:
+                           concept_id: str = None, connector_id: str = None, filter_obj: dict = None) -> dict:
     concept_elements = get_concept_elements_from_query(query)
     for concept_element in concept_elements:
         # skip concept elements that do not match concept_id
@@ -367,8 +377,14 @@ def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
                     continue
                 table[conquery_id_type] = [*table.get(conquery_id_type, []), conquery_id]
             elif conquery_id_type == "filters":
-                # avoid duplicates
-                raise ValueError(f"Adding Filter to Query is not supported yet.")
+                if filter_obj is None:
+                    raise ValueError(f"{conquery_id_type=} but {filter_obj=}")
+
+                if not contains_dataset_id(filter_obj["filter"]):
+                    filter_obj["filter"] = add_dataset_id_to_conquery_id(filter_obj["filter"], get_dataset(table_id))
+
+                table["filters"] = [*table.get("filters", []), filter_obj]
+
             else:
                 raise ValueError(f"Unknown {conquery_id_type=}")
 
@@ -418,6 +434,10 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         concept_ids = [concept_ids]
         if any([type(concept_id) is not str for concept_id in concept_ids]):
             raise ValueError("Parameter 'concept_ids' must be string or list of strings")
+    if connector_ids is not None and type(connector_ids) is not list:
+        connector_ids = [connector_ids]
+        if any([type(connector_id) is not str for connector_id in connector_ids]):
+            raise ValueError("Parameter 'concept_ids' must be string or list of strings")
 
     if label is None:
         label = concept_object.get("label")
@@ -429,6 +449,9 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         if connector_ids is not None and not is_in_conquery_ids(table_connector_id, connector_ids):
             continue
         table_connector_id_dict_list.append({'id': table_connector_id})
+
+    if not table_connector_id_dict_list:
+        raise ValueError(f"Could not find any connector for concept element")
 
     return {
         'type': 'CONCEPT',

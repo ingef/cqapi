@@ -167,9 +167,20 @@ class ConqueryConnection(object):
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
 
-    def get_stored_query(self, dataset, query_id):
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
-        return result.get('query')
+    def get_stored_query_info(self, dataset, query_id: str = None, label: str = None):
+        stored_queries = self.get_stored_queries(dataset)
+        if query_id is not None:
+            query_info = [query_info for query_info in stored_queries if query_info["id"] == query_id]
+            if not query_info:
+                raise ValueError(f"Could not find query with id {query_id}")
+        elif label is not None:
+            query_info = [query_info for query_info in stored_queries if query_info["label"] == label]
+            if not query_info:
+                raise ValueError(f"Could not find query with label {label}")
+        else:
+            raise ValueError(f"Neither query_id nor label is specified.")
+
+        return query_info[0]
 
     def delete_stored_query(self, dataset, query_id):
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
@@ -273,7 +284,7 @@ class ConqueryConnection(object):
         response_status = response["status"]
 
         if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
+            raise Exception(f"Query with {query_id=} failed.")
         elif response_status == "NEW":
             raise ValueError(f"query stats NEW - query has to be reexecuted")
         elif response_status == "DONE":
