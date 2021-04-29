@@ -460,3 +460,31 @@ def test_add_connector_select_to_query():
     assert query_with_au_select == queries.add_connector_select_to_query(query, concept_id="icd.c00-d48",
                                                                          connector_id="icd.au_fall",
                                                                          select_id="icd.au_fall_days")
+
+
+def test_add_filter_to_query():
+    query = {'type': 'CONCEPT',
+             'ids': ['dataset1.atc.a.a10.a10a'],
+             'tables': [{'id': 'dataset1.atc.atc',
+                         'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'},
+                         'selects': [],
+                         'filters': []}],
+             'selects': []}
+
+    query_val = deepcopy(query)
+    query_val["tables"][0]["filters"] = [{
+        "filter": "dataset1.atc.atc.rezeptnummer",
+        "type": "BIG_MULTI_SELECT",
+        "value": ["1", "2", "3"]
+    }]
+
+    query_out = queries.add_filter_to_query(query, concept_id="atc.a.a10.a10a",
+                                            connector_id="atc.atc",
+                                            filter_id="atc.atc.rezeptnummer",
+                                            filter_obj={
+                                                "filter": "dataset1.atc.atc.rezeptnummer",
+                                                "type": "BIG_MULTI_SELECT",
+                                                "value": ["1", "2", "3"]
+                                            })
+
+    assert query_val == query_out
