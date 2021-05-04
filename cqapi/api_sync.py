@@ -1,6 +1,9 @@
-import requests
 import csv
 from time import sleep
+import pandas as pd
+import pyarrow as pa
+import requests
+from cqapi.conquery_ids import get_dataset
 from cqapi.queries.queries import wrap_saved_query, wrap_concept_query
 
 
@@ -164,9 +167,20 @@ class ConqueryConnection(object):
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
 
-    def get_stored_query(self, dataset, query_id):
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
-        return result.get('query')
+    def get_stored_query_info(self, dataset, query_id: str = None, label: str = None):
+        stored_queries = self.get_stored_queries(dataset)
+        if query_id is not None:
+            query_info = [query_info for query_info in stored_queries if query_info["id"] == query_id]
+            if not query_info:
+                raise ValueError(f"Could not find query with id {query_id}")
+        elif label is not None:
+            query_info = [query_info for query_info in stored_queries if query_info["label"] == label]
+            if not query_info:
+                raise ValueError(f"Could not find query with label {label}")
+        else:
+            raise ValueError(f"Neither query_id nor label is specified.")
+
+        return query_info[0]
 
     def delete_stored_query(self, dataset, query_id):
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
@@ -249,6 +263,33 @@ class ConqueryConnection(object):
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
+        else:
+            raise ValueError(f"Unknown response status {response_status}")
+
+    def get_data(self, query_id: str) -> pd.DataFrame:
+        """ Returns results for given query.
+        Blocks until the query is DONE.
+
+        :param query_id:
+        :return: str containing the returned csv's
+        """
+
+        dataset = get_dataset(query_id)
+        response = self.get_query_info(dataset, query_id)
+
+        while response['status'] == 'RUNNING':
+            response = self.get_query_info(dataset, query_id)
+            sleep(1 / 100)
+
+        response_status = response["status"]
+
+        if response_status == "FAILED":
+            raise Exception(f"Query with {query_id=} failed.")
+        elif response_status == "NEW":
+            raise ValueError(f"query stats NEW - query has to be reexecuted")
+        elif response_status == "DONE":
+            arrow_url = f'{".".join(response["resultUrl"].split(".")[:-1])}.arrf'
+            return pa.ipc.open_file(get(self._session, arrow_url).content).read_pandas()
         else:
             raise ValueError(f"Unknown response status {response_status}")
 
