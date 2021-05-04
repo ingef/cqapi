@@ -158,16 +158,23 @@ def wrap_secondary_id_query(query: dict, secondary_id: str):
     }
 
 
-def add_date_restriction(query: dict, start_date: str, end_date: str) -> dict:
-    validate_date(start_date)
-    validate_date(end_date)
+def add_date_restriction(query: dict, start_date: str = None, end_date: str = None) -> dict:
+    date_range_obj = dict()
+
+    if start_date is not None:
+        validate_date(start_date)
+        date_range_obj["min"] = start_date
+
+    if end_date is not None:
+        validate_date(end_date)
+        date_range_obj["max"] = end_date
+
+    if start_date is None and end_date is None:
+        raise ValueError(f"No date specified")
 
     return {
         "type": "DATE_RESTRICTION",
-        "dateRange": {
-            "min": start_date,
-            "max": end_date
-        },
+        "dateRange": date_range_obj,
         "child": query
     }
 
