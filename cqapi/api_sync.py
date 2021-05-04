@@ -265,7 +265,7 @@ class ConqueryConnection(object):
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
-                return pd.read_csv(StringIO(result_string), sep=";")
+                return pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
