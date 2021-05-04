@@ -1,4 +1,5 @@
 import csv
+from io import StringIO
 from time import sleep
 import pandas as pd
 import pyarrow as pa
@@ -236,7 +237,7 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    def get_query_result(self, dataset: str, query_id: str, requests_per_sec=None):
+    def get_query_result(self, dataset: str, query_id: str, return_pandas: bool = False, requests_per_sec=None):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -244,6 +245,7 @@ class ConqueryConnection(object):
         :param query_id:
         :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
         e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
+        :param return_pandas: when true, returns data as pandas.DataFrame
         :return: str containing the returned csv's
         """
         response = self.get_query_info(dataset, query_id)
@@ -262,6 +264,8 @@ class ConqueryConnection(object):
             raise ValueError(f"query stats NEW - query has to be reexecuted")
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
+            if return_pandas:
+                return pd.read_csv(StringIO(result_string), sep=";")
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
