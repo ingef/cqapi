@@ -1,5 +1,4 @@
 import requests
-from cqapi import util
 import csv
 from time import sleep
 
@@ -41,6 +40,12 @@ def delete(session, url):
     with session.delete(url) as response:
         response.raise_for_status()
         return response.text()
+
+
+def check_query_status(query_info):
+    query_status = query_info["status"]
+    if query_status in ["NEW", "FAILED"]:
+        raise (f"Query Status: {query_status} for query {query_info['id']}")
 
 
 class ConqueryConnection(object):
@@ -117,6 +122,14 @@ class ConqueryConnection(object):
         response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['concepts']
 
+    def get_secondary_ids(self, dataset):
+        response = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
+        return response['secondaryIds']
+
+    def secondary_id_exists(self, dataset: str, secondary_id: str) -> bool:
+        secondary_ids = self.get_secondary_ids(dataset)
+        return secondary_id in [_.get("id") for _ in secondary_ids]
+
     def get_concept(self, dataset, concept_id):
         response_dict = get(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
@@ -129,6 +142,14 @@ class ConqueryConnection(object):
     def get_column_descriptions(self, dataset, query_id):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('columnDescriptions')
+
+    def get_form_configs(self, dataset):
+        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
+        return result
+
+    def get_form_config(self, dataset, form_config_id):
+        result = get(self._session, f"{self._url}/api/datasets/{dataset}/form-configs/{form_config_id}")
+        return result
 
     def get_query(self, dataset, query_id):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
@@ -144,8 +165,10 @@ class ConqueryConnection(object):
 
     def get_number_of_results(self, dataset, query_id):
         response = self.get_query_info(dataset, query_id)
-        while not response['status'] == 'DONE':
+        check_query_status(response)
+        while response['status'] == 'RUNNING':
             response = self.get_query_info(dataset, query_id)
+            check_query_status(response)
 
         n_results = response.get('numberOfResults')
         if n_results is None:
@@ -156,6 +179,14 @@ class ConqueryConnection(object):
     def get_query_info(self, dataset, query_id):
         result = get(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
+
+    def query_succeeded(self, dataset, query_id):
+        while True:
+            response = self.get_query_info(dataset, query_id)
+            if response["status"] == "DONE":
+                return True
+            if response["status"] in ["FAILED", "NEW"]:
+                return False
 
     def get_query_label(self, dataset, query_id):
         query_info = self.get_query_info(dataset, query_id)
@@ -203,12 +234,3 @@ class ConqueryConnection(object):
 
     def _download_query_results(self, url):
         return get_text(self._session, url)
-
-    def create_concept_query_with_selects(self, dataset: str, concept_id: str, selects: list = None):
-        concepts = self.get_concepts(dataset)
-
-        if selects is None:
-            selects = util.selects_per_concept(concepts).get(concept_id)
-
-        concept_query = util.concept_query_from_concept(concept_id, concepts.get(concept_id))
-        return util.add_selects_to_concept_query(concept_query, concept_id, selects)
