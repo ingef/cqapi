@@ -1,14 +1,17 @@
 from cqapi.queries.validate import validate_date_range, validate_resolution, validate_time_unit, validate_time_count, \
     validate_index_plament, validate_index_selector
 
-def create_entitiy_date_form_query(query_id: str, date_range: list, feature_queries: list, resolution: str = "COMPLETE"):
-    """
 
+def create_entitiy_date_form_query(query_id: str, date_range: list, feature_queries: list,
+                                   resolution: str = "COMPLETE", date_aggregation_mode: str = "LOGICAL"):
+    """
     @param query_id: ID of the query that will be used to get the patient group
     @param resolution: Resolution for the output. Possible values: 'COMPLETE' (default), 'QUARTERS', 'YEARS
     @param feature_queries: list of concept queries
     @param form_type: Can be one of ['ABSOLUTE', 'ENTITY_DATE']
     @param resolution:
+    @param date_aggregation_mode:
+    @param date_range:
     @return:
     """
 
@@ -25,6 +28,7 @@ def create_entitiy_date_form_query(query_id: str, date_range: list, feature_quer
         'resolution': resolution,
         'timeMode': {
             "value": "ENTITY_DATE",
+            "dateAggregationMode": date_aggregation_mode,
             'dateRange': {
                 'min': date_range[0],
                 'max': date_range[1]
@@ -32,6 +36,8 @@ def create_entitiy_date_form_query(query_id: str, date_range: list, feature_quer
             'features': feature_queries
         }
     }
+
+
 def create_absolute_form_query(query_id: str, feature_queries: list, date_range: list, resolution: str = "COMPLETE"):
     """
 

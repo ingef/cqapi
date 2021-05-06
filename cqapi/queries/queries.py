@@ -1,5 +1,5 @@
 from copy import deepcopy
-from cqapi import check_input_list
+from cqapi.util import check_input_list
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
 
@@ -312,6 +312,12 @@ def add_validity_date_to_query(query: dict, validity_date_id: str, concept_id: s
                                   conquery_id_type="dateColumn",
                                   concept_id=concept_id,
                                   connector_id=connector_id)
+
+
+def add_validity_date_to_queries(queries: list, validity_date_id: str, concept_id: str = None,
+                                 connector_id: str = None) -> list:
+    return [add_validity_date_to_query(query=query, validity_date_id=validity_date_id,
+                                       concept_id=concept_id, connector_id=connector_id) for query in queries]
 
 
 def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
