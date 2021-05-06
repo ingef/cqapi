@@ -227,8 +227,7 @@ class ConqueryConnection(object):
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
     def reexecute_query(self, dataset, query_id):
-        new_query = wrap_concept_query(wrap_saved_query(query_id=query_id))
-        return self.execute_query(dataset, new_query)
+        result = post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
 
     def execute_form_query(self, dataset, form_query):
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", form_query)
@@ -237,12 +236,14 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    def get_query_result(self, dataset: str, query_id: str, return_pandas: bool = False, requests_per_sec=None):
+    def get_query_result(self, dataset: str, query_id: str, return_pandas: bool = False, requests_per_sec=None,
+                         already_reexecuted: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
         :param dataset:
         :param query_id:
+        :param already_reexecuted: only needed when reexecuting query, to know when trapped in an endless loop
         :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
         e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
         :param return_pandas: when true, returns data as pandas.DataFrame
@@ -261,7 +262,11 @@ class ConqueryConnection(object):
         if response_status == "FAILED":
             raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
         elif response_status == "NEW":
-            raise ValueError(f"query stats NEW - query has to be reexecuted")
+            if already_reexecuted:
+                raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
+            self.reexecute_query(dataset, query_id)
+            sleep(0.5)
+            return self.get_query_result(dataset, query_id, already_reexecuted=True)
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
