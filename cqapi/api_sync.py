@@ -1,11 +1,8 @@
 import csv
 from io import StringIO
 from time import sleep
-import pandas as pd
-import pyarrow as pa
 import requests
 from cqapi.conquery_ids import get_dataset
-from cqapi.queries.queries import wrap_saved_query, wrap_concept_query
 
 
 class CqApiError(BaseException):
@@ -270,12 +267,13 @@ class ConqueryConnection(object):
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
+                import pandas as pd
                 return pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
             return list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
 
-    def get_data(self, query_id: str) -> pd.DataFrame:
+    def get_data(self, query_id: str):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -297,6 +295,7 @@ class ConqueryConnection(object):
         elif response_status == "NEW":
             raise ValueError(f"query stats NEW - query has to be reexecuted")
         elif response_status == "DONE":
+            import pyarrow as pa
             arrow_url = f'{".".join(response["resultUrl"].split(".")[:-1])}.arrf'
             return pa.ipc.open_file(get(self._session, arrow_url).content).read_pandas()
         else:
