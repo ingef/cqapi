@@ -2,7 +2,8 @@ import csv
 from io import StringIO
 from time import sleep
 import requests
-from cqapi.conquery_ids import get_dataset
+from cqapi.conquery_ids import get_dataset as get_dataset_from_id
+from cqapi.queries import get_dataset_from_query
 
 
 class CqApiError(BaseException):
@@ -53,6 +54,9 @@ def check_query_status(query_info):
 
 
 class ConqueryConnection(object):
+    _session = None
+    _dataset = None
+
     def __enter__(self):
         # open session and set header
         self._session = requests.Session()
@@ -78,8 +82,8 @@ class ConqueryConnection(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._session.close()
 
-    def __init__(self, url: str, token: str = "", requests_timout: int = 5, open_session: bool = False,
-                 check_connection: bool = True, check_permission: bool = True):
+    def __init__(self, url: str, token: str = "", requests_timout: int = 5,
+                 check_connection: bool = True, check_permission: bool = True, dataset: str = None):
         self._url = url.strip('/')
         self._token = token
         self._check_connection = check_connection
@@ -88,9 +92,23 @@ class ConqueryConnection(object):
         self._header = {'Authorization': f'Bearer {self._token}',
                         'Accept-Language': 'de-DE,de;q=0.9',
                         'pretty': 'false'}
-        self._session = None
-        if open_session:
-            self.open_session()
+        self.open_session()
+        self._datasets_with_permission = self.get_datasets()
+        if dataset is not None:
+            self.set_dataset(dataset)
+
+    def set_dataset(self, dataset: str = None):
+        self._dataset = self._get_dataset(dataset)
+
+    def _get_dataset(self, dataset: str = None):
+        if dataset is None:
+            if self._dataset is not None:
+                return self._dataset
+            return self._datasets_with_permission[0]
+        if dataset not in self._datasets_with_permission:
+            raise ValueError(f"No permission on {dataset=}. \n"
+                             f"Datasets with permission: {self._datasets_with_permission}")
+        return dataset
 
     def open_session(self):
         self.close_session()
@@ -105,25 +123,27 @@ class ConqueryConnection(object):
     def has_open_session(self):
         return self._session is not None
 
-    def get_user_info(self):
+    def get_user_info(self) -> dict:
         response = get_json(self._session, f"{self._url}/api/me")
         return response
 
-    def get_datasets(self):
+    def get_datasets(self) -> list:
         response_list = get_json(self._session, f"{self._url}/api/datasets")
         return [d['id'] for d in response_list]
 
-    def get_datasets_label_dict(self):
+    def get_datasets_label_dict(self) -> dict:
         response_list = get_json(self._session, f"{self._url}/api/datasets")
         return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
 
-    def get_dataset_label(self, dataset):
+    def get_dataset_label(self, dataset: str = None) -> str:
+        dataset = self._get_dataset(dataset)
         dataset_label_dict = self.get_datasets_label_dict()
         if dataset not in dataset_label_dict.keys():
             raise ValueError(f"There is no permission on {dataset=}")
         return dataset_label_dict.get(dataset)
 
-    def get_concepts(self, dataset, remove_structure_elements=True):
+    def get_concepts(self, dataset: str = None, remove_structure_elements: bool = True) -> dict:
+        dataset = self._get_dataset(dataset)
         response = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
 
         if remove_structure_elements:
@@ -132,40 +152,49 @@ class ConqueryConnection(object):
 
         return response['concepts']
 
-    def get_secondary_ids(self, dataset):
+    def get_secondary_ids(self, dataset: str = None) -> list:
+        dataset = self._get_dataset(dataset)
         response = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts")
         return response['secondaryIds']
 
-    def secondary_id_exists(self, dataset: str, secondary_id: str) -> bool:
+    def secondary_id_exists(self, secondary_id: str) -> bool:
+        dataset = get_dataset_from_id(secondary_id)
         secondary_ids = self.get_secondary_ids(dataset)
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
-    def get_concept(self, dataset, concept_id):
+    def get_concept(self, concept_id: str) -> list:
+        dataset = get_dataset_from_id(concept_id)
         response_dict = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
-    def get_stored_queries(self, dataset):
+    def get_stored_queries(self, dataset: str=None) -> list:
+        dataset = self._get_dataset(dataset)
         response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
 
-    def get_column_descriptions(self, dataset, query_id):
+    def get_column_descriptions(self, query_id: str) -> list:
+        dataset = get_dataset_from_id(query_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('columnDescriptions')
 
-    def get_form_configs(self, dataset):
+    def get_form_configs(self, dataset: str = None) -> list:
+        dataset = self._get_dataset(dataset)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/form-configs")
         return result
 
-    def get_form_config(self, dataset, form_config_id):
+    def get_form_config(self, form_config_id: str) -> dict:
+        dataset = get_dataset_from_id(form_config_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/form-configs/{form_config_id}")
         return result
 
-    def get_query(self, dataset, query_id):
+    def get_query(self, query_id: str) -> dict:
+        dataset = get_dataset_from_id(query_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
 
-    def get_stored_query_info(self, dataset, query_id: str = None, label: str = None):
+    def get_stored_query_info(self, query_id: str = None, label: str = None) -> dict:
+        dataset = get_dataset_from_id(query_id)
         stored_queries = self.get_stored_queries(dataset)
         if query_id is not None:
             query_info = [query_info for query_info in stored_queries if query_info["id"] == query_id]
@@ -180,15 +209,16 @@ class ConqueryConnection(object):
 
         return query_info[0]
 
-    def delete_stored_query(self, dataset, query_id):
+    def delete_stored_query(self, query_id: str):
+        dataset = get_dataset_from_id(query_id)
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result
 
-    def get_number_of_results(self, dataset, query_id):
-        response = self.get_query_info(dataset, query_id)
+    def get_number_of_results(self, query_id: str) -> int:
+        response = self.get_query_info(query_id)
         check_query_status(response)
         while response['status'] == 'RUNNING':
-            response = self.get_query_info(dataset, query_id)
+            response = self.get_query_info(query_id)
             check_query_status(response)
 
         n_results = response.get('numberOfResults')
@@ -197,23 +227,25 @@ class ConqueryConnection(object):
 
         return int(n_results)
 
-    def get_query_info(self, dataset, query_id):
+    def get_query_info(self, query_id: str):
+        dataset = get_dataset_from_id(query_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
 
-    def query_succeeded(self, dataset, query_id):
+    def query_succeeded(self, query_id: str) -> bool:
         while True:
-            response = self.get_query_info(dataset, query_id)
+            response = self.get_query_info(query_id)
             if response["status"] == "DONE":
                 return True
             if response["status"] in ["FAILED", "NEW"]:
                 return False
 
-    def get_query_label(self, dataset, query_id):
-        query_info = self.get_query_info(dataset, query_id)
+    def get_query_label(self, query_id: str) -> str:
+        query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
-    def execute_query(self, dataset, query, label=None):
+    def execute_query(self, query: dict, dataset: str = None, label: str = None) -> str:
+        dataset = get_dataset_from_query(query)
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
         try:
             if label is not None:
@@ -223,22 +255,23 @@ class ConqueryConnection(object):
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    def reexecute_query(self, dataset, query_id):
-        result = post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
+    def reexecute_query(self, query_id: str) -> None:
+        dataset = get_dataset_from_id(query_id)
+        post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
 
-    def execute_form_query(self, dataset, form_query):
+    def execute_form_query(self, form_query: dict) -> str:
+        dataset = get_dataset_from_query(form_query)
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", form_query)
         try:
             return result['id']
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
-    def get_query_result(self, dataset: str, query_id: str, return_pandas: bool = False, requests_per_sec=None,
+    def get_query_result(self, query_id: str, return_pandas: bool = False, requests_per_sec=None,
                          already_reexecuted: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
-        :param dataset:
         :param query_id:
         :param already_reexecuted: only needed when reexecuting query, to know when trapped in an endless loop
         :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
@@ -246,10 +279,11 @@ class ConqueryConnection(object):
         :param return_pandas: when true, returns data as pandas.DataFrame
         :return: str containing the returned csv's
         """
-        response = self.get_query_info(dataset, query_id)
+
+        response = self.get_query_info(query_id)
 
         while response['status'] == 'RUNNING':
-            response = self.get_query_info(dataset, query_id)
+            response = self.get_query_info(query_id)
             if requests_per_sec is None:
                 continue
             sleep(1 / requests_per_sec)
@@ -261,9 +295,9 @@ class ConqueryConnection(object):
         elif response_status == "NEW":
             if already_reexecuted:
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
-            self.reexecute_query(dataset, query_id)
+            self.reexecute_query(query_id)
             sleep(0.5)
-            return self.get_query_result(dataset, query_id, already_reexecuted=True)
+            return self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
@@ -281,11 +315,10 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
 
-        dataset = get_dataset(query_id)
-        response = self.get_query_info(dataset, query_id)
+        response = self.get_query_info(query_id)
 
         while response['status'] == 'RUNNING':
-            response = self.get_query_info(dataset, query_id)
+            response = self.get_query_info(query_id)
             sleep(1 / 100)
 
         response_status = response["status"]
