@@ -14,6 +14,7 @@ cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 
 class QueryObject:
+    """Base Class of all query elements"""
     def __init__(self, query_type: str, label: str = None):
         self.query_type = query_type
         self.label = label
@@ -28,6 +29,9 @@ class QueryObject:
         raise NotImplementedError()
 
     def add_connector_select(self, select_id: str) -> None:
+        raise NotImplementedError()
+
+    def add_filter(self, filter_obj: str) -> None:
         raise NotImplementedError()
 
 
@@ -48,6 +52,9 @@ class SingleRootQueryObject(QueryObject):
 
     def add_connector_select(self, select_id: str) -> None:
         return self.root.add_connector_select(select_id)
+
+    def unwrap(self):
+        return self.root
 
 
 class ConceptQuery(SingleRootQueryObject):
