@@ -157,6 +157,10 @@ def wrap_secondary_id_query(query: dict, secondary_id: str):
         "root": query
     }
 
+def unwrap_secondary_id_query(concept_query: dict) -> dict:
+    if concept_query["type"] != "SECONDARY_ID_QUERY":
+        return concept_query
+    return concept_query["root"]
 
 def add_date_restriction(query: dict, start_date: str = None, end_date: str = None) -> dict:
     date_range_obj = dict()
