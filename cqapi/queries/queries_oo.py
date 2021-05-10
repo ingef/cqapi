@@ -43,6 +43,11 @@ class QueryObject:
 
 
 class SingleRootQueryObject(QueryObject):
+    """
+    Base Class for all query elements that have one sub-query element with key "root" or "child":
+    CONCEPT_QUERY, SECONDARY_ID_QUERY, DATE_RESTRICTION, NEGATION, ..
+    """
+
     def __init__(self, root: QueryObject, query_type: str, label: str = None, root_child_key: str = "root"):
         super().__init__(query_type, label=label)
         self.root = root
@@ -101,28 +106,39 @@ class SecondaryIdQuery(SingleRootQueryObject):
         }
 
 
-class ConceptQueryTable:
-    selects = list()
-    filters = list()
+class DateRestriction(SingleRootQueryObject):
+    def __init__(self, child: ConceptQuery, start_date: str = None, end_date: str = None, label: str = None):
+        super().__init__(root=child, query_type="DATE_RESTRICTION", label=label, root_child_key="child")
+        self.start_date = start_date
+        self.end_date = end_date
 
-    def __init__(self, connector_id: str):
-        self.connector_id = connector_id
-
-    def add_select(self, select_id: str):
-        self.selects.append(select_id)
-
-    def add_filter(self, filter_obj: dict):
-        self.filters.append(filter_obj)
-
-    def write_table(self):
-        return {
-            "connectorId": self.connector_id,
-            "filters": self.filters,
-            "selects": self.selects
+    def write_query(self):
+        query = {
+            **super().write_query(),
+            "dateRange": [self.start_date, self.end_date]
         }
+        return query
+
+
+class Negation(SingleRootQueryObject):
+    def __init__(self, child: QueryObject, label: str = None, date_action: str = None):
+        super().__init__(root=child, query_type="NEGATION", label=label, root_child_key="child")
+        self.date_action = date_action
+
+    def write_query(self) -> dict:
+        query = {
+            **super().write_query(),
+            "dateAction": self.date_action
+        }
+        return query
 
 
 class AndOrElement(QueryObject):
+    """
+    Base class for query elements that have multiple sub query elements ("children").
+    E.g. "AND", "OR"
+    """
+
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None,
                  date_action: str = None, label: str = None):
         super().__init__(query_type=query_type)
@@ -174,37 +190,33 @@ class OrElement(AndOrElement):
                          label=label)
 
 
-class DateRestriction(SingleRootQueryObject):
-    def __init__(self, child: ConceptQuery, start_date: str = None, end_date: str = None, label: str = None):
-        super().__init__(root=child, query_type="DATE_RESTRICTION", label=label, root_child_key="child")
-        self.start_date = start_date
-        self.end_date = end_date
+class ConceptQueryTable:
+    """ Table/Connectors for query element CONCEPT"""
+    selects = list()
+    filters = list()
 
-    def write_query(self):
-        query = {
-            **super().write_query(),
-            "dateRange": [self.start_date, self.end_date]
+    def __init__(self, connector_id: str):
+        self.connector_id = connector_id
+
+    def add_select(self, select_id: str):
+        self.selects.append(select_id)
+
+    def add_filter(self, filter_obj: dict):
+        self.filters.append(filter_obj)
+
+    def write_table(self):
+        return {
+            "connectorId": self.connector_id,
+            "filters": self.filters,
+            "selects": self.selects
         }
-        return query
-
-
-class Negation(SingleRootQueryObject):
-    def __init__(self, child: QueryObject, label: str = None, date_action: str = None):
-        super().__init__(root=child, query_type="NEGATION", label=label, root_child_key="child")
-        self.date_action = date_action
-
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            "dateAction": self.date_action
-        }
-        return query
 
 
 class ConceptElement(QueryObject):
+    """Query element of type "CONCEPT". Has no sub query elements."""
     tables: List[ConceptQueryTable] = None
 
-    def __init__(self, ids: list, concept: dict, selects: list = None, exclude_from_secondary_id: bool = False,
+    def __init__(self, ids: list, concept: dict, concept_selects: list = None, exclude_from_secondary_id: bool = False,
                  exclude_from_time_aggregation: bool = False, label: str = None,
                  aggregate_event_dates: bool = None):
         super().__init__(query_type="CONCEPT", label=label)
@@ -212,20 +224,19 @@ class ConceptElement(QueryObject):
         self.aggregate_event_dates = aggregate_event_dates
         self._exclude_from_secondary_id = exclude_from_secondary_id
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
-        self.selects = selects if selects is not None else list()
+        self.selects = concept_selects if concept_selects is not None else list()
+
         self.tables = self.create_tables(concept)
 
     def create_tables(self, concept: dict, connector_ids: list = None):
-        # get connector ids
-        table_connector_id_dict_list = list()
+
         for table in concept['tables']:
             table_connector_id = table['connectorId']
             if connector_ids is not None and not is_in_conquery_ids(table_connector_id, connector_ids):
                 continue
             self.tables.append(ConceptQueryTable(table_connector_id))
-            table_connector_id_dict_list.append({'id': table_connector_id})
 
-        if not table_connector_id_dict_list:
+        if not self.tables:
             raise ValueError(f"Could not find any connector for concept element")
 
     def add_connector_select(self, select_id):
