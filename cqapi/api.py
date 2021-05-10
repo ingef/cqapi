@@ -245,7 +245,8 @@ class ConqueryConnection(object):
         return query_info.get("label")
 
     def execute_query(self, query: dict, dataset: str = None, label: str = None) -> str:
-        dataset = get_dataset_from_query(query)
+        if dataset is None:
+            dataset = get_dataset_from_query(query)
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
         try:
             if label is not None:
@@ -258,14 +259,6 @@ class ConqueryConnection(object):
     def reexecute_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
         post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
-
-    def execute_form_query(self, form_query: dict) -> str:
-        dataset = get_dataset_from_query(form_query)
-        result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", form_query)
-        try:
-            return result['id']
-        except KeyError:
-            raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
     def get_query_result(self, query_id: str, return_pandas: bool = False, requests_per_sec=None,
                          already_reexecuted: bool = False):
