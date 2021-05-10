@@ -2,7 +2,7 @@ from copy import deepcopy
 from cqapi.util import check_input_list
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
-    add_dataset_id_to_conquery_id
+    add_dataset_id_to_conquery_id, get_root_concept_id, get_connector_id
 from typing import List
 
 cq_element_description = {
@@ -15,6 +15,7 @@ cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 class QueryObject:
     """Base Class of all query elements"""
+
     def __init__(self, query_type: str, label: str = None):
         self.query_type = query_type
         self.label = label
@@ -31,7 +32,13 @@ class QueryObject:
     def add_connector_select(self, select_id: str) -> None:
         raise NotImplementedError()
 
-    def add_filter(self, filter_obj: str) -> None:
+    def add_filter(self, filter_obj: dict) -> None:
+        raise NotImplementedError()
+
+    def exclude_from_time_aggregation(self) -> None:
+        raise NotImplementedError()
+
+    def exclude_from_secondary_id(self) -> None:
         raise NotImplementedError()
 
 
@@ -55,6 +62,15 @@ class SingleRootQueryObject(QueryObject):
 
     def unwrap(self):
         return self.root
+
+    def exclude_from_secondary_id(self) -> None:
+        return self.root.exclude_from_secondary_id()
+
+    def exclude_from_time_aggregation(self) -> None:
+        return self.root.exclude_from_time_aggregation()
+
+    def add_filter(self, filter_obj: dict) -> None:
+        return self.add_filter(filter_obj=filter_obj)
 
 
 class ConceptQuery(SingleRootQueryObject):
@@ -87,12 +103,23 @@ class SecondaryIdQuery(SingleRootQueryObject):
 
 class ConceptQueryTable:
     selects = list()
+    filters = list()
 
     def __init__(self, connector_id: str):
         self.connector_id = connector_id
 
     def add_select(self, select_id: str):
         self.selects.append(select_id)
+
+    def add_filter(self, filter_obj: dict):
+        self.filters.append(filter_obj)
+
+    def write_table(self):
+        return {
+            "connectorId": self.connector_id,
+            "filters": self.filters,
+            "selects": self.selects
+        }
 
 
 class AndOrElement(QueryObject):
@@ -111,6 +138,18 @@ class AndOrElement(QueryObject):
     def add_connector_select(self, select_id: str):
         for child in self.children:
             child.add_connector_select(select_id)
+
+    def add_filter(self, filter_obj: dict) -> None:
+        for child in self.children:
+            child.add_filter(filter_obj)
+
+    def exclude_from_time_aggregation(self) -> None:
+        for child in self.children:
+            child.exclude_from_time_aggregation()
+
+    def exclude_from_secondary_id(self) -> None:
+        for child in self.children:
+            child.exclude_from_secondary_id()
 
     def write_query(self):
         return {
@@ -165,14 +204,14 @@ class Negation(SingleRootQueryObject):
 class ConceptElement(QueryObject):
     tables: List[ConceptQueryTable] = None
 
-    def __init__(self, ids: list, concept: dict, selects: list = None, secondary_id: bool = False,
-                 time_aggregation: bool = False, label: str = None,
+    def __init__(self, ids: list, concept: dict, selects: list = None, exclude_from_secondary_id: bool = False,
+                 exclude_from_time_aggregation: bool = False, label: str = None,
                  aggregate_event_dates: bool = None):
         super().__init__(query_type="CONCEPT", label=label)
         self.ids = ids
         self.aggregate_event_dates = aggregate_event_dates
-        self.secondary_id = secondary_id
-        self.time_aggregation = time_aggregation
+        self._exclude_from_secondary_id = exclude_from_secondary_id
+        self._exclude_from_time_aggregation = exclude_from_time_aggregation
         self.selects = selects if selects is not None else list()
         self.tables = self.create_tables(concept)
 
@@ -196,16 +235,27 @@ class ConceptElement(QueryObject):
                 table.add_select(select_id)
 
     def add_concept_select(self, select_id: str):
-        from cqapi.conquery_ids import get_root_concept_id
+
         if is_same_conquery_id(get_root_concept_id(self.ids[0]),
                                get_root_concept_id(select_id)):
             self.selects.append(select_id)
 
+    def add_filter(self, filter_obj: dict) -> None:
+        for table in self.tables:
+            if is_same_conquery_id(get_connector_id(filter_obj["id"]), table.connector_id):
+                table.add_filter(filter_obj)
+
+    def exclude_from_secondary_id(self) -> None:
+        self._exclude_from_secondary_id = True
+
+    def exclude_from_time_aggregation(self) -> None:
+        self._exclude_from_time_aggregation = True
+
     def write_query(self):
         return {
             **super().write_query(),
-            "excludeFromSecondaryIdQuery": self.secondary_id,
-            "excludeFromTimeAggregation": self.time_aggregation,
+            "excludeFromSecondaryIdQuery": self._exclude_from_secondary_id,
+            "excludeFromTimeAggregation": self._exclude_from_time_aggregation,
             "selects": self.selects,
             "tables": self.tables
         }
