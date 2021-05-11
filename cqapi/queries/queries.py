@@ -148,7 +148,7 @@ def wrap_negation(query: dict) -> dict:
     }
 
 
-def wrap_secondary_id_query(query: dict, secondary_id: str, date_aggregation_type: str):
+def wrap_secondary_id_query(query: dict, secondary_id: str, date_aggregation_type: str = None):
     if query["type"] in ["CONCEPT_QUERY"]:
         query = query.get("root")
     return {
