@@ -49,7 +49,9 @@ class SingleRootQueryObject(QueryObject):
     """
 
     def __init__(self, root: QueryObject, query_type: str, label: str = None, root_child_key: str = "root"):
+
         super().__init__(query_type, label=label)
+
         self.root = root
         self.root_child_key = root_child_key
 
@@ -81,7 +83,9 @@ class SingleRootQueryObject(QueryObject):
 class ConceptQuery(SingleRootQueryObject):
     def __init__(self, root: QueryObject,
                  date_aggregation_mode: str = None, resolved_date_aggregation_mode: str = None):
+
         super().__init__(root=root, query_type="CONCEPT_QUERY")
+
         self.query_type = "CONCEPT_QUERY"
         self.date_aggregation_mode = date_aggregation_mode
         self.resolved_date_aggregation_mode = resolved_date_aggregation_mode
@@ -96,7 +100,9 @@ class ConceptQuery(SingleRootQueryObject):
 
 class SecondaryIdQuery(SingleRootQueryObject):
     def __init__(self, root: QueryObject, secondary_id: str):
+
         super().__init__(root=root, query_type="SECONDARY_ID_QUERY")
+
         self.secondary_id = secondary_id
 
     def write_query(self):
@@ -108,7 +114,9 @@ class SecondaryIdQuery(SingleRootQueryObject):
 
 class DateRestriction(SingleRootQueryObject):
     def __init__(self, child: ConceptQuery, start_date: str = None, end_date: str = None, label: str = None):
+
         super().__init__(root=child, query_type="DATE_RESTRICTION", label=label, root_child_key="child")
+
         self.start_date = start_date
         self.end_date = end_date
 
@@ -122,7 +130,9 @@ class DateRestriction(SingleRootQueryObject):
 
 class Negation(SingleRootQueryObject):
     def __init__(self, child: QueryObject, label: str = None, date_action: str = None):
+
         super().__init__(root=child, query_type="NEGATION", label=label, root_child_key="child")
+
         self.date_action = date_action
 
     def write_query(self) -> dict:
@@ -141,7 +151,9 @@ class AndOrElement(QueryObject):
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None,
                  date_action: str = None, label: str = None):
+
         super().__init__(query_type=query_type)
+
         self.children = children
         self.date_action = date_action
         self.label = label,
@@ -179,6 +191,7 @@ class AndOrElement(QueryObject):
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None,
                  date_action: str = None, label: str = None):
+
         super().__init__(query_type="AND", children=children, create_exist=create_exist, date_action=date_action,
                          label=label)
 
@@ -186,6 +199,7 @@ class AndElement(AndOrElement):
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None,
                  date_action: str = None, label: str = None):
+
         super().__init__(query_type="OR", children=children, create_exist=create_exist, date_action=date_action,
                          label=label)
 
@@ -195,8 +209,9 @@ class ConceptQueryTable:
     selects = list()
     filters = list()
 
-    def __init__(self, connector_id: str):
+    def __init__(self, connector_id: str, date_column_id: str = None):
         self.connector_id = connector_id
+        self.date_column = {"value": None}
 
     def add_select(self, select_id: str):
         self.selects.append(select_id)
@@ -206,7 +221,8 @@ class ConceptQueryTable:
 
     def write_table(self):
         return {
-            "connectorId": self.connector_id,
+            "connector": self.connector_id,
+            "dateColumn": self.date_column,
             "filters": self.filters,
             "selects": self.selects
         }
@@ -219,12 +235,14 @@ class ConceptElement(QueryObject):
     def __init__(self, ids: list, concept: dict, concept_selects: list = None, exclude_from_secondary_id: bool = False,
                  exclude_from_time_aggregation: bool = False, label: str = None,
                  aggregate_event_dates: bool = None):
+
         super().__init__(query_type="CONCEPT", label=label)
+
         self.ids = ids
         self.aggregate_event_dates = aggregate_event_dates
         self._exclude_from_secondary_id = exclude_from_secondary_id
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
-        self.selects = concept_selects if concept_selects is not None else list()
+        self.selects = concept_selects or list()
 
         self.tables = self.create_tables(concept)
 
@@ -265,6 +283,7 @@ class ConceptElement(QueryObject):
     def write_query(self):
         return {
             **super().write_query(),
+            "ids": self.ids,
             "excludeFromSecondaryIdQuery": self._exclude_from_secondary_id,
             "excludeFromTimeAggregation": self._exclude_from_time_aggregation,
             "selects": self.selects,
