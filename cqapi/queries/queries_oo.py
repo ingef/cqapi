@@ -213,7 +213,10 @@ class AndOrElement(QueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        children = [convert_from_query(child) for child in query[Keys.children]]
+        children = list()
+        for child in query[Keys.children]:
+            children.append(convert_from_query(child))
+        # children = [convert_from_query(child) for child in query[Keys.children]]
         return AndOrElement(
             query_type=query[Keys.type],
             children=children,
@@ -263,19 +266,14 @@ class OrElement(AndOrElement):
 
 class ConceptQueryTable:
     """ Table/Connectors for query element CONCEPT"""
-    selects = list()
-    filters = list()
 
     def __init__(self, connector_id: str, date_column_id: str = None,
                  select_ids: List[str] = None, filter_objs: List[dict] = None):
         self.connector_id = connector_id
         self.date_column = {Keys.value: date_column_id}
 
-        if select_ids is not None:
-            self.add_selects(select_ids=select_ids)
-
-        if filter_objs is not None:
-            self.add_filters(filter_objs=filter_objs)
+        self.selects = select_ids or list()
+        self.filters = filter_objs or list()
 
     def add_select(self, select_id: str):
         self.selects.append(select_id)
@@ -301,12 +299,12 @@ class ConceptQueryTable:
 
 
 class SavedQuery(QueryObject):
-    _exclude_from_secondary_id = None
 
-    def __init__(self, query_id: str, label: str = None):
+    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
         super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
 
         self.query_id = query_id
+        self._exclude_from_secondary_id = exclude_from_secondary_id
 
     def exclude_from_secondary_id(self) -> None:
         self._exclude_from_secondary_id = True
@@ -343,7 +341,6 @@ class SavedQuery(QueryObject):
 class ConceptElement(QueryObject):
     """Query element of type "CONCEPT". Has no sub query elements."""
 
-    # tables: List[ConceptQueryTable] = None
     def __init__(self, ids: list, concept: dict = None, tables: List[ConceptQueryTable] = None,
                  concept_selects: list = None, exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None):
@@ -367,8 +364,8 @@ class ConceptElement(QueryObject):
         for query_table in query[Keys.tables]:
             tables.append(ConceptQueryTable(connector_id=query_table[Keys.id],
                                             date_column_id=query_table.get(Keys.date_column, {}).get(Keys.value),
-                                            select_ids=query.get(Keys.selects),
-                                            filter_objs=query.get(Keys.filters)))
+                                            select_ids=query_table.get(Keys.selects),
+                                            filter_objs=query_table.get(Keys.filters)))
         return cls(ids=query[Keys.ids],
                    label=query.get(Keys.label),
                    tables=tables,
@@ -480,5 +477,3 @@ class Keys:
     create_exist = "createExist"
     value = "value"
     query = "query"
-
-
