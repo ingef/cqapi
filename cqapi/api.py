@@ -7,6 +7,7 @@ from cqapi.queries import get_dataset_from_query
 from cqapi.queries.queries_oo import QueryObject, QueryEditor
 from typing import Union
 
+
 class CqApiError(BaseException):
     pass
 
@@ -245,10 +246,9 @@ class ConqueryConnection(object):
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
-
     def execute_query(self, query: Union[dict, QueryObject, QueryEditor], dataset: str = None,
                       label: str = None) -> str:
-        if isinstance(query, Union[QueryObject, QueryEditor]):
+        if isinstance(query, QueryObject) or isinstance(query, QueryEditor):
             query = query.write_query()
 
         if dataset is None:
