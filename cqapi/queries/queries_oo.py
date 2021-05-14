@@ -649,7 +649,7 @@ class QueryEditor:
         self.query.add_filters(filter_objs)
 
     def write_query(self):
-        self.query.write_query()
+        return self.query.write_query()
 
 
 query_type_to_obj_map = {
