@@ -136,10 +136,9 @@ class SingleRootQueryDescription(QueryDescription):
         raise NotImplementedError()
 
     def write_query(self) -> dict:
-        # we don't use super().write_query() here, since we don't want to write the label
         query = {
             Keys.type: self.query_type,
-            self.root: self.root.write_query(),
+            Keys.root: self.root.write_query(),
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
         return remove_null_values_from_query(query)
@@ -230,8 +229,8 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         self.secondary_id = secondary_id
 
     def write_query(self) -> dict:
-        # we don't use super().write_query() here, since we don't want to write the label
         query = {
+            **super().write_query(),
             Keys.secondary_id: self.secondary_id,
         }
         return remove_null_values_from_query(query)
@@ -280,7 +279,7 @@ class DateRestriction(SingleChildQueryObject):
     def write_query(self):
         query = {
             **super().write_query(),
-            Keys.date_range: [self.start_date, self.end_date]
+            Keys.date_range: {"min": self.start_date, "max": self.end_date}
         }
         return remove_null_values_from_query(query)
 
@@ -576,14 +575,15 @@ class QueryEditor:
 
     def _and_or_queries(self, query_type: str, queries: List[Union[dict, QueryObject, QueryEditor, str]],
                         create_exist: bool = None, label: str = None):
-        and_or_queries = list()
+        and_or_queries = [self.query]
+
         for query in queries:
             if isinstance(query, str):
                 query = SavedQuery(query_id=query)
             if isinstance(query, dict):
                 query = convert_from_query(query)
             if isinstance(query, QueryEditor):
-                query = QueryEditor.query
+                query = query.query
             if not isinstance(query, QueryObject):
                 raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryEditor], not {type(query)}")
             and_or_queries.append(query)
@@ -701,7 +701,3 @@ def create_query(concept_id: str, concepts: dict, concept_query: bool = False, c
         return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
 
     return query
-
-query = {"type":"CONCEPT_QUERY","root":{"type":"AND","children":[{"type":"OR","children":[{"type":"CONCEPT","ids":["adb_bosch.alter"],"tables":[{"id":"adb_bosch.alter.alter","dateColumn":{"value":"adb_bosch.alter.alter.versichertenzeit"},"selects":[],"filters":[]}],"selects":[]}]}]}}
-
-print(QueryEditor(query).write_query())
