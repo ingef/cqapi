@@ -377,41 +377,6 @@ class OrElement(AndOrElement):
                          label=label)
 
 
-class ConceptQueryTable:
-    """ Table/Connectors for query element CONCEPT"""
-
-    def __init__(self, connector_id: str, date_column_id: str = None,
-                 select_ids: List[str] = None, filter_objs: List[dict] = None):
-        self.connector_id = connector_id
-        self.date_column = {Keys.value: date_column_id}
-
-        self.selects = select_ids or list()
-        self.filters = filter_objs or list()
-
-    def add_select(self, select_id: str):
-        self.selects.append(select_id)
-
-    def add_selects(self, select_ids: list):
-        for select_id in select_ids:
-            self.add_select(select_id=select_id)
-
-    def add_filter(self, filter_obj: dict):
-        self.filters.append(filter_obj)
-
-    def add_filters(self, filter_objs: List[dict]):
-        for filter_obj in filter_objs:
-            self.add_filter(filter_obj=filter_obj)
-
-    def write_table(self) -> dict:
-        query = {
-            Keys.id: self.connector_id,
-            Keys.date_column: self.date_column,
-            Keys.filters: self.filters,
-            Keys.selects: self.selects
-        }
-        return remove_null_values_from_query(query)
-
-
 class SavedQuery(QueryObject):
 
     def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
@@ -453,10 +418,45 @@ class SavedQuery(QueryObject):
         pass
 
 
+class ConceptTable:
+    """ Table/Connectors for query element CONCEPT"""
+
+    def __init__(self, connector_id: str, date_column_id: str = None,
+                 select_ids: List[str] = None, filter_objs: List[dict] = None):
+        self.connector_id = connector_id
+        self.date_column = {Keys.value: date_column_id}
+
+        self.selects = select_ids or list()
+        self.filters = filter_objs or list()
+
+    def add_select(self, select_id: str):
+        self.selects.append(select_id)
+
+    def add_selects(self, select_ids: list):
+        for select_id in select_ids:
+            self.add_select(select_id=select_id)
+
+    def add_filter(self, filter_obj: dict):
+        self.filters.append(filter_obj)
+
+    def add_filters(self, filter_objs: List[dict]):
+        for filter_obj in filter_objs:
+            self.add_filter(filter_obj=filter_obj)
+
+    def write_table(self) -> dict:
+        query = {
+            Keys.id: self.connector_id,
+            Keys.date_column: self.date_column,
+            Keys.filters: self.filters,
+            Keys.selects: self.selects
+        }
+        return remove_null_values_from_query(query)
+
+
 class ConceptElement(QueryObject):
     """Query element of type "CONCEPT". Has no sub query elements."""
 
-    def __init__(self, ids: list, concept: dict = None, tables: List[ConceptQueryTable] = None,
+    def __init__(self, ids: list, concept: dict = None, tables: List[ConceptTable] = None,
                  connector_ids: List[str] = None, concept_selects: list = None,
                  connector_selects: List[str] = None, filter_objs: List[str] = None,
                  exclude_from_secondary_id: bool = None,
@@ -469,7 +469,7 @@ class ConceptElement(QueryObject):
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
         self.selects = concept_selects or list()
 
-        self.tables: List[ConceptQueryTable] = tables or list()
+        self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
             self.tables = self.create_tables(concept=concept, connector_ids=connector_ids,
                                              selects=connector_selects, filter_objs=filter_objs)
@@ -480,10 +480,15 @@ class ConceptElement(QueryObject):
 
         tables = list()
         for query_table in query[Keys.tables]:
-            tables.append(ConceptQueryTable(connector_id=query_table[Keys.id],
-                                            date_column_id=query_table.get(Keys.date_column, {}).get(Keys.value),
-                                            select_ids=query_table.get(Keys.selects),
-                                            filter_objs=query_table.get(Keys.filters)))
+            if query_table.get(Keys.date_column) is None:
+                date_column_id = None
+            else:
+                date_column_id = query_table[Keys.date_column][Keys.value]
+                
+            tables.append(ConceptTable(connector_id=query_table[Keys.id],
+                                       date_column_id=query_table.get(Keys.date_column, {}).get(Keys.value),
+                                       select_ids=query_table.get(Keys.selects),
+                                       filter_objs=query_table.get(Keys.filters)))
         return cls(ids=query[Keys.ids],
                    label=query.get(Keys.label),
                    tables=tables,
@@ -503,9 +508,9 @@ class ConceptElement(QueryObject):
                                  if is_same_conquery_id(table_connector_id, get_connector_id(select))]
             connector_filters = [filter_obj for filter_obj in filter_objs
                                  if is_same_conquery_id(table_connector_id, get_connector_id(filter_obj["filter"]))]
-            self.tables.append(ConceptQueryTable(table_connector_id,
-                                                 select_ids=connector_selects,
-                                                 filter_objs=connector_filters))
+            self.tables.append(ConceptTable(table_connector_id,
+                                            select_ids=connector_selects,
+                                            filter_objs=connector_filters))
 
         if not self.tables:
             raise ValueError(f"Could not find any connector for concept element")
