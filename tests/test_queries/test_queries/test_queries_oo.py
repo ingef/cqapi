@@ -90,3 +90,68 @@ def test_and_query():
     and_query_val = {"type": "AND", "children": [query_1, query_2]}
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
+
+
+def test_create_query():
+    concepts = {
+        "dataset1.alter": {'parent': 'dataset1.sozdem_infonet_struc',
+                           'label': 'Alter',
+                           'description': None,
+                           'active': True,
+                           'children': [],
+                           'additionalInfos': [],
+                           'matchingEntries': 0,
+                           'dateRange': {'min': None, 'max': None},
+                           'tables': [{'id': 'dataset1.vers_stamm',
+                                       'connectorId': 'dataset1.alter.alter',
+                                       'label': 'Alter',
+                                       'dateColumn': {'defaultValue': 'dataset1.alter.alter.versichertenzeit',
+                                                      'options': [{'label': 'Versichertenzeit',
+                                                                   'value': 'dataset1.alter.alter.versichertenzeit',
+                                                                   'templateValues': None,
+                                                                   'optionValue': None},
+                                                                  {'label': 'Erster Tag',
+                                                                   'value': 'dataset1.alter.alter.erster_tag',
+                                                                   'templateValues': None,
+                                                                   'optionValue': None},
+                                                                  {'label': 'Letzter Tag',
+                                                                   'value': 'dataset1.alter.alter.letzter_tag',
+                                                                   'templateValues': None,
+                                                                   'optionValue': None}]},
+                                       'filters': [{'id': 'dataset1.alter.alter.alterseinschr$c3$a4nkung',
+                                                    'label': 'Alterseinschränkung',
+                                                    'type': 'INTEGER_RANGE',
+                                                    'unit': None,
+                                                    'description': 'Alter zur gegebenen Datumseinschränkung',
+                                                    'options': [],
+                                                    'min': None,
+                                                    'max': None,
+                                                    'template': None,
+                                                    'pattern': None,
+                                                    'allowDropFile': None}],
+                                       'selects': [{'id': 'dataset1.alter.alter.alter_select',
+                                                    'label': 'Ausgabe Alter',
+                                                    'description': 'Automatisch erzeugter Zusatzwert.',
+                                                    'resultType': {'type': 'INTEGER'}},
+                                                   {'id': 'dataset1.alter.alter.liste_geburtsdatum',
+                                                    'label': 'Ausgabe Geburtsdatum',
+                                                    'description': None,
+                                                    'resultType': {'type': 'DATE'}},
+                                                   {'id': 'dataset1.alter.alter.dates',
+                                                    'label': 'Datumswerte',
+                                                    'description': None,
+                                                    'resultType': {'type': 'LIST',
+                                                                   'elementType': {'type': 'DATE_RANGE'}}}],
+                                       'supportedSecondaryIds': []}],
+                           'detailsAvailable': True,
+                           'codeListResolvable': False,
+                           'selects': [{'id': 'dataset1.alter.dates',
+                                        'label': 'Datumswerte',
+                                        'description': None,
+                                        'resultType': {'type': 'LIST', 'elementType': {'type': 'DATE_RANGE'}}}]}
+    }
+
+    query_val = {"type": "CONCEPT", "ids": ["dataset1.alter"], "selects": [],
+                 "tables": [{'id': 'dataset1.alter.alter', 'filters': [], 'selects': []}]}
+    query_out = create_query(concept_id="dataset1.alter", concepts=concepts).write_query()
+    TestCase().assertDictEqual(d1=query_val, d2=query_out)

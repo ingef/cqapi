@@ -15,7 +15,7 @@ class Keys:
     exclude_from_secondary_id = "excludeFromSecondaryIdQuery"
     exclude_from_time_aggregation = "excludeFromTimeAggregation"
     selects = "selects"
-    filter="filter"
+    filter = "filter"
     filters = "filters"
     tables = "tables"
     root = "root"
@@ -482,8 +482,8 @@ class ConceptElement(QueryObject):
 
         self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
-            self.tables = self.create_tables(concept=concept, connector_ids=connector_ids,
-                                             selects=connector_selects, filter_objs=filter_objs)
+            self.create_tables(concept=concept, connector_ids=connector_ids,
+                               selects=connector_selects, filter_objs=filter_objs)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
