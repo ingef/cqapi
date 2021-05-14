@@ -4,7 +4,8 @@ from time import sleep
 import requests
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.queries import get_dataset_from_query
-
+from cqapi.queries.queries_oo import QueryObject, QueryEditor
+from typing import Union
 
 class CqApiError(BaseException):
     pass
@@ -168,7 +169,7 @@ class ConqueryConnection(object):
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
-    def get_stored_queries(self, dataset: str=None) -> list:
+    def get_stored_queries(self, dataset: str = None) -> list:
         dataset = self._get_dataset(dataset)
         response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
@@ -244,7 +245,12 @@ class ConqueryConnection(object):
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
-    def execute_query(self, query: dict, dataset: str = None, label: str = None) -> str:
+
+    def execute_query(self, query: Union[dict, QueryObject, QueryEditor], dataset: str = None,
+                      label: str = None) -> str:
+        if isinstance(query, Union[QueryObject, QueryEditor]):
+            query = query.write_query()
+
         if dataset is None:
             dataset = get_dataset_from_query(query)
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
