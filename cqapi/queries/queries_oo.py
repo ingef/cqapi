@@ -15,6 +15,7 @@ class Keys:
     exclude_from_secondary_id = "excludeFromSecondaryIdQuery"
     exclude_from_time_aggregation = "excludeFromTimeAggregation"
     selects = "selects"
+    filter="filter"
     filters = "filters"
     tables = "tables"
     root = "root"
@@ -517,7 +518,7 @@ class ConceptElement(QueryObject):
             connector_selects = [select for select in selects
                                  if is_same_conquery_id(table_connector_id, get_connector_id(select))]
             connector_filters = [filter_obj for filter_obj in filter_objs
-                                 if is_same_conquery_id(table_connector_id, get_connector_id(filter_obj["filter"]))]
+                                 if is_same_conquery_id(table_connector_id, get_connector_id(filter_obj[Keys.filter]))]
             self.tables.append(ConceptTable(table_connector_id,
                                             select_ids=connector_selects,
                                             filter_objs=connector_filters))
@@ -539,7 +540,7 @@ class ConceptElement(QueryObject):
 
     def add_filter(self, filter_obj: dict) -> None:
         for table in self.tables:
-            if is_same_conquery_id(get_connector_id(filter_obj[Keys.id]), table.connector_id):
+            if is_same_conquery_id(get_connector_id(filter_obj[Keys.filter]), table.connector_id):
                 table.add_filter(filter_obj)
 
     def exclude_from_secondary_id(self) -> None:
