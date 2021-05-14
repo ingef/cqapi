@@ -247,13 +247,20 @@ class SecondaryIdQuery(SingleRootQueryDescription):
 
 
 class DateRestriction(SingleChildQueryObject):
-    def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None, date_range: List[str] = None,
+    def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None,
+                 date_range: Union[List[str], dict] = None,
                  label: str = None):
         super().__init__(child=child, query_type=obj_to_query_type(DateRestriction), label=label)
 
         if date_range is not None:
-            start_date = date_range[0]
-            end_date = date_range[1]
+            if isinstance(date_range, dict):
+                start_date = date_range["min"]
+                end_date = date_range["max"]
+            elif isinstance(date_range, list):
+                start_date = date_range[0]
+                end_date = date_range[1]
+            else:
+                raise TypeError(f"{date_range=} must be type List[str] or dict, not {type(date_range)}")
 
         if start_date is not None:
             validate_date(start_date)
