@@ -515,10 +515,14 @@ class ConceptElement(QueryObject):
             table_connector_id = table[Keys.connector_id]
             if connector_ids is not None and not is_in_conquery_ids(table_connector_id, connector_ids):
                 continue
+            selects = selects or list()
             connector_selects = [select for select in selects
                                  if is_same_conquery_id(table_connector_id, get_connector_id(select))]
+            filter_objs = filter_objs or list()
             connector_filters = [filter_obj for filter_obj in filter_objs
-                                 if is_same_conquery_id(table_connector_id, get_connector_id(filter_obj[Keys.filter]))]
+                                 if is_same_conquery_id(table_connector_id,
+                                                        get_connector_id(filter_obj[Keys.filter]))]
+
             self.tables.append(ConceptTable(table_connector_id,
                                             select_ids=connector_selects,
                                             filter_objs=connector_filters))
