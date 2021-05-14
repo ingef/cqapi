@@ -1,7 +1,7 @@
 from __future__ import annotations
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id
-from typing import List, Type
+from typing import List, Type, Union
 
 
 class Keys:
@@ -29,11 +29,11 @@ class Keys:
     query = "query"
 
 
-def remove_null_values_from_query(query: dict) -> dict:
+def remove_null_values_from_query(query: dict):
     for key, value in query.items():
         if value is None:
             _ = query.pop(key)
-            
+
 
 class QueryObject:
     """Base Class of all query elements"""
@@ -47,7 +47,8 @@ class QueryObject:
             Keys.type: self.query_type,
             Keys.label: self.label
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -59,6 +60,10 @@ class QueryObject:
     def add_concept_select(self, select_id: str) -> None:
         raise NotImplementedError()
 
+    def add_concept_selects(self, select_ids: List[str]) -> None:
+        for select_id in select_ids:
+            self.add_concept_select(select_id)
+
     def add_connector_select(self, select_id: str) -> None:
         raise NotImplementedError()
 
@@ -68,6 +73,10 @@ class QueryObject:
 
     def add_filter(self, filter_obj: dict) -> None:
         raise NotImplementedError()
+
+    def add_filters(self, filter_objs: List[dict]) -> None:
+        for filter_obj in filter_objs:
+            self.add_filter(filter_obj)
 
     def exclude_from_time_aggregation(self) -> None:
         raise NotImplementedError()
@@ -80,6 +89,9 @@ class QueryObject:
 
     def or_with(self, *queries: QueryObject):
         return OrElement(children=[self, *queries])
+
+    def unwrap(self):
+        raise NotImplementedError()
 
 
 class SingleRootQueryObject(QueryObject):
@@ -103,7 +115,8 @@ class SingleRootQueryObject(QueryObject):
             **super().write_query(),
             self.root_child_key: self.root.write_query()
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
     def add_concept_select(self, select_id: str) -> None:
         return self.root.add_concept_select(select_id)
@@ -121,7 +134,7 @@ class SingleRootQueryObject(QueryObject):
         return self.root.exclude_from_time_aggregation()
 
     def add_filter(self, filter_obj: dict) -> None:
-        return self.add_filter(filter_obj=filter_obj)
+        return self.root.add_filter(filter_obj=filter_obj)
 
 
 class ConceptQuery(SingleRootQueryObject):
@@ -139,7 +152,8 @@ class ConceptQuery(SingleRootQueryObject):
             self.root_child_key: self.root.write_query(),
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -168,7 +182,8 @@ class SecondaryIdQuery(SingleRootQueryObject):
             Keys.secondary_id: self.secondary_id,
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -182,9 +197,14 @@ class SecondaryIdQuery(SingleRootQueryObject):
 
 
 class DateRestriction(SingleRootQueryObject):
-    def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None, label: str = None):
+    def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None, date_range: List[str] = None,
+                 label: str = None):
         super().__init__(root=child, query_type=obj_to_query_type(DateRestriction), label=label,
                          root_child_key=Keys.child)
+
+        if date_range is not None:
+            start_date = date_range[0]
+            end_date = date_range[1]
 
         if start_date is not None:
             validate_date(start_date)
@@ -212,7 +232,8 @@ class DateRestriction(SingleRootQueryObject):
             **super().write_query(),
             Keys.date_range: [self.start_date, self.end_date]
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
 
 class Negation(SingleRootQueryObject):
@@ -232,7 +253,8 @@ class Negation(SingleRootQueryObject):
         query = {
             **super().write_query()
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
 
 class AndOrElement(QueryObject):
@@ -240,6 +262,9 @@ class AndOrElement(QueryObject):
     Base class for query elements that have multiple sub query elements ("children").
     E.g. "AND", "OR"
     """
+
+    def unwrap(self):
+        pass
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None):
 
@@ -290,7 +315,8 @@ class AndOrElement(QueryObject):
             Keys.children: [child.write_query() for child in self.children],
             Keys.create_exist: self.create_exist
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
 
 class AndElement(AndOrElement):
@@ -337,10 +363,14 @@ class ConceptQueryTable:
             Keys.filters: self.filters,
             Keys.selects: self.selects
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
 
 class SavedQuery(QueryObject):
+
+    def unwrap(self):
+        pass
 
     def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
         super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
@@ -357,7 +387,8 @@ class SavedQuery(QueryObject):
             Keys.query: self.query_id,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -461,6 +492,9 @@ class ConceptElement(QueryObject):
     def exclude_from_time_aggregation(self) -> None:
         self._exclude_from_time_aggregation = True
 
+    def unwrap(self):
+        pass
+
     def write_query(self) -> dict:
         query = {
             **super().write_query(),
@@ -470,8 +504,102 @@ class ConceptElement(QueryObject):
             Keys.selects: self.selects,
             Keys.tables: [table.write_table() for table in self.tables]
         }
-        return remove_null_values_from_query(query)
+        remove_null_values_from_query(query)
+        return query
 
+
+class QueryEditor:
+    query: QueryObject = None
+
+    def __init__(self, query: Union[QueryObject, dict, str]):
+        if isinstance(query, dict):
+            query = convert_from_query(query)
+        if isinstance(query, str):
+            query = SavedQuery(query_id=query)
+        if not isinstance(query, QueryObject):
+            raise ValueError(f"query must be of type QueryObject or dict")
+
+        self.query = query
+
+    def date_restriction(self, date_range: List[str] = None, start_date: str = None, end_date: str = None,
+                         label: str = None):
+        self.query = DateRestriction(child=self.query, date_range=date_range, start_date=start_date, end_date=end_date,
+                                     label=label)
+
+    def concept_query(self, date_aggregation_mode: str = None):
+        self.query = ConceptQuery(root=self.query, date_aggregation_mode=date_aggregation_mode)
+
+    def secondary_id_query(self, secondary_id: str, date_aggregation_mode: str = None):
+        self.query = SecondaryIdQuery(root=self.query, date_aggregation_mode=date_aggregation_mode,
+                                      secondary_id=secondary_id)
+
+    def negate(self, label: str = None):
+        self.query = Negation(child=self.query, label=label)
+
+    def _and_or_queries(self, query_type: str, queries: List[Union[dict, QueryObject, QueryEditor, str]],
+                        create_exist: bool = None, label: str = None):
+        and_or_queries = list()
+        for query in queries:
+            if isinstance(query, str):
+                query = SavedQuery(query_id=query)
+            if isinstance(query, dict):
+                query = convert_from_query(query)
+            if isinstance(query, QueryEditor):
+                query = QueryEditor.query
+            if not isinstance(query, QueryObject):
+                raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryHolder]")
+            and_or_queries.append(query)
+
+        self.query = AndOrElement(query_type=query_type, children=and_or_queries,
+                                  create_exist=create_exist, label=label)
+
+    def and_query(self, query: Union[dict, QueryObject, QueryEditor, str], create_exist: bool = None, label: str = None):
+        self._and_or_queries(query_type="AND", queries=[query],
+                             create_exist=create_exist, label=label)
+
+    def or_query(self, query: Union[dict, QueryObject, QueryEditor, str], create_exist: bool = None, label: str = None):
+        self._and_or_queries(query_type="OR", queries=[query],
+                             create_exist=create_exist, label=label)
+
+    def and_queries(self, queries: List[Union[dict, QueryObject, QueryEditor, str]],
+                  create_exist: bool = None, label: str = None):
+        self._and_or_queries(query_type="AND", queries=queries,
+                             create_exist=create_exist, label=label)
+
+    def or_queries(self, queries: List[Union[dict, QueryObject, QueryEditor, str]],
+                 create_exist: bool = None, label: str = None):
+        self._and_or_queries(query_type="OR", queries=queries,
+                             create_exist=create_exist, label=label)
+
+    def exclude_from_secondary_id(self) -> None:
+        self.query.exclude_from_secondary_id()
+
+    def exclude_from_time_aggregation(self) -> None:
+        self.query.exclude_from_time_aggregation()
+
+    def add_concept_select(self, select_id: str) -> None:
+        self.query.add_concept_select(select_id)
+
+    def add_connector_select(self, select_id: str) -> None:
+        self.query.add_connector_select(select_id)
+
+    def add_concept_selects(self, select_ids: List[str]) -> None:
+        self.query.add_concept_selects(select_ids)
+
+    def add_connector_selects(self, select_ids: List[str]) -> None:
+        self.query.add_connector_selects(select_ids)
+
+    def unwrap(self):
+        self.query.unwrap()
+
+    def add_filter(self, filter_obj: dict) -> None:
+        self.query.add_filter(filter_obj=filter_obj)
+
+    def add_filters(self, filter_objs: List[dict]) -> None:
+        self.query.add_filters(filter_objs)
+
+    def write_query(self):
+        self.query.write_query()
 
 query_type_to_obj_map = {
     "CONCEPT": ConceptElement,
