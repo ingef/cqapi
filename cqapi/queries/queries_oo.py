@@ -431,7 +431,7 @@ class ConceptTable:
     def __init__(self, connector_id: str, date_column_id: str = None,
                  select_ids: List[str] = None, filter_objs: List[dict] = None):
         self.connector_id = connector_id
-        self.date_column = {Keys.value: date_column_id}
+        self.date_column = None if date_column_id is None else {Keys.value: date_column_id}
 
         self.selects = select_ids or list()
         self.filters = filter_objs or list()
@@ -451,6 +451,9 @@ class ConceptTable:
             self.add_filter(filter_obj=filter_obj)
 
     def write_table(self) -> dict:
+        if self.date_column is not None and self.date_column.get(Keys.value) is None:
+            self.date_column = None
+
         query = {
             Keys.id: self.connector_id,
             Keys.date_column: self.date_column,
