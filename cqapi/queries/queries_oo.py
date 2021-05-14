@@ -31,9 +31,7 @@ class Keys:
 
 
 def remove_null_values_from_query(query: dict):
-    for key, value in query.items():
-        if value is None:
-            _ = query.pop(key)
+    return {key: value for key, value in query.items() if value is not None}
 
 
 class QueryObject:
