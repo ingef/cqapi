@@ -1,6 +1,7 @@
 from __future__ import annotations
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id
+from cqapi.util import check_arg_type
 from typing import List, Type, Union
 
 
@@ -90,21 +91,95 @@ class QueryObject:
     def or_with(self, *queries: QueryObject):
         return OrElement(children=[self, *queries])
 
+    def validate_sub_query(self, sub_query: QueryObject):
+        if isinstance(sub_query, QueryDescription):
+            self.raise_query_description_as_sub_query_error()
+
+    def raise_query_description_as_sub_query_error(self):
+        raise TypeError(f"QueryDescription can not be Sub-Query of {type(self)}")
+
+    def unwrap(self):
+        pass
+
+
+class QueryDescription(QueryObject):
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        pass
+
+    def add_concept_select(self, select_id: str) -> None:
+        pass
+
+    def add_connector_select(self, select_id: str) -> None:
+        pass
+
+    def add_filter(self, filter_obj: dict) -> None:
+        pass
+
+    def exclude_from_time_aggregation(self) -> None:
+        pass
+
+    def exclude_from_secondary_id(self) -> None:
+        pass
+
     def unwrap(self):
         raise NotImplementedError()
 
 
-class SingleRootQueryObject(QueryObject):
+class SingleRootQueryDescription(QueryDescription):
+    def __init__(self, root: QueryObject, query_type: str, date_aggregation_mode: str):
+        super().__init__(query_type)
+        self.validate_sub_query(root)
+        self.root = root
+        self.date_aggregation_mode = date_aggregation_mode
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        raise NotImplementedError()
+
+    def write_query(self) -> dict:
+        # we don't use super().write_query() here, since we don't want to write the label
+        query = {
+            Keys.type: self.query_type,
+            self.root: self.root.write_query(),
+            Keys.date_aggregation_mode: self.date_aggregation_mode
+        }
+        remove_null_values_from_query(query)
+        return query
+
+    def set_label(self, label: str) -> None:
+        raise ValueError(f"Class QueryDescription has no attribute label")
+
+    def add_concept_select(self, select_id: str) -> None:
+        self.root.add_concept_select(select_id)
+
+    def add_connector_select(self, select_id: str) -> None:
+        self.root.add_connector_select(select_id)
+
+    def unwrap(self) -> QueryObject:
+        return self.root
+
+    def exclude_from_secondary_id(self) -> None:
+        self.root.exclude_from_secondary_id()
+
+    def exclude_from_time_aggregation(self) -> None:
+        self.root.exclude_from_time_aggregation()
+
+    def add_filter(self, filter_obj: dict) -> None:
+        self.root.add_filter(filter_obj=filter_obj)
+
+
+class SingleChildQueryObject(QueryObject):
     """
     Base Class for all query elements that have one sub-query element with key "root" or "child":
     CONCEPT_QUERY, SECONDARY_ID_QUERY, DATE_RESTRICTION, NEGATION, ..
     """
 
-    def __init__(self, root: QueryObject, query_type: str, label: str = None, root_child_key: str = "root"):
+    def __init__(self, child: QueryObject, query_type: str, label: str = None):
         super().__init__(query_type, label=label)
-
-        self.root = root
-        self.root_child_key = root_child_key
+        self.validate_sub_query(child)
+        self.child = child
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -113,52 +188,37 @@ class SingleRootQueryObject(QueryObject):
     def write_query(self) -> dict:
         query = {
             **super().write_query(),
-            self.root_child_key: self.root.write_query()
+            Keys.child: self.child.write_query()
         }
         remove_null_values_from_query(query)
         return query
 
     def add_concept_select(self, select_id: str) -> None:
-        return self.root.add_concept_select(select_id)
+        self.child.add_concept_select(select_id)
 
     def add_connector_select(self, select_id: str) -> None:
-        return self.root.add_connector_select(select_id)
-
-    def unwrap(self):
-        return self.root
+        self.child.add_connector_select(select_id)
 
     def exclude_from_secondary_id(self) -> None:
-        return self.root.exclude_from_secondary_id()
+        self.child.exclude_from_secondary_id()
 
     def exclude_from_time_aggregation(self) -> None:
-        return self.root.exclude_from_time_aggregation()
+        self.child.exclude_from_time_aggregation()
 
     def add_filter(self, filter_obj: dict) -> None:
-        return self.root.add_filter(filter_obj=filter_obj)
+        self.child.add_filter(filter_obj=filter_obj)
 
 
-class ConceptQuery(SingleRootQueryObject):
+class ConceptQuery(SingleRootQueryDescription):
 
     def __init__(self, root: QueryObject,
                  date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(ConceptQuery))
-
-        self.date_aggregation_mode = date_aggregation_mode
-
-    def write_query(self) -> dict:
-        # we don't use super().write_query() here, since we don't want to write the label
-        query = {
-            Keys.type: self.query_type,
-            self.root_child_key: self.root.write_query(),
-            Keys.date_aggregation_mode: self.date_aggregation_mode
-        }
-        remove_null_values_from_query(query)
-        return query
+        super().__init__(root=root, query_type=obj_to_query_type(ConceptQuery),
+                         date_aggregation_mode=date_aggregation_mode)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
-
         root = convert_from_query(query[Keys.root])
 
         return cls(
@@ -167,20 +227,17 @@ class ConceptQuery(SingleRootQueryObject):
         )
 
 
-class SecondaryIdQuery(SingleRootQueryObject):
+class SecondaryIdQuery(SingleRootQueryDescription):
     def __init__(self, root: QueryObject, secondary_id: str, date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(SecondaryIdQuery))
+        super().__init__(root=root, query_type=obj_to_query_type(SecondaryIdQuery),
+                         date_aggregation_mode=date_aggregation_mode)
 
         self.secondary_id = secondary_id
-        self.date_aggregation_mode = date_aggregation_mode
 
     def write_query(self) -> dict:
         # we don't use super().write_query() here, since we don't want to write the label
         query = {
-            Keys.type: self.query_type,
-            self.root_child_key: self.root.write_query(),
             Keys.secondary_id: self.secondary_id,
-            Keys.date_aggregation_mode: self.date_aggregation_mode
         }
         remove_null_values_from_query(query)
         return query
@@ -196,11 +253,10 @@ class SecondaryIdQuery(SingleRootQueryObject):
         )
 
 
-class DateRestriction(SingleRootQueryObject):
+class DateRestriction(SingleChildQueryObject):
     def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None, date_range: List[str] = None,
                  label: str = None):
-        super().__init__(root=child, query_type=obj_to_query_type(DateRestriction), label=label,
-                         root_child_key=Keys.child)
+        super().__init__(child=child, query_type=obj_to_query_type(DateRestriction), label=label)
 
         if date_range is not None:
             start_date = date_range[0]
@@ -236,9 +292,9 @@ class DateRestriction(SingleRootQueryObject):
         return query
 
 
-class Negation(SingleRootQueryObject):
+class Negation(SingleChildQueryObject):
     def __init__(self, child: QueryObject, label: str = None):
-        super().__init__(root=child, query_type=obj_to_query_type(Negation), label=label, root_child_key=Keys.child)
+        super().__init__(child=child, query_type=obj_to_query_type(Negation), label=label)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -263,13 +319,13 @@ class AndOrElement(QueryObject):
     E.g. "AND", "OR"
     """
 
-    def unwrap(self):
-        pass
-
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None):
 
         super().__init__(query_type=query_type)
 
+        for child in children:
+            if isinstance(child, QueryDescription):
+                raise TypeError(f"Instance of ")
         self.children = children
         self.label = label
         self.create_exist = create_exist
@@ -368,9 +424,6 @@ class ConceptQueryTable:
 
 
 class SavedQuery(QueryObject):
-
-    def unwrap(self):
-        pass
 
     def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
         super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
@@ -492,9 +545,6 @@ class ConceptElement(QueryObject):
     def exclude_from_time_aggregation(self) -> None:
         self._exclude_from_time_aggregation = True
 
-    def unwrap(self):
-        pass
-
     def write_query(self) -> dict:
         query = {
             **super().write_query(),
@@ -547,13 +597,14 @@ class QueryEditor:
             if isinstance(query, QueryEditor):
                 query = QueryEditor.query
             if not isinstance(query, QueryObject):
-                raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryHolder]")
+                raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryEditor], not {type(query)}")
             and_or_queries.append(query)
 
         self.query = AndOrElement(query_type=query_type, children=and_or_queries,
                                   create_exist=create_exist, label=label)
 
-    def and_query(self, query: Union[dict, QueryObject, QueryEditor, str], create_exist: bool = None, label: str = None):
+    def and_query(self, query: Union[dict, QueryObject, QueryEditor, str], create_exist: bool = None,
+                  label: str = None):
         self._and_or_queries(query_type="AND", queries=[query],
                              create_exist=create_exist, label=label)
 
@@ -562,12 +613,12 @@ class QueryEditor:
                              create_exist=create_exist, label=label)
 
     def and_queries(self, queries: List[Union[dict, QueryObject, QueryEditor, str]],
-                  create_exist: bool = None, label: str = None):
+                    create_exist: bool = None, label: str = None):
         self._and_or_queries(query_type="AND", queries=queries,
                              create_exist=create_exist, label=label)
 
     def or_queries(self, queries: List[Union[dict, QueryObject, QueryEditor, str]],
-                 create_exist: bool = None, label: str = None):
+                   create_exist: bool = None, label: str = None):
         self._and_or_queries(query_type="OR", queries=queries,
                              create_exist=create_exist, label=label)
 
@@ -590,7 +641,8 @@ class QueryEditor:
         self.query.add_connector_selects(select_ids)
 
     def unwrap(self):
-        self.query.unwrap()
+        if isinstance(self.query, QueryDescription):
+            self.query = self.query.unwrap()
 
     def add_filter(self, filter_obj: dict) -> None:
         self.query.add_filter(filter_obj=filter_obj)
@@ -600,6 +652,7 @@ class QueryEditor:
 
     def write_query(self):
         self.query.write_query()
+
 
 query_type_to_obj_map = {
     "CONCEPT": ConceptElement,
