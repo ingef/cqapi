@@ -46,8 +46,7 @@ class QueryObject:
             Keys.type: self.query_type,
             Keys.label: self.label
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -143,8 +142,7 @@ class SingleRootQueryDescription(QueryDescription):
             self.root: self.root.write_query(),
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
     def set_label(self, label: str) -> None:
         raise ValueError(f"Class QueryDescription has no attribute label")
@@ -188,8 +186,7 @@ class SingleChildQueryObject(QueryObject):
             **super().write_query(),
             Keys.child: self.child.write_query()
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
     def add_concept_select(self, select_id: str) -> None:
         self.child.add_concept_select(select_id)
@@ -237,8 +234,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         query = {
             Keys.secondary_id: self.secondary_id,
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -286,8 +282,7 @@ class DateRestriction(SingleChildQueryObject):
             **super().write_query(),
             Keys.date_range: [self.start_date, self.end_date]
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
 
 class Negation(SingleChildQueryObject):
@@ -307,8 +302,7 @@ class Negation(SingleChildQueryObject):
         query = {
             **super().write_query()
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
 
 class AndOrElement(QueryObject):
@@ -369,8 +363,7 @@ class AndOrElement(QueryObject):
             Keys.children: [child.write_query() for child in self.children],
             Keys.create_exist: self.create_exist
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
 
 class AndElement(AndOrElement):
@@ -417,8 +410,7 @@ class ConceptQueryTable:
             Keys.filters: self.filters,
             Keys.selects: self.selects
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
 
 class SavedQuery(QueryObject):
@@ -438,8 +430,7 @@ class SavedQuery(QueryObject):
             Keys.query: self.query_id,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -552,8 +543,7 @@ class ConceptElement(QueryObject):
             Keys.selects: self.selects,
             Keys.tables: [table.write_table() for table in self.tables]
         }
-        remove_null_values_from_query(query)
-        return query
+        return remove_null_values_from_query(query)
 
 
 class QueryEditor:
@@ -711,3 +701,7 @@ def create_query(concept_id: str, concepts: dict, concept_query: bool = False, c
         return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
 
     return query
+
+query = {"type":"CONCEPT_QUERY","root":{"type":"AND","children":[{"type":"OR","children":[{"type":"CONCEPT","ids":["dataset1.alter"],"tables":[{"id":"dataset1.alter.alter","dateColumn":{"value":"dataset1.alter.alter.versichertenzeit"},"selects":[],"filters":[]}],"selects":[]}]}]}}
+
+print(QueryEditor(query).write_query())
