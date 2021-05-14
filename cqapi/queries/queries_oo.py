@@ -484,9 +484,9 @@ class ConceptElement(QueryObject):
                 date_column_id = None
             else:
                 date_column_id = query_table[Keys.date_column][Keys.value]
-                
+
             tables.append(ConceptTable(connector_id=query_table[Keys.id],
-                                       date_column_id=query_table.get(Keys.date_column, {}).get(Keys.value),
+                                       date_column_id=date_column_id,
                                        select_ids=query_table.get(Keys.selects),
                                        filter_objs=query_table.get(Keys.filters)))
         return cls(ids=query[Keys.ids],
