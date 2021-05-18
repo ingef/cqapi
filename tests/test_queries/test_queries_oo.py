@@ -1,3 +1,4 @@
+from cqapi.queries.editor import QueryEditor
 from cqapi.queries.queries_oo import *
 from unittest import TestCase
 
@@ -157,3 +158,154 @@ def test_create_query():
     query_out = create_query(concept_id="dataset1.alter", concepts=concepts,
                              connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).write_query()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
+
+
+def test_translate_query():
+    # translate table
+    icd_au_table = {
+        "id": "dataset1.au_diagnose",
+        "connectorId": "dataset1.icd.au_fall",
+        "label": "AU-Diagnose",
+        "dateColumn": {
+            "defaultValue": "dataset1.icd.au_fall.au-beginn",
+            "options": [
+                {
+                    "label": "AU-Beginn",
+                    "value": "dataset1.icd.au_fall.au-beginn"
+                }
+            ]
+        },
+        "filters": [
+            {
+                "id": "dataset1.icd.au_fall.fall_id",
+                "label": "Fallnummer",
+                "type": "BIG_MULTI_SELECT",
+                "description": "Fallnummer"
+            }
+        ],
+        "selects": [
+            {
+                "id": "dataset1.icd.au_fall.liste_fall_id",
+                "label": "Ausgabe Fallnummer"
+            }
+        ]
+    }
+    icd_kh_table = {
+        "id": "dataset1.kh_diagnose",
+        "connectorId": "dataset1.icd.kh_diagnose_icd_code",
+        "label": "KH-Diagnose",
+        "dateColumn": {
+            "defaultValue": "dataset1.icd.kh_diagnose_icd_code.entlassungsdatum",
+            "options": [
+                {
+                    "label": "Entlassungsdatum",
+                    "value": "dataset1.icd.kh_diagnose_icd_code.entlassungsdatum"
+                }
+            ]
+        },
+        "filters": [
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.fallzahl",
+                "label": "Fallzahl",
+                "type": "INTEGER_RANGE",
+                "unit": "Fälle",
+                "description": "Anzahl der Fälle"
+            },
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.anzahl_quartale",
+                "label": "Anzahl Quartale",
+                "type": "INTEGER_RANGE",
+                "unit": "Quartale",
+                "description": "Anzahl der Quartale mit Diagnose"
+            }
+        ],
+        "selects": [
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.liste_erster_entlassungstag",
+                "label": "Ausgabe erster Entlassungstag"
+            },
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.liste_letzter_entlassungstag",
+                "label": "Ausgabe letzter Entlassungstag"
+            }
+        ]
+    }
+    concepts = {"dataset1.icd": {"tables": [icd_au_table, icd_kh_table],
+                                 "children": ["dataset1.icd.a", "dataset1.icd.b"],
+                                 "selects": [{
+                                     "id": "dataset1.icd.icd_exists",
+                                     "label": "ICD liegt vor"
+                                 }]
+                                 }}
+    table = ConceptTable(connector_id="dataset2.icd.au_fall",
+                         date_column_id="dataset2.icd.au_fall.au-beginn",
+                         select_ids=["dataset2.icd.au_fall.liste_fall_id",
+                                     "dataset2.icd.au_fall.select_to_drop"],
+                         filter_objs=[{"filter": "dataset2.icd.au_fall.fall_id"},
+                                      {"filter": "dataset2.icd.au_fall.filter_to_drop"}])
+
+    removed_ids = ConqueryIdCollection()
+    new_table = table.translate(concepts=concepts, removed_ids=removed_ids)
+
+    # check old table
+    table_val = ConceptTable(connector_id="dataset2.icd.au_fall",
+                             date_column_id="dataset2.icd.au_fall.au-beginn",
+                             select_ids=["dataset2.icd.au_fall.liste_fall_id"],
+                             filter_objs=[{"filter": "dataset2.icd.au_fall.fall_id"}])
+    assert table == table_val
+
+    # check removed ids
+    removed_ids_val = ConqueryIdCollection()
+    removed_ids_val.add(ConqueryId("dataset2.icd.au_fall.select_to_drop", "connector_select"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.au_fall.filter_to_drop", "filter"))
+    assert removed_ids == removed_ids_val
+
+    # check new table
+    new_table_val = ConceptTable(connector_id="dataset1.icd.au_fall",
+                                 date_column_id="dataset1.icd.au_fall.au-beginn",
+                                 select_ids=["dataset1.icd.au_fall.liste_fall_id"],
+                                 filter_objs=[{"filter": "dataset1.icd.au_fall.fall_id"}])
+
+    assert new_table == new_table_val
+
+    # test concept element
+    removed_ids = ConqueryIdCollection()
+    table_1 = ConceptTable(connector_id="dataset2.icd.au_fall")
+    table_2 = ConceptTable(connector_id="dataset2.icd.table_to_drop")
+    concept_element = ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a",
+                                          "dataset2.icd.a.to_drop", "dataset2.icd.concept_id_to_drop"],
+                                     tables=[table_1, table_2],
+                                     exclude_from_time_aggregation=True,
+                                     exclude_from_secondary_id=True,
+                                     label="test",
+                                     concept_selects=["dataset2.icd.icd_exists", "dataset2.icd.select_to_drop"])
+    new_concept_element = concept_element.translate(concepts=concepts, children_ids=["dataset1.icd.a.a",
+                                                                                     "dataset1.icd.a.b"],
+                                                    removed_ids=removed_ids)
+
+    assert concept_element == ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a"],
+                                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")],
+                                             exclude_from_secondary_id=True,
+                                             exclude_from_time_aggregation=True,
+                                             label="test",
+                                             concept_selects=["dataset2.icd.icd_exists"])
+
+    removed_ids_val = ConqueryIdCollection()
+    removed_ids_val.add(ConqueryId("dataset2.icd.a.to_drop", id_type="concept"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.concept_id_to_drop", id_type="concept"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.table_to_drop", id_type="connector"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.select_to_drop", id_type="concept_select"))
+
+    assert removed_ids == removed_ids_val
+
+    assert new_concept_element == ConceptElement(ids=["dataset1.icd.a", "dataset1.icd.a.a"],
+                                                 tables=[ConceptTable(connector_id="dataset1.icd.au_fall")],
+                                                 exclude_from_secondary_id=True,
+                                                 exclude_from_time_aggregation=True,
+                                                 label="test",
+                                                 concept_selects=["dataset1.icd.icd_exists"])
+
+
+
+
+test_translate_query()

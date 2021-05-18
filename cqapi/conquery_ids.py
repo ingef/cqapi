@@ -21,6 +21,14 @@ def is_dataset_id(dataset_id: str):
     return False
 
 
+def change_dataset(new_dataset: str, conquery_id: str):
+    conquery_id_list = conquery_id.split(".")
+    if len(conquery_id_list) < 2:
+        raise ValueError(f"Eva_id has to be of shape 'dataset'.'id'.'child_id'..., not {conquery_id}")
+
+    return ".".join([new_dataset, *conquery_id_list[1:]])
+
+
 @check_arg_type(convert_to_list={"conquery_id_elements": str})
 def id_elements_to_id(conquery_id_elements: list):
     return conquery_id_separator.join(conquery_id_elements)

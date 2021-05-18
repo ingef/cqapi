@@ -3,18 +3,10 @@ from io import StringIO
 from time import sleep
 import requests
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
+from cqapi.exceptions import ConqueryClientConnectionError
 from cqapi.queries import get_dataset_from_query
-from cqapi.queries.queries_oo import QueryObject, QueryEditor
+from cqapi.queries.queries_oo import QueryObject
 from typing import Union
-
-
-class CqApiError(BaseException):
-    pass
-
-
-class ConqueryClientConnectionError(CqApiError):
-    def __init__(self, msg):
-        self.message = msg
 
 
 def get_json(session, url):
@@ -246,9 +238,9 @@ class ConqueryConnection(object):
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
-    def execute_query(self, query: Union[dict, QueryObject, QueryEditor], dataset: str = None,
+    def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
-        if isinstance(query, QueryObject) or isinstance(query, QueryEditor):
+        if isinstance(query, QueryObject):
             query = query.write_query()
 
         if dataset is None:
