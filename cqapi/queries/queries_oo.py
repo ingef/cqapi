@@ -49,7 +49,7 @@ class QueryObject:
 
     def add_connector_selects(self, select_ids: List[str]) -> None:
         for select_id in select_ids:
-            self.add_concept_select(select_id=select_id)
+            self.add_connector_select(select_id=select_id)
 
     def add_filter(self, filter_obj: dict) -> None:
         raise NotImplementedError()
