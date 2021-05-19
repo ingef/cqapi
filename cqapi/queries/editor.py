@@ -7,6 +7,7 @@ from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import change_dataset, get_dataset, get_root_concept_id
 from cqapi.namespace import Keys
 
+
 class QueryEditor:
     """Helper to build and execute queries"""
     query: QueryObject = None
@@ -111,13 +112,9 @@ class QueryEditor:
 
         # get children ids that exist
         concept_ids = self.query.get_concept_ids()
-        children_ids = []
-        for concept_id in concept_ids:
-            new_concept_id = change_dataset(new_dataset=new_dataset, conquery_id=concept_id)
-            concept = conquery_conn.get_concept(get_root_concept_id(new_concept_id))
-            if new_concept_id in [child_id for child in concept for child_id in child[Keys.ids]]:
-                children_ids.append(new_concept_id)
-
+        children_ids = check_concept_ids_in_concepts_for_new_dataset(concept_ids=concept_ids,
+                                                                     new_dataset=new_dataset,
+                                                                     conquery_conn=conquery_conn)
         # translate
         conquery_ids = ConqueryIdCollection()
         new_query = self.query.translate(concepts=concepts, removed_ids=conquery_ids, children_ids=children_ids)
@@ -127,3 +124,37 @@ class QueryEditor:
 
     def execute_query(self, conquery_conn: ConqueryConnection, label: str = None) -> str:
         return conquery_conn.execute_query(self.query, label=label)
+
+
+def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
+                                                  new_dataset: str, conquery_conn: ConqueryConnection):
+    """
+    For each concept_id in concept_ids it checks if the concept_id exist in the concept-object of the new dataset.
+    This ist needed for translating children concepts that are on level 3 or higher
+    :param concept_ids:
+    :param new_dataset:
+    :param conquery_conn:
+    :return:
+    """
+
+    # group concept_ids by root_concept_id
+    concept_ids_dict = dict()
+    for concept_id in concept_ids:
+        root_concept_id = get_root_concept_id(concept_id)
+        concept_ids_dict[root_concept_id] = [concept_id, *concept_ids_dict.get(root_concept_id, [])]
+
+    # for each root concept_id get the concept and check if concept_ids are in there
+    children_ids = []
+    for root_concept_id, child_concept_ids in concept_ids_dict.items():
+        new_root_concept_id = change_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
+        new_child_concept_ids = [change_dataset(new_dataset=new_dataset,
+                                                conquery_id=child_concept_id)
+                                 for child_concept_id in child_concept_ids]
+
+        concept = conquery_conn.get_concept(new_root_concept_id)
+        concept_ids_in_concept = [child_id for child in concept for child_id in child[Keys.ids]]
+
+        children_ids.extend([child_concept_id for child_concept_id in new_child_concept_ids
+                             if child_concept_id in concept_ids_in_concept])
+
+    return children_ids
