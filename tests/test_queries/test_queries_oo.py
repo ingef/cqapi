@@ -304,8 +304,3 @@ def test_translate_query():
                                                  exclude_from_time_aggregation=True,
                                                  label="test",
                                                  concept_selects=["dataset1.icd.icd_exists"])
-
-
-
-
-test_translate_query()
