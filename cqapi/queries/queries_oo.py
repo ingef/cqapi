@@ -2,8 +2,8 @@ from __future__ import annotations
 from cqapi.namespace import Keys
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
-    get_dataset, change_dataset
-from cqapi.search_conquery_id import find_concept_id, ConqueryId, ConqueryIdCollection
+    get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
+from cqapi.search_conquery_id import find_concept_id
 from typing import List, Type, Union
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError
