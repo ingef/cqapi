@@ -2,9 +2,8 @@ from __future__ import annotations
 from typing import Union, List, Tuple
 from cqapi.queries.queries_oo import QueryObject, convert_from_query, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndOrElement, QueryDescription
-from cqapi.search_conquery_id import ConqueryIdCollection
 from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import change_dataset, get_dataset, get_root_concept_id
+from cqapi.conquery_ids import change_dataset, get_dataset, get_root_concept_id, ConqueryIdCollection
 from cqapi.namespace import Keys
 
 
