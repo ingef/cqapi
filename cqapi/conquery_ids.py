@@ -1,5 +1,5 @@
-from typing import Union, List
-
+from __future__ import annotations
+from typing import Union, List, Set
 from cqapi.namespace import Keys
 from cqapi.util import check_arg_type
 
@@ -270,22 +270,35 @@ class ConqueryId:
 
         return label_dict
 
-class ConqueryIdCollection:
-    def __init__(self):
-        self.conquery_ids: List[ConqueryId] = list()
 
-    def add(self, removed_id: ConqueryId):
-        self.conquery_ids.append(removed_id)
+class ConqueryIdCollection:
+    def __init__(self, conquery_ids: Set[ConqueryId] = None):
+        if conquery_ids is None:
+            self.conquery_ids: Set[ConqueryId] = set()
+        else:
+            self.conquery_ids = conquery_ids
+
+    def add(self, conquery_id: ConqueryId):
+        self.conquery_ids.add(conquery_id)
+
+    def update(self, other: ConqueryIdCollection):
+        if isinstance(other, ConqueryIdCollection):
+            for conquery_id in other.conquery_ids:
+                self.add(conquery_id)
+        else:
+            raise NotImplementedError
 
     def create_label_dicts(self, concepts: dict):
         label_dicts = list()
         for conquery_id in self.conquery_ids:
-            label_dicts.append(conquery_id.get_label_dict(concepts))
+            label_dicts.append(conquery_id.get_label_dict(concepts=concepts))
         return label_dicts
 
     def __eq__(self, other):
         if isinstance(other, ConqueryIdCollection):
-            return set(self.conquery_ids) == set(other.conquery_ids)
+            return self.conquery_ids == other.conquery_ids
+
+        raise NotImplementedError
 
     def print_id_labels_as_table(self, concepts: dict):
         import pandas as pd
