@@ -1,22 +1,22 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
-from cqapi.queries.queries_oo import QueryObject, convert_from_query, SavedQuery, DateRestriction, ConceptQuery, \
+from cqapi.queries.elements import QueryObject, convert_from_query, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndOrElement, QueryDescription
+from cqapi.queries.utils import create_query, translate_query
 from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import change_dataset, get_dataset, get_root_concept_id, ConqueryIdCollection
-from cqapi.namespace import Keys
+from cqapi.conquery_ids import ConqueryIdCollection
 
 
 class QueryEditor:
     """Helper to build and execute queries"""
     query: QueryObject = None
 
-    def __init__(self, query: Union[QueryObject, dict, str]):
+    def __init__(self, query: Union[QueryObject, dict, str] = None):
         if isinstance(query, dict):
             query = convert_from_query(query)
         if isinstance(query, str):
             query = SavedQuery(query_id=query)
-        if not isinstance(query, QueryObject):
+        if query is not None and not isinstance(query, QueryObject):
             raise ValueError(f"query must be of type QueryObject or dict")
 
         self.query = query
@@ -106,54 +106,32 @@ class QueryEditor:
 
     def translate(self, concepts: dict, conquery_conn: ConqueryConnection, return_removed_ids: bool = False) -> \
             Union[Tuple[QueryObject, ConqueryIdCollection], QueryObject]:
-
-        new_dataset = get_dataset(next(iter(concepts)))
-
-        # get children ids that exist
-        concept_ids = self.query.get_concept_ids()
-        children_ids = check_concept_ids_in_concepts_for_new_dataset(concept_ids=concept_ids,
-                                                                     new_dataset=new_dataset,
-                                                                     conquery_conn=conquery_conn)
-        # translate
-        conquery_ids = ConqueryIdCollection()
-        new_query = self.query.translate(concepts=concepts, removed_ids=conquery_ids, children_ids=children_ids)
-        if return_removed_ids:
-            return new_query, conquery_ids
-        return new_query
+        return translate_query(
+            query=self.query,
+            concepts=concepts,
+            conquery_conn=conquery_conn,
+            return_removed_ids=return_removed_ids
+        )
 
     def execute_query(self, conquery_conn: ConqueryConnection, label: str = None) -> str:
         return conquery_conn.execute_query(self.query, label=label)
 
-
-def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
-                                                  new_dataset: str, conquery_conn: ConqueryConnection):
-    """
-    For each concept_id in concept_ids it checks if the concept_id exist in the concept-object of the new dataset.
-    This ist needed for translating children concepts that are on level 3 or higher
-    :param concept_ids:
-    :param new_dataset:
-    :param conquery_conn:
-    :return:
-    """
-
-    # group concept_ids by root_concept_id
-    concept_ids_dict = dict()
-    for concept_id in concept_ids:
-        root_concept_id = get_root_concept_id(concept_id)
-        concept_ids_dict[root_concept_id] = [concept_id, *concept_ids_dict.get(root_concept_id, [])]
-
-    # for each root concept_id get the concept and check if concept_ids are in there
-    children_ids = []
-    for root_concept_id, child_concept_ids in concept_ids_dict.items():
-        new_root_concept_id = change_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
-        new_child_concept_ids = [change_dataset(new_dataset=new_dataset,
-                                                conquery_id=child_concept_id)
-                                 for child_concept_id in child_concept_ids]
-
-        concept = conquery_conn.get_concept(new_root_concept_id)
-        concept_ids_in_concept = [child_id for child in concept for child_id in child[Keys.ids]]
-
-        children_ids.extend([child_concept_id for child_concept_id in new_child_concept_ids
-                             if child_concept_id in concept_ids_in_concept])
-
-    return children_ids
+    def create_query(self, concept_id: str, concepts: dict, concept_query: bool = False,
+                     connector_ids: List[str] = None,
+                     concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
+                     filter_objs: List[dict] = None,
+                     exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
+                     date_aggregation_mode: str = None,
+                     start_date: str = None, end_date: str = None):
+        self.query = create_query(concept_id=concept_id,
+                                  concepts=concepts,
+                                  concept_query=concept_query,
+                                  connector_ids=connector_ids,
+                                  concept_select_ids=concept_select_ids,
+                                  connector_select_ids=connector_select_ids,
+                                  filter_objs=filter_objs,
+                                  exclude_from_secondary_id=exclude_from_secondary_id,
+                                  exclude_from_time_aggregation=exclude_from_time_aggregation,
+                                  date_aggregation_mode=date_aggregation_mode,
+                                  start_date=start_date,
+                                  end_date=end_date)

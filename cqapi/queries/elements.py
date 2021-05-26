@@ -4,7 +4,7 @@ from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Type, Union
+from typing import List, Type, Union, Tuple
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError
 
@@ -15,6 +15,7 @@ def remove_null_values_from_query(query: dict):
 
 class QueryObject:
     """Base Class of all query elements"""
+    matching_type: str = None
 
     def __init__(self, query_type: str, label: str = None):
         self.query_type = query_type
@@ -80,16 +81,24 @@ class QueryObject:
     def unwrap(self):
         pass
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         raise NotImplementedError
 
     def get_concept_ids(self):
         raise NotImplementedError
 
+    def get_concept_elements(self) -> List[QueryObject]:
+        raise NotImplementedError
+
 
 class QueryDescription(QueryObject):
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+    def get_concept_elements(self) -> List[QueryObject]:
+        raise NotImplementedError
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         raise NotImplementedError
 
     def copy(self):
@@ -170,6 +179,9 @@ class SingleRootQueryDescription(QueryDescription):
     def get_concept_ids(self):
         return self.root.get_concept_ids()
 
+    def get_concept_elements(self):
+        return self.root.get_concept_elements()
+
 
 class SingleChildQueryObject(QueryObject):
     """
@@ -217,6 +229,9 @@ class SingleChildQueryObject(QueryObject):
     def get_concept_ids(self):
         return self.child.get_concept_ids()
 
+    def get_concept_elements(self):
+        return self.child.get_concept_elements()
+
 
 class ConceptQuery(SingleRootQueryDescription):
 
@@ -225,11 +240,18 @@ class ConceptQuery(SingleRootQueryDescription):
         super().__init__(root=root, query_type=obj_to_query_type(ConceptQuery),
                          date_aggregation_mode=date_aggregation_mode)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return ConceptQuery(root=self.root.translate(concepts=concepts,
-                                                     removed_ids=removed_ids,
-                                                     children_ids=children_ids),
-                            date_aggregation_mode=self.date_aggregation_mode)
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        new_root, root = self.root.translate(concepts=concepts,
+                                             removed_ids=removed_ids,
+                                             children_ids=children_ids)
+        if new_root is None:
+            return None, None
+        new_concept_query = ConceptQuery(root=new_root,
+                                         date_aggregation_mode=self.date_aggregation_mode)
+        concept_query = ConceptQuery(root=root,
+                                     date_aggregation_mode=self.date_aggregation_mode)
+        return new_concept_query, concept_query
 
     def copy(self):
         return ConceptQuery(root=self.root.copy(),
@@ -258,11 +280,20 @@ class SecondaryIdQuery(SingleRootQueryDescription):
     def set_secondary_id(self, secondary_id: str = None):
         self.secondary_id = secondary_id
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return SecondaryIdQuery(root=self.root.translate(concepts=concepts, removed_ids=removed_ids,
-                                                         children_ids=children_ids),
-                                secondary_id=self.secondary_id,
-                                date_aggregation_mode=self.date_aggregation_mode)
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        new_root, root = self.root.translate(concepts=concepts, removed_ids=removed_ids,
+                                             children_ids=children_ids)
+        if new_root is None:
+            return None, None
+
+        new_secondary_id_query = SecondaryIdQuery(root=new_root,
+                                                  secondary_id=self.secondary_id,
+                                                  date_aggregation_mode=self.date_aggregation_mode)
+        secondary_id_query = SecondaryIdQuery(root=root,
+                                              secondary_id=self.secondary_id,
+                                              date_aggregation_mode=self.date_aggregation_mode)
+        return new_secondary_id_query, secondary_id_query
 
     def copy(self):
         return SecondaryIdQuery(root=self.root.copy(), secondary_id=self.secondary_id,
@@ -316,11 +347,21 @@ class DateRestriction(SingleChildQueryObject):
         self.end_date = end_date
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return DateRestriction(child=self.child.translate(concepts=concepts,
-                                                          removed_ids=removed_ids, children_ids=children_ids),
-                               start_date=self.start_date,
-                               end_date=self.end_date,
-                               label=self.label)
+        new_child, child = self.child.translate(concepts=concepts,
+                                                removed_ids=removed_ids, children_ids=children_ids)
+        if new_child is None:
+            return None, None
+
+        new_date_restriction = DateRestriction(child=new_child,
+                                               start_date=self.start_date,
+                                               end_date=self.end_date,
+                                               label=self.label)
+        date_restriction = DateRestriction(child=child,
+                                           start_date=self.start_date,
+                                           end_date=self.end_date,
+                                           label=self.label)
+
+        return new_date_restriction, date_restriction
 
     def copy(self):
         return DateRestriction(child=self.child.copy(), start_date=self.start_date, end_date=self.end_date,
@@ -356,8 +397,17 @@ class Negation(SingleChildQueryObject):
                         label=self.label)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return Negation(child=self.child.copy(),
-                        label=self.label)
+        new_child, child = self.child.translate(concepts=concepts, removed_ids=removed_ids,
+                                                children_ids=children_ids)
+        if new_child is None:
+            return None, None
+
+        new_negation = Negation(child=new_child,
+                                label=self.label)
+        negation = Negation(child=child,
+                            label=self.label)
+
+        return new_negation, negation
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -381,7 +431,8 @@ class AndOrElement(QueryObject):
     E.g. "AND", "OR"
     """
 
-    def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None):
+    def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
+                 matching_type: str = None):
 
         super().__init__(query_type=query_type)
 
@@ -392,25 +443,51 @@ class AndOrElement(QueryObject):
         self.label = label
         self.create_exist = create_exist
 
+        self.matching_type = matching_type
+
     def copy(self):
         raise NotImplementedError
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        raise NotImplementedError
+        cls = type(self)
+
+        children = list()
+        new_children = list()
+
+        for own_child in self.children:
+            new_child, child = own_child.translate(concepts=concepts,
+                                               removed_ids=removed_ids,
+                                               children_ids=children_ids)
+            if new_child is not None:
+                new_children.append(new_child)
+                children.append(child)
+
+        if not new_children:
+            return None, None
+
+        new_and_element = cls(children=new_children,
+                                     create_exist=self.create_exist,
+                                     label=self.label,
+                                     matching_type=self.matching_type, query_type=self.query_type)
+        and_element = cls(children=children,
+                                 create_exist=self.create_exist,
+                                 label=self.label,
+                                 matching_type=self.matching_type, query_type=self.query_type)
+
+        return new_and_element, and_element
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        children = list()
-        for child in query[Keys.children]:
-            children.append(convert_from_query(child))
-        # children = [convert_from_query(child) for child in query[Keys.children]]
-        return AndOrElement(
-            query_type=query[Keys.type],
+        children = [convert_from_query(child) for child in query[Keys.children]]
+
+        return cls(
             children=children,
             create_exist=query.get(Keys.create_exist),
-            label=query.get(Keys.label)
+            label=query.get(Keys.label),
+            matching_type=query.get(Keys.matching_type),
+            query_type=query[Keys.type]  # this is not used, see class doc
         )
 
     def add_concept_select(self, select_id: str):
@@ -447,18 +524,49 @@ class AndOrElement(QueryObject):
             root_concept_ids = root_concept_ids.union(child.get_concept_ids())
         return root_concept_ids
 
+    def get_concept_elements(self):
+        return [concept_element for child in self.children for concept_element in child.get_concept_elements()]
+
 
 class AndElement(AndOrElement):
-    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None):
-        super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label)
+    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
+                 matching_type: str = None, query_type: str = None):
+        """
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return AndElement(children=[
-            child.translate(concepts=concepts, removed_ids=removed_ids, children_ids=children_ids)
-            for child in self.children],
-            create_exist=self.create_exist,
-            label=self.label)
+        :param children:
+        :param create_exist:
+        :param label:
+        :param matching_type:
+        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
+        """
+        super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
+                         label=label, matching_type=matching_type)
+
+    def translate2(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        children = list()
+        new_children = list()
+
+        for own_child in self.children:
+            new_child, child = own_child.translate(concepts=concepts,
+                                               removed_ids=removed_ids,
+                                               children_ids=children_ids)
+            if new_child is not None:
+                new_children.append(new_child)
+                children.append(child)
+
+        if not new_children:
+            return None, None
+
+        new_and_element = AndElement(children=new_children,
+                                     create_exist=self.create_exist,
+                                     label=self.label,
+                                     matching_type=self.matching_type)
+        and_element = AndElement(children=children,
+                                 create_exist=self.create_exist,
+                                 label=self.label,
+                                 matching_type=self.matching_type)
+
+        return new_and_element, and_element
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
@@ -466,16 +574,52 @@ class AndElement(AndOrElement):
 
 
 class OrElement(AndOrElement):
-    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None):
-        super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label)
+    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
+                 matching_type: str = None, query_type: str = None):
+        """
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        :param children:
+        :param create_exist:
+        :param label:
+        :param matching_type:
+        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
+        """
+        super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
+                         label=label, matching_type=matching_type)
+
+    def translate3(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        children = list()
+        new_children = list()
+
+        for own_child in self.children:
+            new_child, child = own_child.translate(concepts=concepts,
+                                               removed_ids=removed_ids,
+                                               children_ids=children_ids)
+            if new_child is not None:
+                new_children.append(new_child)
+                children.append(child)
+
+        if not new_children:
+            return None, None
+
+        new_and_element = OrElement(children=new_children,
+                                     create_exist=self.create_exist,
+                                     label=self.label,
+                                     matching_type=self.matching_type)
+        and_element = OrElement(children=children,
+                                 create_exist=self.create_exist,
+                                 label=self.label,
+                                 matching_type=self.matching_type)
+
+        return new_and_element, and_element
+
+    def translate2(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         return OrElement(children=[
             child.translate(concepts=concepts, removed_ids=removed_ids, children_ids=children_ids)
             for child in self.children],
             create_exist=self.create_exist,
-            label=self.label)
+            label=self.label,
+            matching_type=self.matching_type)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
@@ -532,6 +676,9 @@ class SavedQuery(QueryObject):
     def get_concept_ids(self):
         raise SavedQueryTranslationError
 
+    def get_concept_elements(self) -> List[QueryObject]:
+        raise SavedQueryTranslationError
+
 
 class ConceptTable:
     """ Table/Connectors for query element CONCEPT"""
@@ -571,7 +718,7 @@ class ConceptTable:
             self.filters.remove(filter_obj)
 
     def translate(self, concepts: dict,
-                  removed_ids: ConqueryIdCollection) -> Union[ConceptTable, None]:
+                  removed_ids: ConqueryIdCollection) -> Tuple[Union[ConceptTable, None], Union[ConceptTable, None]]:
         new_dataset = get_dataset(next(iter(concepts)))
         new_root_concept_id = change_dataset(new_dataset=new_dataset,
                                              conquery_id=get_root_concept_id(self.connector_id))
@@ -582,50 +729,61 @@ class ConceptTable:
         table_list = [table for table in concepts[new_root_concept_id]["tables"]
                       if is_same_conquery_id(table["connectorId"], new_connector_id)]
         if len(table_list) == 0:
-            removed_ids.add(removed_id=ConqueryId(self.connector_id, id_type="connector"))
-            return None
+            removed_ids.add(conquery_id=ConqueryId(self.connector_id, id_type="connector"))
+            return None, None
 
         table = table_list[0]
 
+        # translate date column
+        date_column_id = self.date_column_id
+        new_date_column_id = None
         if self.date_column_id is not None:
             new_date_column_id = change_dataset(new_dataset=new_dataset,
                                                 conquery_id=self.date_column_id)
             table_date_column_ids = [date_column_obj[Keys.value]
                                      for date_column_obj in table[Keys.date_column][Keys.options]]
-            if not is_in_conquery_ids(new_date_column_id, table_date_column_ids):
+            if is_in_conquery_ids(new_date_column_id, table_date_column_ids):
+                date_column_id = self.date_column_id
+            else:
                 removed_ids.add(ConqueryId(self.date_column_id, id_type="date"))
-                self.date_column_id = None
-                new_date_column_id = None
-        else:
-            new_date_column_id = None
 
-        selects_to_remove = list()
+        # translate connector selects
+        selects = list()
+        new_selects = list()
         for select_id in self.selects:
             new_select_id = change_dataset(new_dataset=new_dataset, conquery_id=select_id)
-            if new_select_id not in [table_select[Keys.id] for table_select in table[Keys.selects]]:
+            if new_select_id in [table_select[Keys.id] for table_select in table[Keys.selects]]:
+                selects.append(select_id)
+                new_selects.append(new_select_id)
+            else:
                 removed_ids.add(ConqueryId(select_id, id_type="connector_select"))
-                selects_to_remove.append(select_id)
-        self.remove_selects(selects_to_remove)
-        new_selects = [change_dataset(new_dataset=new_dataset, conquery_id=select_id) for select_id in self.selects]
 
-        filters_to_remove = list()
+        filter_objs = list()
+        new_filter_objs = list()
+
+        # translate filter
         for filter_obj in self.filters:
             new_filter_id = change_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
-            if not is_in_conquery_ids(new_filter_id,
-                                      [table_filter[Keys.id] for table_filter in table[Keys.filters]]):
+            if is_in_conquery_ids(new_filter_id,
+                                  [table_filter[Keys.id] for table_filter in table[Keys.filters]]):
+                filter_objs.append(deepcopy(filter_obj))
+                new_filter_obj = deepcopy(filter_obj)
+                new_filter_obj[Keys.filter] = new_filter_id
+                new_filter_objs.append(new_filter_obj)
+            else:
                 removed_ids.add(ConqueryId(filter_obj[Keys.filter], id_type="filter"))
-                filters_to_remove.append(filter_obj)
-        self.remove_filters(filters_to_remove)
-        new_filter_objs = deepcopy(self.filters)
-        for new_filter_obj in new_filter_objs:
-            new_filter_obj[Keys.filter] = change_dataset(new_dataset=new_dataset,
-                                                         conquery_id=new_filter_obj[Keys.filter])
 
-        return ConceptTable(connector_id=new_connector_id,
-                            date_column_id=new_date_column_id,
-                            select_ids=new_selects,
-                            filter_objs=new_filter_objs
-                            )
+        new_table = ConceptTable(connector_id=new_connector_id,
+                                 date_column_id=new_date_column_id,
+                                 select_ids=new_selects,
+                                 filter_objs=new_filter_objs
+                                 )
+        table = ConceptTable(connector_id=self.connector_id,
+                             date_column_id=date_column_id,
+                             select_ids=selects,
+                             filter_objs=filter_objs
+                             )
+        return new_table, table
 
     def write_table(self) -> dict:
         date_column = {Keys.value: self.date_column_id} if self.date_column_id is not None else None
@@ -633,8 +791,8 @@ class ConceptTable:
         query = {
             Keys.id: self.connector_id,
             Keys.date_column: date_column,
-            Keys.filters: self.filters,
-            Keys.selects: self.selects
+            Keys.filters: self.filters if self.filters else None,
+            Keys.selects: self.selects if self.selects else None
         }
         return remove_null_values_from_query(query)
 
@@ -654,7 +812,8 @@ class ConceptElement(QueryObject):
                  connector_ids: List[str] = None, concept_selects: list = None,
                  connector_selects: List[str] = None, filter_objs: List[str] = None,
                  exclude_from_secondary_id: bool = None,
-                 exclude_from_time_aggregation: bool = None, label: str = None):
+                 exclude_from_time_aggregation: bool = None, label: str = None,
+                 matching_type: str = None):
 
         super().__init__(query_type=obj_to_query_type(ConceptElement), label=label)
 
@@ -662,6 +821,7 @@ class ConceptElement(QueryObject):
         self._exclude_from_secondary_id = exclude_from_secondary_id
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
         self.selects = concept_selects or list()
+        self.matching_type = matching_type
 
         self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
@@ -682,7 +842,7 @@ class ConceptElement(QueryObject):
                               label=self.label)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
-                  children_ids: List[str]) -> ConceptElement:
+                  children_ids: List[str]) -> Tuple[Union[ConceptElement, None], Union[ConceptElement, None]]:
 
         new_dataset = get_dataset(next(iter(concepts)))
 
@@ -696,7 +856,8 @@ class ConceptElement(QueryObject):
                 concept_ids.append(concept_id)
             else:
                 removed_ids.add(ConqueryId(conquery_id=concept_id, id_type="concept"))
-        self.ids = concept_ids
+        if not concept_ids:
+            return None, None
 
         # translate concept selects
         new_concept_select_ids = list()
@@ -710,21 +871,31 @@ class ConceptElement(QueryObject):
                 concept_select_ids.append(concept_select_id)
             else:
                 removed_ids.add(ConqueryId(conquery_id=concept_select_id, id_type="concept_select"))
-        self.selects = concept_select_ids
 
         # translate tables
         new_tables = []
+        tables = []
         for table in self.tables:
-            new_table = table.translate(concepts=concepts, removed_ids=removed_ids)
+            new_table, table = table.translate(concepts=concepts, removed_ids=removed_ids)
             if new_table is not None:
                 new_tables.append(new_table)
+                tables.append(table)
+        if not new_tables:
+            return None, None
 
-        return ConceptElement(ids=new_concept_ids,
-                              concept_selects=new_concept_select_ids,
-                              tables=new_tables,
-                              exclude_from_secondary_id=self._exclude_from_secondary_id,
-                              exclude_from_time_aggregation=self._exclude_from_time_aggregation,
-                              label=self.label)
+        new_concept = ConceptElement(ids=new_concept_ids,
+                                     concept_selects=new_concept_select_ids,
+                                     tables=new_tables,
+                                     exclude_from_secondary_id=self._exclude_from_secondary_id,
+                                     exclude_from_time_aggregation=self._exclude_from_time_aggregation,
+                                     label=self.label)
+        concept = ConceptElement(ids=concept_ids,
+                                 concept_selects=concept_select_ids,
+                                 tables=tables,
+                                 exclude_from_secondary_id=self._exclude_from_secondary_id,
+                                 exclude_from_time_aggregation=self._exclude_from_time_aggregation,
+                                 label=self.label)
+        return new_concept, concept
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -746,7 +917,8 @@ class ConceptElement(QueryObject):
                    tables=tables,
                    concept_selects=query.get(Keys.selects, []),
                    exclude_from_secondary_id=query.get(Keys.exclude_from_secondary_id),
-                   exclude_from_time_aggregation=query.get(Keys.exclude_from_time_aggregation)
+                   exclude_from_time_aggregation=query.get(Keys.exclude_from_time_aggregation),
+                   matching_type=query.get(Keys.matching_type)
                    )
 
     def create_tables(self, concept: dict, connector_ids: List[str] = None,
@@ -800,13 +972,16 @@ class ConceptElement(QueryObject):
             Keys.ids: self.ids,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id,
             Keys.exclude_from_time_aggregation: self._exclude_from_time_aggregation,
-            Keys.selects: self.selects,
+            Keys.selects: self.selects if self.selects else None,
             Keys.tables: [table.write_table() for table in self.tables]
         }
         return remove_null_values_from_query(query)
 
     def get_concept_ids(self):
         return set(self.ids)
+
+    def get_concept_elements(self):
+        return [self]
 
 
 query_type_to_obj_map = {
@@ -842,29 +1017,3 @@ def validate_query_type(query_object_type: Type[QueryObject], query: dict):
     if valid_query_type != class_type:
         raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
                          f"only from {valid_query_type}")
-
-
-def create_query(concept_id: str, concepts: dict, concept_query: bool = False, connector_ids: List[str] = None,
-                 concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
-                 filter_objs: List[dict] = None,
-                 exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
-                 date_aggregation_mode: str = None,
-                 start_date: str = None, end_date: str = None) -> QueryObject:
-    root_concept_id = get_root_concept_id(concept_id)
-
-    query = ConceptElement(ids=[concept_id], concept=concepts[root_concept_id],
-                           connector_ids=connector_ids,
-                           concept_selects=concept_select_ids,
-                           connector_selects=connector_select_ids,
-                           filter_objs=filter_objs,
-                           exclude_from_secondary_id=exclude_from_secondary_id,
-                           exclude_from_time_aggregation=exclude_from_time_aggregation
-                           )
-
-    if start_date is not None or end_date is not None:
-        query = DateRestriction(child=query, start_date=start_date, end_date=end_date)
-
-    if concept_query:
-        return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
-
-    return query

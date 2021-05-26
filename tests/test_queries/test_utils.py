@@ -1,96 +1,7 @@
-from cqapi.queries.editor import QueryEditor
-from cqapi.queries.queries_oo import *
+from cqapi.queries.elements import *
 from unittest import TestCase
 
-
-def test_from_write_query():
-    concept_element = {
-        "type": "CONCEPT",
-        "ids": [
-            "dataset1.atc"],
-        "tables": [
-            {
-                "id": "dataset1.atc.atc",
-                "dateColumn": {
-                    "value": "dataset1.atc.atc.abgabedatum"},
-                "selects": [
-                    "dataset1.atc.atc.anzahl_apotheken"],
-                "filters": [
-                    {
-                        "filter": "dataset1.atc.atc.anzahl_packungen_f",
-                        "type": "REAL_RANGE",
-                        "value": {
-                            "min": 10,
-                            "max": 20}}]}],
-        "selects": []}
-    TestCase().assertDictEqual(concept_element, ConceptElement.from_query(concept_element).write_query())
-
-    or_element = {
-        "type": "OR",
-        "children": [concept_element,
-                     {
-                         "type": "CONCEPT",
-                         "ids": [
-                             "dataset1.alter"],
-                         "tables": [
-                             {
-                                 "id": "dataset1.alter.alter",
-                                 "dateColumn": {
-                                     "value": "dataset1.alter.alter.versichertenzeit"},
-                                 "selects": [],
-                                 "filters": []}],
-                         "selects": [
-                             "dataset1.alter.dates"]}]}
-
-    TestCase().assertDictEqual(or_element, OrElement.from_query(or_element).write_query())
-
-    date_restriction = {
-        "type": "DATE_RESTRICTION",
-        "dateRange": {
-            "min": "2020-01-01",
-            "max": "2020-12-31"},
-        "child": or_element}
-
-    TestCase().assertDictEqual(date_restriction, DateRestriction.from_query(date_restriction).write_query())
-
-    secondary_id_query = {"type": "SECONDARY_ID_QUERY",
-                          "secondaryId":
-                              "dataset1.beh_fall_id",
-                          "root": {"type": "AND",
-                                   "children": [date_restriction]}}
-
-    TestCase().assertDictEqual(secondary_id_query, SecondaryIdQuery.from_query(secondary_id_query).write_query())
-
-
-def test_and_query():
-    query_1 = {'type': 'DATE_RESTRICTION',
-               'child': {'type': 'CONCEPT',
-                         'ids': ['dataset1.atc.a.a10.a10a'],
-                         'selects': ['atc.atc.liste_rezepte', 'atc.atc.liste_pzn'],
-                         'tables': [{'id': 'dataset1.atc.atc',
-                                     'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'},
-                                     'filters': [],
-                                     'selects': []}]},
-               'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
-    query_2 = {'type': 'AND',
-               'children': [{'type': 'OR',
-                             'children': [{'type': 'CONCEPT',
-                                           'ids': ['dataset1.alter'],
-                                           'excludeFromSecondaryIdQuery': True,
-                                           'excludeFromTimeAggregation': False,
-                                           'selects': [],
-                                           'tables': [{'id': 'dataset1.alter.alter',
-                                                       'dateColumn': {
-                                                           'value': 'dataset1.alter.alter.versichertenzeit'},
-                                                       'filters': [],
-                                                       'selects': []}]}]}]}
-
-    query_editor = QueryEditor(query_1)
-    query_editor.and_query(QueryEditor(query_2))
-    and_query_out = query_editor.write_query()
-    and_query_val = {"type": "AND", "children": [query_1, query_2]}
-
-    TestCase().assertDictEqual(and_query_val, and_query_out)
+from cqapi.queries.utils import create_query
 
 
 def test_create_query():
@@ -245,14 +156,14 @@ def test_translate_query():
                                       {"filter": "dataset2.icd.au_fall.filter_to_drop"}])
 
     removed_ids = ConqueryIdCollection()
-    new_table = table.translate(concepts=concepts, removed_ids=removed_ids)
+    new_table, remaining_table = table.translate(concepts=concepts, removed_ids=removed_ids)
 
     # check old table
     table_val = ConceptTable(connector_id="dataset2.icd.au_fall",
                              date_column_id="dataset2.icd.au_fall.au-beginn",
                              select_ids=["dataset2.icd.au_fall.liste_fall_id"],
                              filter_objs=[{"filter": "dataset2.icd.au_fall.fall_id"}])
-    assert table == table_val
+    assert remaining_table == table_val
 
     # check removed ids
     removed_ids_val = ConqueryIdCollection()
@@ -279,16 +190,17 @@ def test_translate_query():
                                      exclude_from_secondary_id=True,
                                      label="test",
                                      concept_selects=["dataset2.icd.icd_exists", "dataset2.icd.select_to_drop"])
-    new_concept_element = concept_element.translate(concepts=concepts, children_ids=["dataset1.icd.a.a",
-                                                                                     "dataset1.icd.a.b"],
-                                                    removed_ids=removed_ids)
+    new_concept_element, remaining_concept_element = \
+        concept_element.translate(concepts=concepts, children_ids=["dataset1.icd.a.a",
+                                                                   "dataset1.icd.a.b"],
+                                  removed_ids=removed_ids)
 
-    assert concept_element == ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a"],
-                                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")],
-                                             exclude_from_secondary_id=True,
-                                             exclude_from_time_aggregation=True,
-                                             label="test",
-                                             concept_selects=["dataset2.icd.icd_exists"])
+    assert remaining_concept_element == ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a"],
+                                                       tables=[ConceptTable(connector_id="dataset2.icd.au_fall")],
+                                                       exclude_from_secondary_id=True,
+                                                       exclude_from_time_aggregation=True,
+                                                       label="test",
+                                                       concept_selects=["dataset2.icd.icd_exists"])
 
     removed_ids_val = ConqueryIdCollection()
     removed_ids_val.add(ConqueryId("dataset2.icd.a.to_drop", id_type="concept"))
@@ -304,3 +216,46 @@ def test_translate_query():
                                                  exclude_from_time_aggregation=True,
                                                  label="test",
                                                  concept_selects=["dataset1.icd.icd_exists"])
+
+    # negation
+    negation = Negation(child=ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.to_drop"],
+                                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
+    negation_val = Negation(child=ConceptElement(ids=["dataset2.icd.a"],
+                                                 tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
+    new_negation, remaining_negation = negation.translate(concepts=concepts, removed_ids=ConqueryIdCollection(),
+                                                          children_ids=[])
+    new_negation_val = Negation(child=ConceptElement(ids=["dataset1.icd.a"],
+                                                     tables=[ConceptTable(connector_id="dataset1.icd.au_fall")]))
+
+    assert remaining_negation.write_query() == negation_val.write_query()
+    assert new_negation.write_query() == new_negation_val.write_query()
+
+    # test no survivors
+    concept_element = ConceptElement(ids=["dataset2.icd.to_drop"],
+                                     tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
+
+    assert concept_element.translate(concepts=concepts, removed_ids=removed_ids, children_ids=[]) == (None, None)
+
+    concept_query = ConceptQuery(root=ConceptElement(ids=["dataset2.icd.to_drop"],
+                                                     tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
+    assert concept_query.translate(concepts=concepts, removed_ids=removed_ids, children_ids=[]) == (None, None)
+
+    # test only one survivor
+    child_1 = ConceptElement(ids=["dataset2.icd.to_drop"],
+                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
+    child_2 = ConceptElement(ids=["dataset2.icd.a"],
+                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
+    and_element = AndElement(children=[child_1, child_2])
+    new_and_element, remaining_and_element = and_element.translate(concepts=concepts,
+                                                                   removed_ids=ConqueryIdCollection(),
+                                                                   children_ids=[])
+
+    child_2_val = ConceptElement(ids=["dataset2.icd.a"],
+                                 tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
+    and_element_val = AndElement(children=[child_2_val])
+    new_child_2_val = ConceptElement(ids=["dataset1.icd.a"],
+                                     tables=[ConceptTable(connector_id="dataset1.icd.au_fall")])
+    new_and_element_val = AndElement(children=[new_child_2_val])
+
+    assert remaining_and_element.write_query() == and_element_val.write_query()
+    assert new_and_element.write_query() == new_and_element_val.write_query()
