@@ -456,8 +456,8 @@ class AndOrElement(QueryObject):
 
         for own_child in self.children:
             new_child, child = own_child.translate(concepts=concepts,
-                                               removed_ids=removed_ids,
-                                               children_ids=children_ids)
+                                                   removed_ids=removed_ids,
+                                                   children_ids=children_ids)
             if new_child is not None:
                 new_children.append(new_child)
                 children.append(child)
@@ -466,13 +466,13 @@ class AndOrElement(QueryObject):
             return None, None
 
         new_and_element = cls(children=new_children,
-                                     create_exist=self.create_exist,
-                                     label=self.label,
-                                     matching_type=self.matching_type, query_type=self.query_type)
+                              create_exist=self.create_exist,
+                              label=self.label,
+                              matching_type=self.matching_type, query_type=self.query_type)
         and_element = cls(children=children,
-                                 create_exist=self.create_exist,
-                                 label=self.label,
-                                 matching_type=self.matching_type, query_type=self.query_type)
+                          create_exist=self.create_exist,
+                          label=self.label,
+                          matching_type=self.matching_type, query_type=self.query_type)
 
         return new_and_element, and_element
 
@@ -542,32 +542,6 @@ class AndElement(AndOrElement):
         super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
                          label=label, matching_type=matching_type)
 
-    def translate2(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        children = list()
-        new_children = list()
-
-        for own_child in self.children:
-            new_child, child = own_child.translate(concepts=concepts,
-                                               removed_ids=removed_ids,
-                                               children_ids=children_ids)
-            if new_child is not None:
-                new_children.append(new_child)
-                children.append(child)
-
-        if not new_children:
-            return None, None
-
-        new_and_element = AndElement(children=new_children,
-                                     create_exist=self.create_exist,
-                                     label=self.label,
-                                     matching_type=self.matching_type)
-        and_element = AndElement(children=children,
-                                 create_exist=self.create_exist,
-                                 label=self.label,
-                                 matching_type=self.matching_type)
-
-        return new_and_element, and_element
-
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
                           create_exist=self.create_exist, label=self.label)
@@ -586,40 +560,6 @@ class OrElement(AndOrElement):
         """
         super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
                          label=label, matching_type=matching_type)
-
-    def translate3(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        children = list()
-        new_children = list()
-
-        for own_child in self.children:
-            new_child, child = own_child.translate(concepts=concepts,
-                                               removed_ids=removed_ids,
-                                               children_ids=children_ids)
-            if new_child is not None:
-                new_children.append(new_child)
-                children.append(child)
-
-        if not new_children:
-            return None, None
-
-        new_and_element = OrElement(children=new_children,
-                                     create_exist=self.create_exist,
-                                     label=self.label,
-                                     matching_type=self.matching_type)
-        and_element = OrElement(children=children,
-                                 create_exist=self.create_exist,
-                                 label=self.label,
-                                 matching_type=self.matching_type)
-
-        return new_and_element, and_element
-
-    def translate2(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        return OrElement(children=[
-            child.translate(concepts=concepts, removed_ids=removed_ids, children_ids=children_ids)
-            for child in self.children],
-            create_exist=self.create_exist,
-            label=self.label,
-            matching_type=self.matching_type)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
