@@ -278,6 +278,9 @@ class ConqueryIdCollection:
         else:
             self.conquery_ids = conquery_ids
 
+    def is_empty(self):
+        return len(self.conquery_ids) == 0
+
     def add(self, conquery_id: ConqueryId):
         self.conquery_ids.add(conquery_id)
 
