@@ -3,6 +3,8 @@ from cqapi.util import check_input_list
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
+from cqapi.queries.elements import QueryObject
+from typing import Union
 
 cq_element_description = {
     "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
@@ -12,8 +14,12 @@ cq_element_description = {
 cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 
-def get_label_from_query(query: dict):
-    """Returns label from query. If there are more than one child, only the label of the first child is returned"""
+def get_label_from_query(query: Union[dict, QueryObject]):
+    """Returns label from query. If there is more than one child, only the label of the first child is returned"""
+
+    if isinstance(query, QueryObject):
+        query = query.write_query()
+
     if query["type"] in cq_element_description["base_cq_elements"]:
         return query.get('label', '')
     if 'root' in query.keys():
