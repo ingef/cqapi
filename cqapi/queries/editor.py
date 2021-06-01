@@ -17,7 +17,8 @@ class QueryEditor:
         if isinstance(query, str):
             query = SavedQuery(query_id=query)
         if query is not None and not isinstance(query, QueryObject):
-            raise ValueError(f"query must be of type QueryObject or dict")
+            raise ValueError(f"query must be of type QueryObject or dict. "
+                             f"Type of query: {type(query)}")
 
         self.query = query
 
