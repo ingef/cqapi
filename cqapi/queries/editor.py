@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
 from cqapi.queries.elements import QueryObject, convert_from_query, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndOrElement, QueryDescription
+    SecondaryIdQuery, Negation, AndOrElement, QueryDescription, ConceptElement
 from cqapi.queries.utils import create_query, translate_query
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection
@@ -105,7 +105,8 @@ class QueryEditor:
         return self.query.write_query()
 
     def translate(self, concepts: dict, conquery_conn: ConqueryConnection, return_removed_ids: bool = False) -> \
-            Union[Tuple[QueryObject, ConqueryIdCollection], QueryObject]:
+            Union[Tuple[Union[QueryObject, None], Union[QueryObject, None], ConqueryIdCollection],
+                  Tuple[Union[QueryObject, None], Union[QueryObject, None]]]:
         return translate_query(
             query=self.query,
             concepts=concepts,
@@ -135,3 +136,6 @@ class QueryEditor:
                                   date_aggregation_mode=date_aggregation_mode,
                                   start_date=start_date,
                                   end_date=end_date)
+
+    def get_concept_elements(self) -> List[ConceptElement]:
+        return self.query.get_concept_elements()
