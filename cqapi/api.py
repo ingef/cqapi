@@ -240,8 +240,11 @@ class ConqueryConnection(object):
 
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
-        if isinstance(query, QueryObject):
+        try:
             query = query.write_query()
+        except AttributeError:
+            if not isinstance(query, dict):
+                raise TypeError(f"{query=} must be of type dict or QueryObject with method write_query")
 
         if dataset is None:
             dataset = get_dataset_from_query(query)

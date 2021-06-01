@@ -88,7 +88,7 @@ class QueryObject:
     def get_concept_ids(self):
         raise NotImplementedError
 
-    def get_concept_elements(self) -> List[QueryObject]:
+    def get_concept_elements(self) -> List[ConceptElement]:
         raise NotImplementedError
 
 
@@ -438,7 +438,7 @@ class AndOrElement(QueryObject):
 
         for child in children:
             if isinstance(child, QueryDescription):
-                raise TypeError(f"Instance of ")
+                raise TypeError(f"{child=} is of type QueryDescription and not allowed to be child of {self.__class__}")
         self.children = children
         self.label = label
         self.create_exist = create_exist
@@ -922,6 +922,19 @@ class ConceptElement(QueryObject):
 
     def get_concept_elements(self):
         return [self]
+
+    def remove_table(self, connector_id: str):
+        self.tables = [table
+                       for table in self.tables
+                       if not is_same_conquery_id(table.connector_id, connector_id)]
+
+    def remove_all_tables_but(self, connector_id: str):
+        self.tables = [table
+                       for table in self.tables
+                       if is_same_conquery_id(table.connector_id, connector_id)]
+
+    def get_root_concept_id(self):
+        return get_root_concept_id(self.ids[0])
 
 
 query_type_to_obj_map = {
