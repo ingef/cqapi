@@ -262,7 +262,7 @@ class ConqueryConnection(object):
         post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
 
     def get_query_result(self, query_id: str, return_pandas: bool = False, requests_per_sec=None,
-                         already_reexecuted: bool = False):
+                         already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -271,6 +271,7 @@ class ConqueryConnection(object):
         :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
         e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
         :param return_pandas: when true, returns data as pandas.DataFrame
+        :param delete_query: deletes query after getting result
         :return: str containing the returned csv's
         """
 
@@ -291,15 +292,20 @@ class ConqueryConnection(object):
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
             self.reexecute_query(query_id)
             sleep(0.5)
-            return self.get_query_result(query_id, already_reexecuted=True)
+            data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
                 import pandas as pd
                 return pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
-            return list(csv.reader(result_string.splitlines(), delimiter=';'))
+            data = list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
+
+        if delete_query:
+            self.delete_stored_query(query_id=query_id)
+
+        return data
 
     def get_data(self, query_id: str):
         """ Returns results for given query.
