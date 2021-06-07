@@ -6,7 +6,7 @@ from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError
 from cqapi.queries import get_dataset_from_query
 from cqapi.queries.elements import QueryObject
-from typing import Union
+from typing import Union, List
 
 
 def get_json(session, url):
