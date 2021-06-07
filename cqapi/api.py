@@ -297,7 +297,7 @@ class ConqueryConnection(object):
             result_string = self._download_query_results(response["resultUrl"])
             if return_pandas:
                 import pandas as pd
-                return pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+                data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
             data = list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
