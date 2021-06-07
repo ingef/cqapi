@@ -298,7 +298,8 @@ class ConqueryConnection(object):
             if return_pandas:
                 import pandas as pd
                 data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
-            data = list(csv.reader(result_string.splitlines(), delimiter=';'))
+            else:
+                data = list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
 
