@@ -298,7 +298,8 @@ class ConqueryConnection(object):
             sleep(0.5)
             data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
-            result_string = self._download_query_results(response["resultUrl"])
+            result_url_csv = self.get_result_url(response=response, file_type="csv")
+            result_string = self._download_query_results(result_url_csv)
             if return_pandas:
                 import pandas as pd
                 data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
@@ -334,10 +335,25 @@ class ConqueryConnection(object):
             raise ValueError(f"query stats NEW - query has to be reexecuted")
         elif response_status == "DONE":
             import pyarrow as pa
-            arrow_url = f'{".".join(response["resultUrl"].split(".")[:-1])}.arrf'
-            return pa.ipc.open_file(get(self._session, arrow_url).content).read_pandas()
+            result_url_arrow = self.get_result_url(response=response, file_type="arrf")
+            return pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
         else:
             raise ValueError(f"Unknown response status {response_status}")
 
     def _download_query_results(self, url):
         return get_text(self._session, url, params={"pretty": "false"})
+
+    def get_result_url(self, response, file_type: str = "csv"):
+        result_urls = response["resultUrls"]
+
+        if file_type not in ["csv", "xlsx"]:
+            result_url_base = ".".join(response["resultUrl"].split(".")[:-1])
+            return f'{result_url_base}.{file_type}'
+
+        for result_url in result_urls:
+            if result_url.split(".")[-1] == file_type:
+                return result_url
+
+        result_url_message = '\n'.join(result_urls)
+        raise ValueError(f"Could not find result url for {file_type=}. \n"
+                         f"Result Urls: \n {result_url_message}")
