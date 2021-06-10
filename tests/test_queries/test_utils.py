@@ -63,14 +63,14 @@ def test_create_query():
                                         'resultType': {'type': 'LIST', 'elementType': {'type': 'DATE_RANGE'}}}]}
     }
 
-    query_val = {"type": "CONCEPT", "ids": ["dataset1.alter"], "selects": [],
+    query_val = {"type": "CONCEPT", "ids": ["dataset1.alter"],
                  "tables": [
-                     {'id': 'dataset1.alter.alter', 'filters': [], 'selects': ["dataset1.alter.alter.ausgabe_alter"]}]}
+                     {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter.alter.ausgabe_alter"]}]}
     query_out = create_query(concept_id="dataset1.alter", concepts=concepts,
                              connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).write_query()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
-
+test_create_query()
 def test_translate_query():
     # translate table
     icd_au_table = {
