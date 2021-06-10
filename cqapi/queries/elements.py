@@ -233,6 +233,124 @@ class SingleChildQueryObject(QueryObject):
         return self.child.get_concept_elements()
 
 
+from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
+    validate_index_selector, validate_index_plament
+
+
+class ExportForm(QueryDescription):
+    def __init__(self, query_id: str, resolution: str):
+        super().__init__(query_type=obj_to_query_type(ExportForm))
+        validate_resolution(resolution)
+        self.query_id = query_id
+        self.resolution = resolution
+
+    @staticmethod
+    def validate_and_prepare_features(features):
+        new_features = list()
+        for feature in features:
+            if not isinstance(feature, QueryObject):
+                raise ValueError(f"{feature=} not of type QueryObject")
+
+            if isinstance(feature, QueryDescription):
+                if isinstance(feature, SingleRootQueryDescription):
+                    new_features.append(feature.root)
+                    continue
+                if isinstance(feature, SingleChildQueryObject):
+                    new_features.append(feature.child)
+
+                raise ValueError(f"At least one export form feature is of type QueryDescription "
+                                 f"but not SingleRootQueryDescription: \n"
+                                 f"{feature=}")
+            else:
+                new_features.append(feature)
+
+        return features
+
+    def write_query(self) -> dict:
+        return {
+            **super().write_query(),
+            'queryGroup': self.query_id,
+            'resolution': self.resolution
+        }
+
+
+class AbsoluteExportForm(ExportForm):
+    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
+                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
+        super().__init__(query_id=query_id, resolution=resolution)
+
+        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
+
+        self.features = self.validate_and_prepare_features(features)
+        self.start_date = start_date,
+        self.end_date = end_date
+
+    def write_query(self) -> dict:
+        return {
+            **super().write_query(),
+            "timeMode": {
+                "value": "ABSOLUTE",
+                'dateRange': {
+                    'min': self.start_date,
+                    'max': self.end_date
+                },
+                'features': [feature.write_query() for feature in self.features]
+            }
+        }
+
+
+# TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
+class RelativeExportForm(ExportForm):
+    def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
+                 after_index_queries: list = None,
+                 time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
+                 index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
+
+        super().__init__(query_id=query_id, resolution=resolution)
+
+        validate_time_unit(time_unit)
+        self.time_unit = time_unit
+        validate_time_count(time_count_before)
+        self.time_count_before = time_count_before
+        validate_time_count(time_count_after)
+        self.time_count_after = time_count_after
+        validate_index_selector(index_selector)
+        self.index_selector = index_selector
+        validate_index_plament(index_placement)
+        self.index_placement = index_placement
+
+        # extract concept from "CONCEPT_QUERY"-Objects
+        if before_index_queries is None and after_index_queries is None:
+            raise ValueError(f"Either before_index_queries or after_index_queries must be a list of QueryObjects")
+
+        if before_index_queries is None:
+            self.before_index_queries = list()
+        else:
+            self.validate_and_prepare_features(before_index_queries)
+            self.before_index_queries = before_index_queries
+
+        if after_index_queries is None:
+            self.after_index_queries = list()
+        else:
+            self.validate_and_prepare_features(after_index_queries)
+            self.after_index_queries = after_index_queries
+
+    def write_query(self) -> dict:
+        return {
+            **super().write_query(),
+            "timeMode": {
+                'value': 'RELATIVE',
+                'timeUnit': self.time_unit,
+                'timeCountBefore': self.time_count_before,
+                'timeCountAfter': self.time_count_after,
+                'indexSelector': self.index_selector,
+                'indexPlacement': self.index_placement,
+                'features': [query.write_query() for query in self.before_index_queries],
+                'outcomes': [query.write_query() for query in self.after_index_queries]
+            }
+        }
+
+
 class ConceptQuery(SingleRootQueryDescription):
 
     def __init__(self, root: QueryObject,
@@ -317,6 +435,25 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         )
 
 
+def get_start_end_date(date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
+    if date_range is not None:
+        if isinstance(date_range, dict):
+            start_date = date_range["min"]
+            end_date = date_range["max"]
+        elif isinstance(date_range, list):
+            start_date = date_range[0]
+            end_date = date_range[1]
+        else:
+            raise TypeError(f"{date_range=} must be type List[str] or dict, not {type(date_range)}")
+
+    if start_date is not None:
+        validate_date(start_date)
+    if end_date is not None:
+        validate_date(end_date)
+
+    return start_date, end_date
+
+
 class DateRestriction(SingleChildQueryObject):
     date_range = start_date = end_date = None
 
@@ -325,24 +462,7 @@ class DateRestriction(SingleChildQueryObject):
                  label: str = None):
         super().__init__(child=child, query_type=obj_to_query_type(DateRestriction), label=label)
 
-        self.set_date_range(date_range=date_range, start_date=start_date, end_date=end_date)
-
-    def set_date_range(self, date_range: List[str] = None, start_date: str = None, end_date: str = None):
-        if date_range is not None:
-            if isinstance(date_range, dict):
-                start_date = date_range["min"]
-                end_date = date_range["max"]
-            elif isinstance(date_range, list):
-                start_date = date_range[0]
-                end_date = date_range[1]
-            else:
-                raise TypeError(f"{date_range=} must be type List[str] or dict, not {type(date_range)}")
-
-        if start_date is not None:
-            validate_date(start_date)
-        if end_date is not None:
-            validate_date(end_date)
-
+        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
         self.start_date = start_date
         self.end_date = end_date
 
@@ -952,7 +1072,8 @@ query_type_to_obj_map = {
     "SECONDARY_ID_QUERY": SecondaryIdQuery,
     "DATE_RESTRICTION": DateRestriction,
     "NEGATION": Negation,
-    "SAVED_QUERY": SavedQuery
+    "SAVED_QUERY": SavedQuery,
+    "EXPORT_FORM": ExportForm
 }
 
 

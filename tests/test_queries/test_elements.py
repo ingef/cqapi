@@ -1,6 +1,6 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
-from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery
+from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, ConceptQuery
 
 
 def test_from_write_query():
@@ -83,3 +83,36 @@ def test_and_query():
     and_query_val = {"type": "AND", "children": [query_1, query_2]}
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
+
+def test_relativ_export_form():
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"])
+    query_object_2 = ConceptQuery(root=ConceptElement(ids=["dataset1.concept2"]))
+
+    export_form = RelativeExportForm(
+        query_id="dataset1.query_id",
+        resolution="QUARTERS",
+        before_index_queries=[query_object_1, query_object_2],
+        after_index_queries=None,
+        time_count_after=2
+    )
+
+    export_form_out = export_form.write_query()
+    export_form_val = {
+        "type": "EXPORT_FORM",
+        "queryGroup": "dataset1.query_id",
+        "resolution": "QUARTERS",
+        "timeMode": {
+            "value": "RELATIVE",
+            "timeUnit": "QUARTERS",
+            'timeCountBefore': 1,
+            'timeCountAfter': 2,
+            'indexSelector': 'EARLIEST',
+            'indexPlacement': 'BEFORE',
+            'features': [query_object_1.write_query(), query_object_2.write_query()],
+            'outcomes': []
+        }
+    }
+
+    TestCase().assertDictEqual(export_form_val, export_form_out)
+
+test_relativ_export_form()
