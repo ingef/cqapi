@@ -94,7 +94,10 @@ class QueryEditor:
 
     def remove_connector_selects(self, connector_select_ids: List[str] = None) -> None:
         self.query.remove_connector_selects(connector_select_ids=connector_select_ids)
-    
+
+    def remove_all_selects(self):
+        self.query.remove_all_selects()
+
     def add_connector_selects(self, select_ids: List[str]) -> None:
         self.query.add_connector_selects(select_ids)
 
