@@ -1,7 +1,7 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
 from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, \
-    ConceptQuery
+    ConceptQuery, ConceptTable
 
 
 def test_from_write_query():
@@ -84,6 +84,20 @@ def test_and_query():
     and_query_val = {"type": "AND", "children": [query_1, query_2]}
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
+
+
+def test_remove_selects():
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"],
+                                    tables=[ConceptTable(connector_id="dataset1.concept1.table1",
+                                                         select_ids=["dataset1.concept1.table1.select1",
+                                                                     "dataset1.concept1.table1.select2"])],
+                                    concept_selects=["dataset1.concept1.select1"])
+    or_query = OrElement(children=[query_object_1.copy()])
+    concept_query = ConceptQuery(root=or_query)
+    query_editor = QueryEditor(query=concept_query)
+    query_editor.remove_all_selects()
+    assert query_editor.query.root.children[0].selects == list()
+    assert query_editor.query.root.children[0].tables[0].selects == list()
 
 
 def test_relativ_export_form():
