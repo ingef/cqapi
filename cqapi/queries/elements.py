@@ -783,7 +783,14 @@ class ConceptElement(QueryObject):
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
                   children_ids: List[str]) -> Tuple[Union[ConceptElement, None], Union[ConceptElement, None]]:
-
+        """
+        Translates ConceptElement to new Dataset. Ids that can not be translated, are ignored.
+        The Object itself won't be changed, a translated and a remaining query are returned.
+        :param concepts: concepts of the new dataset
+        :param removed_ids: ConqueryIdCollection to store removed ids
+        :param children_ids: list of concept_ids of children concepts, since they are not stored in concepts
+        :return: Translated concept element and remaining concept element
+        """
         new_dataset = get_dataset(next(iter(concepts)))
 
         # translate concept ids
