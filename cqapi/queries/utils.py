@@ -75,6 +75,29 @@ def translate_queries(queries: List[QueryObject], concepts: dict, conquery_conn:
 
     return new_queries, remaining_queries
 
+def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery_conn: ConqueryConnection,
+                                       concepts_new_dataset: dict = None, return_removed_ids: bool = False) -> \
+        Union[Tuple[str, ConqueryIdCollection], str]:
+    """Gets stored query, translates it to new dataset and executes the query."""
+
+    if concepts_new_dataset is None:
+        concepts_new_dataset = conquery_conn.get_concepts(dataset=new_dataset)
+
+    # translate queryGroup
+    original_query = conquery_conn.get_query(query_id)
+
+    translated_query, original_query, removed_ids = \
+        translate_query(query=original_query,
+                        concepts=concepts_new_dataset,
+                        conquery_conn=conquery_conn,
+                        return_removed_ids=True)
+
+    new_query_id = conquery_conn.execute_query(translated_query, dataset=new_dataset)
+
+    if return_removed_ids:
+        return new_query_id, removed_ids
+
+    return new_query_id
 
 def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
                                                   new_dataset: str, conquery_conn: ConqueryConnection):
