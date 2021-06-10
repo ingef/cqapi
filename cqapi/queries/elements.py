@@ -1,6 +1,7 @@
 from __future__ import annotations
 from cqapi.namespace import Keys
-from cqapi.queries.validate import validate_date
+from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
+    validate_index_selector, validate_index_plament, validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
@@ -91,6 +92,16 @@ class QueryObject:
     def get_concept_elements(self) -> List[ConceptElement]:
         raise NotImplementedError
 
+    def remove_connector_selects(self, connector_select_ids: List[str] = None):
+        pass
+
+    def remove_concept_selects(self, concept_select_ids: List[str] = None):
+        pass
+
+    def remove_all_selects(self):
+        self.remove_concept_selects()
+        self.remove_connector_selects()
+
 
 class QueryDescription(QueryObject):
 
@@ -164,6 +175,12 @@ class SingleRootQueryDescription(QueryDescription):
     def add_connector_select(self, select_id: str) -> None:
         self.root.add_connector_select(select_id)
 
+    def remove_concept_selects(self, concept_select_ids: List[str] = None):
+        self.root.remove_concept_selects(concept_select_ids=concept_select_ids)
+
+    def remove_connector_selects(self, connector_select_ids: List[str] = None):
+        self.root.remove_connector_selects(connector_select_ids=connector_select_ids)
+
     def unwrap(self) -> QueryObject:
         return self.root
 
@@ -217,6 +234,12 @@ class SingleChildQueryObject(QueryObject):
     def add_connector_select(self, select_id: str) -> None:
         self.child.add_connector_select(select_id)
 
+    def remove_concept_selects(self, concept_select_ids: List[str] = None):
+        self.child.remove_concept_selects(concept_select_ids=concept_select_ids)
+
+    def remove_connector_selects(self, connector_select_ids: List[str] = None):
+        self.child.remove_connector_selects(connector_select_ids=connector_select_ids)
+
     def exclude_from_secondary_id(self) -> None:
         self.child.exclude_from_secondary_id()
 
@@ -231,10 +254,6 @@ class SingleChildQueryObject(QueryObject):
 
     def get_concept_elements(self):
         return self.child.get_concept_elements()
-
-
-from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
-    validate_index_selector, validate_index_plament
 
 
 class ExportForm(QueryDescription):
@@ -614,9 +633,17 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.add_concept_select(select_id)
 
+    def remove_concept_selects(self, concept_select_ids: List[str] = None):
+        for child in self.children:
+            child.remove_concept_selects(concept_select_ids=concept_select_ids)
+
     def add_connector_select(self, select_id: str):
         for child in self.children:
             child.add_connector_select(select_id)
+
+    def remove_connector_selects(self, connector_select_ids: List[str] = None):
+        for child in self.children:
+            child.remove_connector_selects(connector_select_ids=connector_select_ids)
 
     def add_filter(self, filter_obj: dict) -> None:
         for child in self.children:
@@ -758,9 +785,11 @@ class ConceptTable:
     def add_select(self, select_id: str):
         self.selects.append(select_id)
 
-    def remove_selects(self, select_ids: List[str]):
-        for select_id in select_ids:
-            self.selects.remove(select_id)
+    def remove_selects(self, select_ids: List[str] = None):
+        if select_ids is None:
+            self.selects = list()
+        else:
+            self.selects = [select for select in self.selects if not is_in_conquery_ids(select, select_ids)]
 
     def add_selects(self, select_ids: list):
         for select_id in select_ids:
@@ -1016,11 +1045,21 @@ class ConceptElement(QueryObject):
             if is_same_conquery_id(get_connector_id(select_id), table.connector_id):
                 table.add_select(select_id)
 
+    def remove_connector_selects(self, connector_select_ids: List[str] = None):
+        for table in self.tables:
+            table.remove_selects(select_ids=connector_select_ids)
+
     def add_concept_select(self, select_id: str):
 
         if is_same_conquery_id(get_root_concept_id(self.ids[0]),
                                get_root_concept_id(select_id)):
             self.selects.append(select_id)
+
+    def remove_concept_selects(self, concept_select_ids: List[str] = None):
+        if concept_select_ids is None:
+            self.selects = list()
+        else:
+            self.selects = [select for select in self.selects if not is_in_conquery_ids(select, concept_select_ids)]
 
     def add_filter(self, filter_obj: dict) -> None:
         for table in self.tables:

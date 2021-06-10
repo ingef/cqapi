@@ -89,6 +89,12 @@ class QueryEditor:
     def add_concept_selects(self, select_ids: List[str]) -> None:
         self.query.add_concept_selects(select_ids)
 
+    def remove_concept_selects(self, concept_select_ids: List[str] = None) -> None:
+        self.query.remove_concept_selects(concept_select_ids=concept_select_ids)
+
+    def remove_connector_selects(self, connector_select_ids: List[str] = None) -> None:
+        self.query.remove_connector_selects(connector_select_ids=connector_select_ids)
+    
     def add_connector_selects(self, select_ids: List[str]) -> None:
         self.query.add_connector_selects(select_ids)
 
