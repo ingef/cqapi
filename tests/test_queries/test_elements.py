@@ -21,8 +21,7 @@ def test_from_write_query():
                         "type": "REAL_RANGE",
                         "value": {
                             "min": 10,
-                            "max": 20}}]}],
-        "selects": []}
+                            "max": 20}}]}]}
     TestCase().assertDictEqual(concept_element, ConceptElement.from_query(concept_element).write_query())
 
     or_element = {
@@ -36,9 +35,7 @@ def test_from_write_query():
                              {
                                  "id": "dataset1.alter.alter",
                                  "dateColumn": {
-                                     "value": "dataset1.alter.alter.versichertenzeit"},
-                                 "selects": [],
-                                 "filters": []}],
+                                     "value": "dataset1.alter.alter.versichertenzeit"}, }],
                          "selects": [
                              "dataset1.alter.dates"]}]}
 
@@ -68,9 +65,7 @@ def test_and_query():
                          'ids': ['dataset1.atc.a.a10.a10a'],
                          'selects': ['atc.atc.liste_rezepte', 'atc.atc.liste_pzn'],
                          'tables': [{'id': 'dataset1.atc.atc',
-                                     'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'},
-                                     'filters': [],
-                                     'selects': []}]},
+                                     'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'}}]},
                'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
     query_2 = {'type': 'AND',
                'children': [{'type': 'OR',
@@ -78,12 +73,9 @@ def test_and_query():
                                            'ids': ['dataset1.alter'],
                                            'excludeFromSecondaryIdQuery': True,
                                            'excludeFromTimeAggregation': False,
-                                           'selects': [],
                                            'tables': [{'id': 'dataset1.alter.alter',
                                                        'dateColumn': {
-                                                           'value': 'dataset1.alter.alter.versichertenzeit'},
-                                                       'filters': [],
-                                                       'selects': []}]}]}]}
+                                                           'value': 'dataset1.alter.alter.versichertenzeit'}}]}]}]}
 
     query_editor = QueryEditor(query_1)
     query_editor.and_query(QueryEditor(query_2))
