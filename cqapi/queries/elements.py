@@ -264,7 +264,7 @@ class ExportForm(QueryDescription):
             else:
                 new_features.append(feature)
 
-        return features
+        return new_features
 
     def write_query(self) -> dict:
         return {
@@ -324,16 +324,16 @@ class RelativeExportForm(ExportForm):
             raise ValueError(f"Either before_index_queries or after_index_queries must be a list of QueryObjects")
 
         if before_index_queries is None:
-            self.before_index_queries = list()
+            before_index_queries = list()
         else:
-            self.validate_and_prepare_features(before_index_queries)
-            self.before_index_queries = before_index_queries
+            before_index_queries = self.validate_and_prepare_features(before_index_queries)
+        self.before_index_queries = before_index_queries
 
         if after_index_queries is None:
-            self.after_index_queries = list()
+            after_index_queries = list()
         else:
-            self.validate_and_prepare_features(after_index_queries)
-            self.after_index_queries = after_index_queries
+            after_index_queries = self.validate_and_prepare_features(after_index_queries)
+        self.after_index_queries = after_index_queries
 
     def write_query(self) -> dict:
         return {
