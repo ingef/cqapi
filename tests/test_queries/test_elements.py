@@ -1,6 +1,7 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
-from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, ConceptQuery
+from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, \
+    ConceptQuery
 
 
 def test_from_write_query():
@@ -84,6 +85,7 @@ def test_and_query():
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
 
+
 def test_relativ_export_form():
     query_object_1 = ConceptElement(ids=["dataset1.concept1"])
     query_object_2 = ConceptQuery(root=ConceptElement(ids=["dataset1.concept2"]))
@@ -108,11 +110,9 @@ def test_relativ_export_form():
             'timeCountAfter': 2,
             'indexSelector': 'EARLIEST',
             'indexPlacement': 'BEFORE',
-            'features': [query_object_1.write_query(), query_object_2.write_query()],
+            'features': [query_object_1.write_query(), query_object_2.root.write_query()],
             'outcomes': []
         }
     }
 
     TestCase().assertDictEqual(export_form_val, export_form_out)
-
-test_relativ_export_form()
