@@ -1,7 +1,7 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
 from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, \
-    ConceptQuery, ConceptTable
+    ConceptQuery, ConceptTable, EntityDateExportForm
 
 
 def test_from_write_query():
@@ -130,3 +130,32 @@ def test_relativ_export_form():
     }
 
     TestCase().assertDictEqual(export_form_val, export_form_out)
+
+
+def test_entity_date_export_form():
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"])
+    query_object_2 = ConceptQuery(root=ConceptElement(ids=["dataset1.concept2"]))
+
+    export_form = EntityDateExportForm(
+        query_id="dataset1.query_id",
+        resolution="QUARTERS",
+        features=[query_object_1, query_object_2],
+        date_aggregation_mode="MERGE",
+        date_range={"min": "2020-01-01", "max": "2020-12-31"}
+    )
+
+    export_form_out = export_form.write_query()
+    export_form_val = {
+        "type": "EXPORT_FORM",
+        "queryGroup": "dataset1.query_id",
+        "resolution": "QUARTERS",
+        "timeMode": {
+            "value": "ENTITY_DATE",
+            "dateAggregationMode": "MERGE",
+            "dateRange": {"min": "2020-01-01", "max": "2020-12-31"},
+            "features": [query_object_1.write_query(), query_object_2.root.write_query()]
+        }
+    }
+    test = TestCase()
+    test.maxDiff = None
+    test.assertDictEqual(export_form_val, export_form_out)
