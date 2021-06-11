@@ -39,6 +39,12 @@ class QueryObject:
     def set_label(self, label: str) -> None:
         self.label = label
 
+    def set_validity_date(self, validity_date_id: str) -> None:
+        pass
+
+    def remove_all_tables_but(self, connector_id: str) -> None:
+        pass
+
     def add_concept_select(self, select_id: str) -> None:
         raise NotImplementedError()
 
@@ -169,6 +175,9 @@ class SingleRootQueryDescription(QueryDescription):
     def set_label(self, label: str) -> None:
         raise ValueError(f"Class QueryDescription has no attribute label")
 
+    def set_validity_date(self, validity_date_id: str) -> None:
+        self.root.set_validity_date(validity_date_id=validity_date_id)
+
     def add_concept_select(self, select_id: str) -> None:
         self.root.add_concept_select(select_id)
 
@@ -199,6 +208,9 @@ class SingleRootQueryDescription(QueryDescription):
     def get_concept_elements(self):
         return self.root.get_concept_elements()
 
+    def remove_all_tables_but(self, connector_id: str) -> None:
+        self.root.remove_all_tables_but(connector_id=connector_id)
+
 
 class SingleChildQueryObject(QueryObject):
     """
@@ -228,6 +240,9 @@ class SingleChildQueryObject(QueryObject):
         }
         return remove_null_values_from_query(query)
 
+    def set_validity_date(self, validity_date_id: str) -> None:
+        self.child.set_validity_date(validity_date_id=validity_date_id)
+
     def add_concept_select(self, select_id: str) -> None:
         self.child.add_concept_select(select_id)
 
@@ -254,6 +269,9 @@ class SingleChildQueryObject(QueryObject):
 
     def get_concept_elements(self):
         return self.child.get_concept_elements()
+
+    def remove_all_tables_but(self, connector_id: str) -> None:
+        self.child.remove_all_tables_but(connector_id=connector_id)
 
 
 class ExportForm(QueryDescription):
@@ -301,21 +319,44 @@ class AbsoluteExportForm(ExportForm):
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
 
         self.features = self.validate_and_prepare_features(features)
-        self.start_date = start_date,
+        self.start_date = start_date
         self.end_date = end_date
+
+    def write_time_mode(self):
+        return {
+            "value": "ABSOLUTE",
+            'dateRange': {
+                'min': self.start_date,
+                'max': self.end_date
+            },
+            'features': [feature.write_query() for feature in self.features]
+        }
 
     def write_query(self) -> dict:
         return {
             **super().write_query(),
-            "timeMode": {
-                "value": "ABSOLUTE",
-                'dateRange': {
-                    'min': self.start_date,
-                    'max': self.end_date
-                },
-                'features': [feature.write_query() for feature in self.features]
-            }
+            "timeMode": self.write_time_mode()
         }
+
+
+class EntityDateExportForm(AbsoluteExportForm):
+    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
+                 date_aggregation_mode: str = "LOGICAL",
+                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
+        super().__init__(query_id=query_id, resolution=resolution, features=features,
+                         date_range=date_range, start_date=start_date, end_date=end_date)
+
+        self.date_aggregation_mode = date_aggregation_mode
+
+    def write_query(self) -> dict:
+        time_mode = self.write_time_mode()
+        time_mode["dateAggregationMode"] = self.date_aggregation_mode
+        time_mode["value"] = "ENTITY_DATE"
+        return {
+            **super().write_query(),
+            "timeMode": time_mode
+        }
+
 
 
 # TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
@@ -397,7 +438,7 @@ class ConceptQuery(SingleRootQueryDescription):
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
-        root = convert_from_query(query[Keys.root])
+        root = convert_query_dict(query[Keys.root])
 
         return cls(
             root=root,
@@ -447,7 +488,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        root = convert_from_query(query[Keys.root])
+        root = convert_query_dict(query[Keys.root])
         return cls(
             root=root,
             secondary_id=query[Keys.secondary_id]
@@ -510,7 +551,7 @@ class DateRestriction(SingleChildQueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        child = convert_from_query(query[Keys.child])
+        child = convert_query_dict(query[Keys.child])
 
         return cls(
             child=child,
@@ -553,7 +594,7 @@ class Negation(SingleChildQueryObject):
         validate_query_type(cls, query)
 
         return cls(
-            child=convert_from_query(query[Keys.child]),
+            child=convert_query_dict(query[Keys.child]),
             label=query.get(Keys.label)
         )
 
@@ -619,7 +660,7 @@ class AndOrElement(QueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        children = [convert_from_query(child) for child in query[Keys.children]]
+        children = [convert_query_dict(child) for child in query[Keys.children]]
 
         return cls(
             children=children,
@@ -628,6 +669,10 @@ class AndOrElement(QueryObject):
             matching_type=query.get(Keys.matching_type),
             query_type=query[Keys.type]  # this is not used, see class doc
         )
+
+    def set_validity_date(self, validity_date_id: str) -> None:
+        for child in self.children:
+            child.set_validity_date(validity_date_id=validity_date_id)
 
     def add_concept_select(self, select_id: str):
         for child in self.children:
@@ -644,6 +689,10 @@ class AndOrElement(QueryObject):
     def remove_connector_selects(self, connector_select_ids: List[str] = None):
         for child in self.children:
             child.remove_connector_selects(connector_select_ids=connector_select_ids)
+
+    def remove_all_tables_but(self, connector_id: str) -> None:
+        for child in self.children:
+            child.remove_all_tables_but(connector_id=connector_id)
 
     def add_filter(self, filter_obj: dict) -> None:
         for child in self.children:
@@ -781,6 +830,10 @@ class ConceptTable:
     def copy(self):
         return ConceptTable(connector_id=self.connector_id, date_column_id=self.date_column_id,
                             select_ids=deepcopy(self.selects), filter_objs=deepcopy(self.filters))
+
+    def set_date_column_id(self, date_column_id: str):
+        if is_same_conquery_id(get_connector_id(date_column_id), self.connector_id):
+            self.date_column_id = date_column_id
 
     def add_select(self, select_id: str):
         self.selects.append(select_id)
@@ -1039,6 +1092,10 @@ class ConceptElement(QueryObject):
         if not self.tables:
             raise ValueError(f"Could not find any connector for concept element")
 
+    def set_validity_date(self, validity_date_id: str) -> None:
+        for table in self.tables:
+            table.set_date_column_id(validity_date_id)
+
     def add_connector_select(self, select_id):
         from cqapi.conquery_ids import get_connector_id
         for table in self.tables:
@@ -1116,8 +1173,12 @@ query_type_to_obj_map = {
 }
 
 
-def convert_from_query(query: dict) -> QueryObject:
+def convert_query_dict(query: dict) -> QueryObject:
     return query_type_to_obj_map[query[Keys.type]].from_query(query)
+
+
+def convert_query_dict_list(queries: List[dict]) -> List[QueryObject]:
+    return [convert_query_dict(query) for query in queries]
 
 
 def query_type_to_obj(query_type: str) -> Type[QueryObject]:

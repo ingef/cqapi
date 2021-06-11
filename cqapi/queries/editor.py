@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
-from cqapi.queries.elements import QueryObject, convert_from_query, SavedQuery, DateRestriction, ConceptQuery, \
+from cqapi.queries.elements import QueryObject, convert_query_dict, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndOrElement, QueryDescription, ConceptElement
 from cqapi.queries.utils import create_query, translate_query
 from cqapi.api import ConqueryConnection
@@ -13,7 +13,7 @@ class QueryEditor:
 
     def __init__(self, query: Union[QueryObject, dict, str] = None):
         if isinstance(query, dict):
-            query = convert_from_query(query)
+            query = convert_query_dict(query)
         if isinstance(query, str):
             query = SavedQuery(query_id=query)
         if query is not None and not isinstance(query, QueryObject):
@@ -45,7 +45,7 @@ class QueryEditor:
             if isinstance(query, str):
                 query = SavedQuery(query_id=query)
             if isinstance(query, dict):
-                query = convert_from_query(query)
+                query = convert_query_dict(query)
             if isinstance(query, QueryEditor):
                 query = query.query
             if not isinstance(query, QueryObject):
@@ -88,6 +88,9 @@ class QueryEditor:
 
     def add_concept_selects(self, select_ids: List[str]) -> None:
         self.query.add_concept_selects(select_ids)
+
+    def set_validity_date(self, validity_date_id: str) -> None:
+        self.query.set_validity_date(validity_date_id=validity_date_id)
 
     def remove_concept_selects(self, concept_select_ids: List[str] = None) -> None:
         self.query.remove_concept_selects(concept_select_ids=concept_select_ids)
@@ -149,3 +152,6 @@ class QueryEditor:
 
     def get_concept_elements(self) -> List[ConceptElement]:
         return self.query.get_concept_elements()
+
+    def remove_all_tables_but(self, connector_id: str) -> None:
+        self.query.remove_all_tables_but(connector_id=connector_id)
