@@ -5,16 +5,24 @@ from cqapi.queries.elements import QueryObject, ConceptElement, DateRestriction,
 from cqapi import ConqueryConnection
 
 
-def create_query(concept_id: str, concepts: dict, concept_query: bool = False, connector_ids: List[str] = None,
+def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False, connector_ids: List[str] = None,
                  concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
                  filter_objs: List[dict] = None,
                  exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
                  date_aggregation_mode: str = None,
                  start_date: str = None, end_date: str = None,
                  label: str = None) -> QueryObject:
-    root_concept_id = get_root_concept_id(concept_id)
 
-    query = ConceptElement(ids=[concept_id], concept=concepts[root_concept_id],
+    if isinstance(concept_id, list):
+        root_concept_id = get_root_concept_id(concept_id[0])
+        concept_ids = concept_id
+    elif isinstance(concept_id, str):
+        root_concept_id = get_root_concept_id(concept_id)
+        concept_ids = [concept_id]
+    else:
+        raise ValueError(f"{concept_id=} must be of type List[str] or str")
+
+    query = ConceptElement(ids=concept_ids, concept=concepts[root_concept_id],
                            connector_ids=connector_ids,
                            concept_selects=concept_select_ids,
                            connector_selects=connector_select_ids,
