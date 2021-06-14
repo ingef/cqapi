@@ -316,7 +316,10 @@ class ConqueryIdCollection:
         label_dicts = self.create_label_dicts(concepts=concepts)
         table_as_dict = {header: [label_dict.get(key, "") for label_dict in label_dicts]
                          for header, key in header_mapping.items()}
+        sort_by_cols = list()
         for header in header_mapping.keys():
             if set(table_as_dict[header]) == {""}:
                 table_as_dict.pop(header)
-        return pd.DataFrame(table_as_dict)
+                sort_by_cols.append(header)
+                
+        return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
