@@ -70,7 +70,6 @@ def test_create_query():
                              connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).write_query()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
-test_create_query()
 def test_translate_query():
     # translate table
     icd_au_table = {
