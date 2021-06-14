@@ -320,6 +320,7 @@ class ConqueryIdCollection:
         for header in header_mapping.keys():
             if set(table_as_dict[header]) == {""}:
                 table_as_dict.pop(header)
+            else:
                 sort_by_cols.append(header)
-                
+
         return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
