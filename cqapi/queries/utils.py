@@ -47,13 +47,18 @@ def translate_query(query: QueryObject, concepts: dict, conquery_conn: ConqueryC
               Tuple[Union[QueryObject, None], Union[QueryObject, None]]]:
     new_dataset = get_dataset(next(iter(concepts)))
 
+    # translate
+    conquery_ids = ConqueryIdCollection()
+
     # get children ids that exist
     concept_ids = query.get_concept_ids()
+    # don't ask for children concepts for concepts that are not available for new dataset
+    concept_ids = [concept_id for concept_id in concept_ids if get_root_concept_id(concept_id) in concepts.keys()]
+
     children_ids = check_concept_ids_in_concepts_for_new_dataset(concept_ids=concept_ids,
                                                                  new_dataset=new_dataset,
                                                                  conquery_conn=conquery_conn)
-    # translate
-    conquery_ids = ConqueryIdCollection()
+
     new_query, query = query.translate(concepts=concepts, removed_ids=conquery_ids, children_ids=children_ids)
     if return_removed_ids:
         return new_query, query, conquery_ids
