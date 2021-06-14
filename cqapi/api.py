@@ -170,7 +170,7 @@ class ConqueryConnection(object):
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
-        return result.get('columnDescriptions')
+        return result['columnDescriptions']
 
     def get_form_configs(self, dataset: str = None) -> list:
         dataset = self._get_dataset(dataset)
