@@ -72,8 +72,10 @@ def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_co
     new_query, query = query.translate(concepts=concepts, removed_ids=conquery_ids, children_ids=children_ids)
 
     if input_query_is_dict:
-        new_query = new_query.write_query()
-        query = query.write_query()
+        if new_query is not None:
+            new_query = new_query.write_query()
+        if query is not None:
+            query = query.write_query()
 
     if return_removed_ids:
         return new_query, query, conquery_ids
