@@ -3,16 +3,17 @@ from cqapi.conquery_ids import get_root_concept_id, ConqueryIdCollection, get_da
 from cqapi.namespace import Keys
 from cqapi.queries.elements import QueryObject, ConceptElement, DateRestriction, ConceptQuery, convert_query_dict
 from cqapi import ConqueryConnection
+from cqapi.exceptions import QueryTranslationError
 
 
-def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False, connector_ids: List[str] = None,
+def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False,
+                 connector_ids: List[str] = None,
                  concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
                  filter_objs: List[dict] = None,
                  exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
                  date_aggregation_mode: str = None,
                  start_date: str = None, end_date: str = None,
                  label: str = None) -> QueryObject:
-
     if isinstance(concept_id, list):
         root_concept_id = get_root_concept_id(concept_id[0])
         concept_ids = concept_id
@@ -53,7 +54,10 @@ def translate_query(query: QueryObject, concepts: dict, conquery_conn: ConqueryC
     # get children ids that exist
     concept_ids = query.get_concept_ids()
     # don't ask for children concepts for concepts that are not available for new dataset
-    concept_ids = [concept_id for concept_id in concept_ids if get_root_concept_id(concept_id) in concepts.keys()]
+    concept_ids = [concept_id
+                   for concept_id in concept_ids
+                   if change_dataset(new_dataset=new_dataset,
+                                     conquery_id=get_root_concept_id(concept_id)) in concepts.keys()]
 
     children_ids = check_concept_ids_in_concepts_for_new_dataset(concept_ids=concept_ids,
                                                                  new_dataset=new_dataset,
@@ -88,6 +92,7 @@ def translate_queries(queries: List[QueryObject], concepts: dict, conquery_conn:
 
     return new_queries, remaining_queries
 
+
 def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery_conn: ConqueryConnection,
                                        concepts_new_dataset: dict = None, return_removed_ids: bool = False) -> \
         Union[Tuple[str, ConqueryIdCollection], str]:
@@ -106,12 +111,15 @@ def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery
                         conquery_conn=conquery_conn,
                         return_removed_ids=True)
 
+    if translated_query is None:
+        raise QueryTranslationError()
     new_query_id = conquery_conn.execute_query(translated_query, dataset=new_dataset)
 
     if return_removed_ids:
         return new_query_id, removed_ids
 
     return new_query_id
+
 
 def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
                                                   new_dataset: str, conquery_conn: ConqueryConnection):
