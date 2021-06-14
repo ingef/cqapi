@@ -42,10 +42,16 @@ def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_quer
     return query
 
 
-def translate_query(query: QueryObject, concepts: dict, conquery_conn: ConqueryConnection,
+def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_conn: ConqueryConnection,
                     return_removed_ids: bool = False) -> \
-        Union[Tuple[Union[QueryObject, None], Union[QueryObject, None], ConqueryIdCollection],
-              Tuple[Union[QueryObject, None], Union[QueryObject, None]]]:
+        Union[Tuple[Union[QueryObject, dict, None], Union[QueryObject, dict, None], ConqueryIdCollection],
+              Tuple[Union[QueryObject, dict, None], Union[QueryObject, dict, None]]]:
+
+    input_query_is_dict = False
+    if isinstance(query, dict):
+        input_query_is_dict = True
+        query = convert_query_dict(query)
+
     new_dataset = get_dataset(next(iter(concepts)))
 
     # translate
@@ -64,6 +70,11 @@ def translate_query(query: QueryObject, concepts: dict, conquery_conn: ConqueryC
                                                                  conquery_conn=conquery_conn)
 
     new_query, query = query.translate(concepts=concepts, removed_ids=conquery_ids, children_ids=children_ids)
+
+    if input_query_is_dict:
+        new_query = new_query.write_query()
+        query = query.write_query()
+
     if return_removed_ids:
         return new_query, query, conquery_ids
 
