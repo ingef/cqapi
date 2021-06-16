@@ -3,7 +3,7 @@ from io import StringIO
 from time import sleep
 import requests
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
-from cqapi.exceptions import ConqueryClientConnectionError
+from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries import get_dataset_from_query
 from cqapi.queries.elements import QueryObject
 from typing import Union, List
@@ -95,10 +95,13 @@ class ConqueryConnection(object):
         self._dataset = self._get_dataset(dataset)
 
     def _get_dataset(self, dataset: str = None):
+
         if dataset is None:
             if self._dataset is not None:
                 return self._dataset
+
             return self._datasets_with_permission[0]
+
         if dataset not in self._datasets_with_permission:
             raise ValueError(f"No permission on {dataset=}. \n"
                              f"Datasets with permission: {self._datasets_with_permission}")
@@ -166,6 +169,14 @@ class ConqueryConnection(object):
         dataset = self._get_dataset(dataset)
         response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
+
+    def get_query_id(self, label: str, dataset: str = None) -> str:
+        queries = self.get_stored_queries()
+        queries_with_label = [query["id"] for query in queries if query["label"] == label]
+        if not queries_with_label:
+            raise QueryNotFoundError
+
+        return queries_with_label[0]
 
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
@@ -252,12 +263,15 @@ class ConqueryConnection(object):
 
         if dataset is None:
             dataset = get_dataset_from_query(query)
+
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
+
         try:
             if label is not None:
                 patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
                       {"label": label})
             return result['id']
+        
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
