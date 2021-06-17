@@ -39,6 +39,23 @@ class QueryObject:
     def set_label(self, label: str) -> None:
         self.label = label
 
+    def get_concept_elements(self) -> List[ConceptElement]:
+        pass
+
+    def get_selects(self):
+        return [*self.get_concept_selects(), *self.get_connector_selects()]
+
+    def get_concept_selects(self) -> List[str]:
+        return [concept_select
+                for concept_element in self.get_concept_elements()
+                for concept_select in concept_element.selects]
+
+    def get_connector_selects(self):
+        return [connector_select
+                for concept_element in self.get_concept_elements()
+                for table in concept_element.tables
+                for connector_select in table.selects]
+
     def set_validity_date(self, validity_date_id: str) -> None:
         pass
 
@@ -93,9 +110,6 @@ class QueryObject:
         raise NotImplementedError
 
     def get_concept_ids(self):
-        raise NotImplementedError
-
-    def get_concept_elements(self) -> List[ConceptElement]:
         raise NotImplementedError
 
     def remove_connector_selects(self, connector_select_ids: List[str] = None):
