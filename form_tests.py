@@ -286,7 +286,7 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
         "type": "JUPYEND_FORM@PRED_FORM",
         "title": "",
         "description": "",
-        "classification_model": classifier_model,
+        "prediction_model": classifier_model,
         "trainingGroup": training_group,
         "classifier": classifier,
         "stamm_features": stamm_features,
