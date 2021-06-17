@@ -11,3 +11,6 @@ class CqApiError(BaseException):
 class ConqueryClientConnectionError(CqApiError):
     def __init__(self, msg):
         self.message = msg
+
+class QueryNotFoundError(BaseException):
+    pass
