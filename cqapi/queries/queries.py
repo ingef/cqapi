@@ -14,11 +14,10 @@ cq_element_description = {
 cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 
-def get_label_from_query(query: Union[dict, QueryObject]):
+def get_label_from_query(query: QueryObject):
     """Returns label from query. If there is more than one child, only the label of the first child is returned"""
 
-    if isinstance(query, QueryObject):
-        query = query.write_query()
+    query = query.write_query()
 
     if query["type"] in cq_element_description["base_cq_elements"]:
         return query.get('label', '')
