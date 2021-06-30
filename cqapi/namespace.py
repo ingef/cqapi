@@ -23,4 +23,4 @@ class Keys:
     value = "value"
     query = "query"
     options = "options"
-    matching_type = 'matchingType'
+    row_prefix = 'matchingType'
