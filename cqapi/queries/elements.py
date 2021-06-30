@@ -16,7 +16,7 @@ def remove_null_values_from_query(query: dict):
 
 class QueryObject:
     """Base Class of all query elements"""
-    matching_type: str = None
+    row_prefix: str = None
 
     def __init__(self, query_type: str, label: str = None):
         self.query_type = query_type
@@ -372,7 +372,6 @@ class EntityDateExportForm(AbsoluteExportForm):
         }
 
 
-
 # TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
 class RelativeExportForm(ExportForm):
     def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
@@ -626,7 +625,7 @@ class AndOrElement(QueryObject):
     """
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None):
+                 row_prefix: str = None):
 
         super().__init__(query_type=query_type)
 
@@ -637,7 +636,7 @@ class AndOrElement(QueryObject):
         self.label = label
         self.create_exist = create_exist
 
-        self.matching_type = matching_type
+        self.row_prefix = row_prefix
 
     def copy(self):
         raise NotImplementedError
@@ -662,11 +661,11 @@ class AndOrElement(QueryObject):
         new_and_element = cls(children=new_children,
                               create_exist=self.create_exist,
                               label=self.label,
-                              matching_type=self.matching_type, query_type=self.query_type)
+                              row_prefix=self.row_prefix, query_type=self.query_type)
         and_element = cls(children=children,
                           create_exist=self.create_exist,
                           label=self.label,
-                          matching_type=self.matching_type, query_type=self.query_type)
+                          row_prefix=self.row_prefix, query_type=self.query_type)
 
         return new_and_element, and_element
 
@@ -680,7 +679,7 @@ class AndOrElement(QueryObject):
             children=children,
             create_exist=query.get(Keys.create_exist),
             label=query.get(Keys.label),
-            matching_type=query.get(Keys.matching_type),
+            row_prefix=query.get(Keys.row_prefix),
             query_type=query[Keys.type]  # this is not used, see class doc
         )
 
@@ -740,17 +739,17 @@ class AndOrElement(QueryObject):
 
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None, query_type: str = None):
+                 row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
         :param create_exist:
         :param label:
-        :param matching_type:
+        :param row_prefix:
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label, matching_type=matching_type)
+                         label=label, row_prefix=row_prefix)
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
@@ -759,17 +758,17 @@ class AndElement(AndOrElement):
 
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None, query_type: str = None):
+                 row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
         :param create_exist:
         :param label:
-        :param matching_type:
+        :param row_prefix:
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label, matching_type=matching_type)
+                         label=label, row_prefix=row_prefix)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
@@ -969,7 +968,7 @@ class ConceptElement(QueryObject):
                  connector_selects: List[str] = None, filter_objs: List[str] = None,
                  exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None,
-                 matching_type: str = None):
+                 row_prefix: str = None):
 
         super().__init__(query_type=obj_to_query_type(ConceptElement), label=label)
 
@@ -977,7 +976,7 @@ class ConceptElement(QueryObject):
         self._exclude_from_secondary_id = exclude_from_secondary_id
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
         self.selects = concept_selects or list()
-        self.matching_type = matching_type
+        self.row_prefix = row_prefix
 
         self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
@@ -1081,7 +1080,7 @@ class ConceptElement(QueryObject):
                    concept_selects=query.get(Keys.selects, []),
                    exclude_from_secondary_id=query.get(Keys.exclude_from_secondary_id),
                    exclude_from_time_aggregation=query.get(Keys.exclude_from_time_aggregation),
-                   matching_type=query.get(Keys.matching_type)
+                   row_prefix=query.get(Keys.row_prefix)
                    )
 
     def create_tables(self, concept: dict, connector_ids: List[str] = None,
