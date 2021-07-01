@@ -159,9 +159,13 @@ class ConqueryConnection(object):
         secondary_ids = self.get_secondary_ids(dataset)
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
-    def get_concept(self, concept_id: str) -> list:
+    def get_concept(self, concept_id: str, return_raw_format: bool = False) -> Union[List[dict], dict]:
         dataset = get_dataset_from_id(concept_id)
         response_dict = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
+
+        if return_raw_format:
+            return response_dict
+
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
