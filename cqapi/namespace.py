@@ -24,3 +24,5 @@ class Keys:
     query = "query"
     options = "options"
     row_prefix = 'row_prefix'
+    format = 'format'
+    values = 'values'
