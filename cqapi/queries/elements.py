@@ -1173,6 +1173,34 @@ class ConceptElement(QueryObject):
         return get_root_concept_id(self.ids[0])
 
 
+class External(QueryObject):
+
+    def __init__(self, format: List[str], values: List[List[str]], label: str = None):
+        super().__init__(query_type=obj_to_query_type(External), label=label)
+
+        self.format = format
+        self.values = values
+
+    def copy(self):
+        return External(label=self.label, format=self.format, values=self.values)
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        # TODO use own specific error
+        raise SavedQueryTranslationError
+
+    def exclude_from_secondary_id(self) -> None:
+        # TODO maybe pass here ?
+        raise NotImplementedError()
+
+    def write_query(self) -> dict:
+        query = {
+            **super().write_query(),
+            Keys.format: self.format,
+            Keys.values: self.values
+        }
+        return remove_null_values_from_query(query)
+
+
 query_type_to_obj_map = {
     "CONCEPT": ConceptElement,
     "CONCEPT_QUERY": ConceptQuery,
@@ -1182,7 +1210,8 @@ query_type_to_obj_map = {
     "DATE_RESTRICTION": DateRestriction,
     "NEGATION": Negation,
     "SAVED_QUERY": SavedQuery,
-    "EXPORT_FORM": ExportForm
+    "EXPORT_FORM": ExportForm,
+    "EXTERNAL": External
 }
 
 
