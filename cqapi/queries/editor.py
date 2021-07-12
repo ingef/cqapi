@@ -50,7 +50,7 @@ class QueryEditor:
                 query = query.query
             if not isinstance(query, QueryObject):
                 raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryEditor], not {type(query)}")
-            and_or_queries.append(query)
+            and_or_queries.append(query.copy())
 
         self.query = AndOrElement(query_type=query_type, children=and_or_queries,
                                   create_exist=create_exist, label=label)
