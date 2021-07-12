@@ -24,3 +24,5 @@ class Keys:
     query = "query"
     options = "options"
     matching_type = 'matchingType'
+    format = 'format'
+    values = 'values'
