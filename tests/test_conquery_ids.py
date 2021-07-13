@@ -42,7 +42,7 @@ def test_add_dataset_id_to_conquery_id():
     with pytest.raises(ValueError):
         con.add_dataset_id_to_conquery_id("foo", "unknown_dataset")
     assert con.add_dataset_id_to_conquery_id("foo", "dataset2") == "dataset2.foo"
-    assert con.add_dataset_id_to_conquery_id("fdb_destatis.foo", "dataset2") == "dataset2.foo"
+    assert con.add_dataset_id_to_conquery_id("dataset1.foo", "dataset2") == "dataset2.foo"
 
 
 def test_remove_dataset_id_from_conquery_id():
