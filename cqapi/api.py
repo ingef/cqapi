@@ -2,6 +2,7 @@ import csv
 from io import StringIO
 from time import sleep
 import requests
+import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries import get_dataset_from_query
@@ -88,11 +89,16 @@ class ConqueryConnection(object):
                         'pretty': 'false'}
         self.open_session()
         self._datasets_with_permission = self.get_datasets()
+        self.store_dataset_list_globally()
+
         if dataset is not None:
             self.set_dataset(dataset)
 
     def set_dataset(self, dataset: str = None):
         self._dataset = self._get_dataset(dataset)
+
+    def store_dataset_list_globally(self):
+        cqapi.datasets.set_dataset_list(self._datasets_with_permission)
 
     def _get_dataset(self, dataset: str = None):
 
