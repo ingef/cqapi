@@ -2,6 +2,9 @@ from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
 from cqapi import ConqueryConnection
 import cqapi.conquery_ids as con
 import pytest
+import cqapi.datasets
+
+cqapi.datasets.set_dataset_list(["dataset1", "dataset2"])
 
 
 def test_compare_conquery_ids():
