@@ -7,7 +7,7 @@ from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Type, Union, Tuple
 from copy import deepcopy
-from cqapi.exceptions import SavedQueryTranslationError
+from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 
 
 def remove_null_values_from_query(query: dict):
@@ -775,60 +775,6 @@ class OrElement(AndOrElement):
                          create_exist=self.create_exist, label=self.label)
 
 
-class SavedQuery(QueryObject):
-
-    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
-        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
-
-        self.query_id = query_id
-        self._exclude_from_secondary_id = exclude_from_secondary_id
-
-    def copy(self):
-        return SavedQuery(query_id=self.query_id, label=self.label,
-                          exclude_from_secondary_id=self._exclude_from_secondary_id)
-
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        raise SavedQueryTranslationError
-
-    def exclude_from_secondary_id(self) -> None:
-        self._exclude_from_secondary_id = True
-
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.query: self.query_id,
-            Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
-        }
-        return remove_null_values_from_query(query)
-
-    @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
-        validate_query_type(cls, query)
-
-        return cls(
-            query_id=query[Keys.query],
-            label=query.get(Keys.label)
-        )
-
-    def add_concept_select(self, select_id: str) -> None:
-        pass
-
-    def add_connector_select(self, select_id: str) -> None:
-        pass
-
-    def add_filter(self, filter_obj: dict) -> None:
-        pass
-
-    def exclude_from_time_aggregation(self) -> None:
-        pass
-
-    def get_concept_ids(self):
-        raise SavedQueryTranslationError
-
-    def get_concept_elements(self) -> List[QueryObject]:
-        raise SavedQueryTranslationError
-
-
 class ConceptTable:
     """ Table/Connectors for query element CONCEPT"""
 
@@ -1173,29 +1119,99 @@ class ConceptElement(QueryObject):
         return get_root_concept_id(self.ids[0])
 
 
-class External(QueryObject):
+class SimpleQuery(QueryObject):
 
-    def __init__(self, format: List[str], values: List[List[str]], label: str = None):
-        super().__init__(query_type=obj_to_query_type(External), label=label)
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        raise NotImplementedError
 
-        self.format = format
-        self.values = values
+    def add_concept_select(self, select_id: str) -> None:
+        pass
+
+    def add_connector_select(self, select_id: str) -> None:
+        pass
+
+    def add_filter(self, filter_obj: dict) -> None:
+        pass
+
+    def exclude_from_time_aggregation(self) -> None:
+        pass
+
+    def exclude_from_secondary_id(self) -> None:
+        pass
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        raise NotImplementedError
+
+    def get_concept_ids(self):
+        pass
+
+
+class SavedQuery(SimpleQuery):
+
+    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
+        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
+
+        self.query_id = query_id
+        self._exclude_from_secondary_id = exclude_from_secondary_id
 
     def copy(self):
-        return External(label=self.label, format=self.format, values=self.values)
+        return SavedQuery(query_id=self.query_id, label=self.label,
+                          exclude_from_secondary_id=self._exclude_from_secondary_id)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        # TODO use own specific error
         raise SavedQueryTranslationError
 
     def exclude_from_secondary_id(self) -> None:
-        # TODO maybe pass here ?
-        raise NotImplementedError()
+        self._exclude_from_secondary_id = True
 
     def write_query(self) -> dict:
         query = {
             **super().write_query(),
-            Keys.format: self.format,
+            Keys.query: self.query_id,
+            Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
+        }
+        return remove_null_values_from_query(query)
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        validate_query_type(cls, query)
+
+        return cls(
+            query_id=query[Keys.query],
+            label=query.get(Keys.label)
+        )
+
+
+class External(SimpleQuery):
+
+    def __init__(self, format_list: List[str], values: List[List[str]], label: str = None):
+        super().__init__(query_type=obj_to_query_type(External), label=label)
+
+        self.format_list = format_list
+        self.values = values
+
+    def copy(self):
+        return External(label=self.label, format_list=self.format_list, values=self.values)
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        raise ExternalQueryTranslationError
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        validate_query_type(cls, query)
+
+        return cls(
+            format_list=query[Keys.format],
+            values=query[Keys.values],
+            label=query[Keys.label]
+        )
+
+    def write_query(self) -> dict:
+        query = {
+            **super().write_query(),
+            Keys.format: self.format_list,
             Keys.values: self.values
         }
         return remove_null_values_from_query(query)

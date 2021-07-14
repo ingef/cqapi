@@ -6,7 +6,7 @@ import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries import get_dataset_from_query
-from cqapi.queries.elements import QueryObject
+from cqapi.queries.elements import QueryObject, External
 from typing import Union, List
 
 
@@ -281,7 +281,7 @@ class ConqueryConnection(object):
                 patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
                       {"label": label})
             return result['id']
-        
+
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
@@ -289,8 +289,8 @@ class ConqueryConnection(object):
         dataset = get_dataset_from_id(query_id)
         post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
 
-    def get_query_result(self, query_id: str, return_pandas: bool = False, requests_per_sec=None,
-                         already_reexecuted: bool = False, delete_query: bool = False):
+    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
+                         requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -314,7 +314,8 @@ class ConqueryConnection(object):
         response_status = response["status"]
 
         if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
+            raise Exception(f"Query with {query_id=} failed "
+                            f"with code {response.status_code} and message {response.text}")
         elif response_status == "NEW":
             if already_reexecuted:
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
@@ -322,12 +323,20 @@ class ConqueryConnection(object):
             sleep(0.5)
             data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
-            result_url_csv = self.get_result_url(response=response, file_type="csv")
-            result_string = self._download_query_results(result_url_csv)
             if return_pandas:
                 import pandas as pd
-                data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+                if download_with_arrow:
+                    import pyarrow as pa
+                    result_url_arrow = self._get_result_url(response=response, file_type="arrf")
+                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
+                else:
+                    result_url_csv = self._get_result_url(response=response, file_type="csv")
+                    result_string = self._download_query_results(result_url_csv)
+                    data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+
             else:
+                result_url_csv = self._get_result_url(response=response, file_type="csv")
+                result_string = self._download_query_results(result_url_csv)
                 data = list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
@@ -337,37 +346,11 @@ class ConqueryConnection(object):
 
         return data
 
-    def get_data(self, query_id: str):
-        """ Returns results for given query.
-        Blocks until the query is DONE.
-
-        :param query_id:
-        :return: str containing the returned csv's
-        """
-
-        response = self.get_query_info(query_id)
-
-        while response['status'] == 'RUNNING':
-            response = self.get_query_info(query_id)
-            sleep(1 / 100)
-
-        response_status = response["status"]
-
-        if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed.")
-        elif response_status == "NEW":
-            raise ValueError(f"query stats NEW - query has to be reexecuted")
-        elif response_status == "DONE":
-            import pyarrow as pa
-            result_url_arrow = self.get_result_url(response=response, file_type="arrf")
-            return pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
-        else:
-            raise ValueError(f"Unknown response status {response_status}")
-
     def _download_query_results(self, url):
         return get_text(self._session, url, params={"pretty": "false"})
 
-    def get_result_url(self, response, file_type: str = "csv"):
+    @staticmethod
+    def _get_result_url(response, file_type: str = "csv"):
         result_urls = response["resultUrls"]
 
         if file_type not in ["csv", "xlsx"]:
