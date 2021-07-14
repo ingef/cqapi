@@ -27,3 +27,6 @@ def get_dataset_from_query(query: dict):
 
     if query_type == "EXPORT_FORM":
         return get_dataset_from_id(query["queryGroup"])
+
+    if query_type == "EXTERNAL":
+        raise ValueError(f"Can not guess dataset from External query")
