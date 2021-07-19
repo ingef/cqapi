@@ -3,6 +3,8 @@ from cqapi.util import check_input_list
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
+from cqapi.queries.elements import QueryObject
+from typing import Union
 
 cq_element_description = {
     "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
@@ -12,8 +14,12 @@ cq_element_description = {
 cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 
 
-def get_label_from_query(query: dict):
-    """Returns label from query. If there are more than one child, only the label of the first child is returned"""
+def get_label_from_query(query: Union[dict, QueryObject]):
+    """Returns label from query. If there is more than one child, only the label of the first child is returned"""
+
+    if isinstance(query, QueryObject):
+        query = query.write_query()
+
     if query["type"] in cq_element_description["base_cq_elements"]:
         return query.get('label', '')
     if 'root' in query.keys():
@@ -141,26 +147,47 @@ def wrap_saved_query(query_id: str) -> dict:
     }
 
 
-def wrap_secondary_id_query(query: dict, secondary_id: str):
+def wrap_negation(query: dict) -> dict:
+    return {
+        "type": "NEGATION",
+        "child": query
+    }
+
+
+def wrap_secondary_id_query(query: dict, secondary_id: str, date_aggregation_mode: str = "MERGE"):
     if query["type"] in ["CONCEPT_QUERY"]:
         query = query.get("root")
     return {
         "type": "SECONDARY_ID_QUERY",
         "secondaryId": secondary_id,
-        "root": query
+        "root": query,
+        "dateAggregationMode": date_aggregation_mode
     }
 
 
-def add_date_restriction(query: dict, start_date: str, end_date: str) -> dict:
-    validate_date(start_date)
-    validate_date(end_date)
+def unwrap_secondary_id_query(concept_query: dict) -> dict:
+    if concept_query["type"] != "SECONDARY_ID_QUERY":
+        return concept_query
+    return concept_query["root"]
+
+
+def add_date_restriction(query: dict, start_date: str = None, end_date: str = None) -> dict:
+    date_range_obj = dict()
+
+    if start_date is not None:
+        validate_date(start_date)
+        date_range_obj["min"] = start_date
+
+    if end_date is not None:
+        validate_date(end_date)
+        date_range_obj["max"] = end_date
+
+    if start_date is None and end_date is None:
+        raise ValueError(f"No date specified")
 
     return {
         "type": "DATE_RESTRICTION",
-        "dateRange": {
-            "min": start_date,
-            "max": end_date
-        },
+        "dateRange": date_range_obj,
         "child": query
     }
 
@@ -179,7 +206,7 @@ def wrap_concept_query(query: dict, date_aggregation_mode: str = "MERGE") -> dic
     }
 
 
-def wrap_and(*queries) -> dict:
+def wrap_and(*queries: dict) -> dict:
     return {
         'type': 'AND',
         'children': [*queries]
@@ -278,6 +305,16 @@ def add_matching_type_to_query(query: dict, matching_type: str, concept_id: str 
         concept_element["matchingType"] = matching_type
 
 
+def add_filter_to_query(query: dict, filter_id: str, filter_obj: dict,
+                        concept_id: str = None, connector_id: str = None) -> dict:
+    return _add_to_table_in_query(query=query,
+                                  conquery_id=filter_id,
+                                  conquery_id_type="filters",
+                                  concept_id=concept_id,
+                                  connector_id=connector_id,
+                                  filter_obj=filter_obj)
+
+
 def add_connector_select_to_query(query: dict, select_id: str, concept_id: str = None,
                                   connector_id: str = None) -> dict:
     return _add_to_table_in_query(query=query,
@@ -336,7 +373,7 @@ def add_validity_date_to_queries(queries: list, validity_date_id: str, concept_i
 
 
 def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
-                           concept_id: str = None, connector_id: str = None) -> dict:
+                           concept_id: str = None, connector_id: str = None, filter_obj: dict = None) -> dict:
     concept_elements = get_concept_elements_from_query(query)
     for concept_element in concept_elements:
         # skip concept elements that do not match concept_id
@@ -360,8 +397,14 @@ def _add_to_table_in_query(query: dict, conquery_id: str, conquery_id_type: str,
                     continue
                 table[conquery_id_type] = [*table.get(conquery_id_type, []), conquery_id]
             elif conquery_id_type == "filters":
-                # avoid duplicates
-                raise ValueError(f"Adding Filter to Query is not supported yet.")
+                if filter_obj is None:
+                    raise ValueError(f"{conquery_id_type=} but {filter_obj=}")
+
+                if not contains_dataset_id(filter_obj["filter"]):
+                    filter_obj["filter"] = add_dataset_id_to_conquery_id(filter_obj["filter"], get_dataset(table_id))
+
+                table["filters"] = [*table.get("filters", []), filter_obj]
+
             else:
                 raise ValueError(f"Unknown {conquery_id_type=}")
 
@@ -411,6 +454,10 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         concept_ids = [concept_ids]
         if any([type(concept_id) is not str for concept_id in concept_ids]):
             raise ValueError("Parameter 'concept_ids' must be string or list of strings")
+    if connector_ids is not None and type(connector_ids) is not list:
+        connector_ids = [connector_ids]
+        if any([type(connector_id) is not str for connector_id in connector_ids]):
+            raise ValueError("Parameter 'concept_ids' must be string or list of strings")
 
     if label is None:
         label = concept_object.get("label")
@@ -422,6 +469,9 @@ def concept_element_from_concept(concept_ids: list, concept_object: dict,
         if connector_ids is not None and not is_in_conquery_ids(table_connector_id, connector_ids):
             continue
         table_connector_id_dict_list.append({'id': table_connector_id})
+
+    if not table_connector_id_dict_list:
+        raise ValueError(f"Could not find any connector for concept element")
 
     return {
         'type': 'CONCEPT',
