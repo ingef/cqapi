@@ -31,7 +31,6 @@ def validate_resolution(resolution: str) -> None:
     if resolution not in known_resolution:
         raise ValueError(f"Unknown {resolution=}. Must be in {known_resolution}")
 
-
 def validate_time_unit(time_unit: str):
     valid_time_units = ['QUARTERS', 'DAYS']
     if time_unit not in valid_time_units:
