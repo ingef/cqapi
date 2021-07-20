@@ -6,8 +6,25 @@ import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries import get_dataset_from_query
-from cqapi.queries.elements import QueryObject, External
+from cqapi.queries.elements import QueryObject
 from typing import Union, List
+from requests import Response
+from requests.exceptions import HTTPError
+
+
+def raise_for_status(response: Response):
+    if response.status_code < 400:
+        return None
+
+    if response.status_code < 500:
+        http_error_msg = f'{response.status_code} Client Error: {response.reason} for url: {response.url}\n' \
+                         f'Response: {response.text}'
+
+    else:
+        http_error_msg = f'{response.status_code} Server Error: {response.reason} for url: {response.url}\n' \
+                         f'Response: {response.text}'
+
+    raise HTTPError(http_error_msg, response=response)
 
 
 def get_json(session, url):
@@ -16,7 +33,7 @@ def get_json(session, url):
 
 def get(session, url, params: dict = None):
     with session.get(url, params=params) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response
 
 
@@ -26,19 +43,19 @@ def get_text(session, url, params: dict = None):
 
 def post(session, url, data):
     with session.post(url, json=data) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.json()
 
 
 def patch(session, url, data):
     with session.patch(url, json=data) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.json()
 
 
 def delete(session, url):
     with session.delete(url) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.text
 
 
