@@ -278,7 +278,7 @@ class ConqueryConnection(object):
 
         try:
             if label is not None:
-                patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
+                patch(self._session, f"{self._url}/api/datasets/{dataset}/queries/{result['id']}",
                       {"label": label})
             return result['id']
 
@@ -287,7 +287,7 @@ class ConqueryConnection(object):
 
     def reexecute_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
-        post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
+        post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
     def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
                          requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
