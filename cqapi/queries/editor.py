@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
 from cqapi.queries.elements import QueryObject, convert_query_dict, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndOrElement, QueryDescription, ConceptElement
+    SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement
 from cqapi.queries.utils import create_query, translate_query
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection
@@ -52,8 +52,12 @@ class QueryEditor:
                 raise ValueError(f"Query must be of type Union[dict, QueryObject, QueryEditor], not {type(query)}")
             and_or_queries.append(query.copy())
 
-        self.query = AndOrElement(query_type=query_type, children=and_or_queries,
-                                  create_exist=create_exist, label=label)
+        if query_type == "AND":
+            self.query = AndElement(children=and_or_queries, create_exist=create_exist, label=label)
+        elif query_type == "OR":
+            self.query = OrElement(children=and_or_queries, create_exist=create_exist, label=label)
+        else:
+            raise ValueError(f"Unknown {query_type=}")
 
     def and_query(self, query: Union[dict, QueryObject, QueryEditor, str], create_exist: bool = None,
                   label: str = None):
