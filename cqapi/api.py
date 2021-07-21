@@ -194,7 +194,7 @@ class ConqueryConnection(object):
 
     def get_stored_queries(self, dataset: str = None) -> list:
         dataset = self._get_dataset(dataset)
-        response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries")
+        response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
         return response_list
 
     def get_query_id(self, label: str, dataset: str = None) -> str:
@@ -207,7 +207,7 @@ class ConqueryConnection(object):
 
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result['columnDescriptions']
 
     def get_form_configs(self, dataset: str = None) -> list:
@@ -222,7 +222,7 @@ class ConqueryConnection(object):
 
     def get_query(self, query_id: str) -> dict:
         dataset = get_dataset_from_id(query_id)
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result.get('query')
 
     def get_stored_query_info(self, query_id: str = None, label: str = None) -> dict:
@@ -243,7 +243,7 @@ class ConqueryConnection(object):
 
     def delete_stored_query(self, query_id: str):
         dataset = get_dataset_from_id(query_id)
-        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
         return result
 
     def delete_stored_queries(self, query_ids: List[str]):
