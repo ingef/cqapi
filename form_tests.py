@@ -16,8 +16,8 @@ dataset = "adb_bosch"
 test_psm = True
 test_desc_rel = True
 test_desc_abs = True
-#test_map = True
 test_pred = True
+test_map = False
 
 concepts = conquery_connection.get_concepts(dataset)
 
