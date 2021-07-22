@@ -66,9 +66,9 @@ c44_query_id = conquery_connection.execute_query(c44_concept_query)
 # Execute Export Form
 icd_concept_object = create_query(concept_id=icd_id,
                                   concepts=concepts,
-                                  connector_ids=["adb_bosch.icd.kh_diagnose_icd_code"],
-                                  connector_select_ids=["adb_bosch.icd.kh_diagnose_icd_code.anzahl_krankenhaeuser"],
-                                  concept_select_ids=["adb_bosch.icd.icd_exists"])
+                                  connector_ids=[f"{dataset}.icd.kh_diagnose_icd_code"],
+                                  connector_select_ids=[f"{dataset}.icd.kh_diagnose_icd_code.anzahl_krankenhaeuser"],
+                                  concept_select_ids=[f"{dataset}.icd.icd_exists"])
 
 atc_a_concept_object = create_query(concept_id=f"{dataset}.atc.a",
                                     concepts=concepts)
@@ -129,7 +129,7 @@ def create_psm_form(treatment_dataset: str, treatment_query: str, control_datase
         "indexPlacement": index_placement,
         "features": feature_queries_list,
         "outcomes": outcome_queries_list,
-        #"excl_concepts": {"value": "no_exclusion"},
+        "excl_concepts": {"value": "no_exclusion"},
         "caliper": caliper,
         "matchingPartners": matching_partners,
         "indexDateMatching": None,
@@ -297,7 +297,7 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
         "ebm_de_features": ebm_de_features,
         "ops_features": ops_features,
         "additional_features": additional_features,
-        #"exclusion_features": [],
+        "exclusion_features": [],
         "formType_tab": {
             "value": "absolute",
             "dateRange_classifier": {
