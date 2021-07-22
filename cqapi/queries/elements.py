@@ -1111,10 +1111,10 @@ class ConceptElement(QueryObject):
                        for table in self.tables
                        if not is_same_conquery_id(table.connector_id, connector_id)]
 
-    def remove_all_tables_but(self, connector_id: str):
+    def remove_all_tables_but(self, connector_ids: List[str]):
         self.tables = [table
                        for table in self.tables
-                       if is_same_conquery_id(table.connector_id, connector_id)]
+                       if is_in_conquery_ids(table.connector_id, connector_ids)]
 
     def get_root_concept_id(self):
         return get_root_concept_id(self.ids[0])
