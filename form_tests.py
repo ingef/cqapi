@@ -1,10 +1,11 @@
 from copy import deepcopy
 from cqapi import ConqueryConnection
-from cqapi.queries.queries import concept_query_from_concept, concept_element_from_concept, \
-    add_connector_select_to_query, add_concept_select_to_query, wrap_or
-from cqapi.queries.export_form import create_absolute_form_query, create_relative_form_query
+from cqapi.queries.elements import ConceptQuery, AbsoluteExportForm, RelativeExportForm
 import datetime
 import time
+from cqapi.queries.utils import create_query
+from typing import List
+from cqapi.queries.elements import QueryObject
 
 eva_url = "http://lyo-peva01:8080"
 eva_token = "dKRILd5JEKwBSuxJ0DhK/ONzy60wPkY7FzpaQQ+WGXOSsR0JB5gl/IPohUmbcC3R/3MLhg6zxDZiD0KjqdnJfF4o0zW7gBBvsd7ZZ/vR22aHyzOrY4813xtfdxMZFnVJUTllPiM4CeU2JFJdK6pznfehc4refCQO1onpR7QJW5d/8LqJrtThPTizZFCCSoFEK94zpWbTRtLgdKhPBQvSgaz6WzPM7+9lpqHRCTESwdUrjSJLj0zDtXeh9V482gSMdT6DiCIxonI0+YlCYLNref1dhMdG2ok2xw/FUK7Cp7hMKDyHwVm72CB+CN9a3vba"
@@ -15,7 +16,7 @@ dataset = "adb_bosch"
 test_psm = True
 test_desc_rel = True
 test_desc_abs = True
-test_map = True
+#test_map = True
 test_pred = True
 
 concepts = conquery_connection.get_concepts(dataset)
@@ -25,15 +26,17 @@ counter = 0
 for concept_id, concept in concepts.items():
     break
     print(concept_id)
-    concept_query = concept_query_from_concept(concept_ids=[concept_id],
-                                               concept_object=concept)
-    concept_query_id = conquery_connection.execute_query(dataset, concept_query)
+    concept_query = create_query(concept_id=concept_id,
+                                 concepts=concepts,
+                                 concept_query=True)
 
-    n_results = conquery_connection.get_number_of_results(dataset, concept_query_id)
+    concept_query_id = conquery_connection.execute_query(dataset=dataset, query=concept_query)
+
+    n_results = conquery_connection.get_number_of_results(concept_query_id)
 
     print(n_results)
     counter += 1
-    if counter >= 1:
+    if counter >= 10:
         break
 
 passed_time_seconds = (datetime.datetime.now() - start_time).seconds
@@ -46,59 +49,60 @@ icd_c44_id = f"{icd_id}.c00-d48.c43-c44.c44"
 # execute c43
 date_range_2020 = ["2020-01-01", "2020-12-31"]
 date_range_2019 = ["2019-01-01", "2019-12-31"]
-c43_concept_query = concept_query_from_concept(concept_ids=[icd_c43_id],
-                                               concept_object=concepts[icd_id],
-                                               start_date=date_range_2020[0],
-                                               end_date=date_range_2020[1]
-                                               )
+c43_concept_query = create_query(concept_id=icd_c43_id, concepts=concepts,
+                                 start_date=date_range_2020[0], end_date=date_range_2020[1],
+                                 concept_query=True)
+
 print(c43_concept_query)
 c43_query_id = conquery_connection.execute_query(c43_concept_query)
 
 # execute c44
-c44_concept_query = concept_query_from_concept(concept_ids=[icd_c44_id],
-                                               concept_object=concepts[icd_id],
-                                               start_date=date_range_2020[0],
-                                               end_date=date_range_2020[1])
+c44_concept_query = create_query(concept_id=icd_c44_id, concepts=concepts,
+                                 start_date=date_range_2020[0], end_date=date_range_2020[1],
+                                 concept_query=True)
+
 c44_query_id = conquery_connection.execute_query(c44_concept_query)
 
 # Execute Export Form
-icd_concept_object = concept_element_from_concept([f"{dataset}.icd"], concepts[f"{dataset}.icd"])
-icd_concept_object = add_connector_select_to_query(icd_concept_object,
-                                                   select_id="icd.kh_diagnose_icd_code.anzahl_krankenhaeuser",
-                                                   connector_id="kh_diagnose_icd_code")
-icd_concept_object = add_concept_select_to_query(icd_concept_object, select_id="icd.icd_exists")
+icd_concept_object = create_query(concept_id=icd_id,
+                                  concepts=concepts,
+                                  connector_ids=[f"{dataset}.icd.kh_diagnose_icd_code"],
+                                  connector_select_ids=[f"{dataset}.icd.kh_diagnose_icd_code.anzahl_krankenhaeuser"],
+                                  concept_select_ids=[f"{dataset}.icd.icd_exists"])
 
-atc_a_concept_object = concept_element_from_concept([f"{dataset}.atc.a"], concepts[f"{dataset}.atc"])
+atc_a_concept_object = create_query(concept_id=f"{dataset}.atc.a",
+                                    concepts=concepts)
 
 # Absolute Case
+
 features = [icd_concept_object]
-# wrap features in OR for now
-features = [wrap_or(feature_query) for feature_query in features]
 
-
-def add_matching_type(queries: list, matching_type: str):
-    for query in queries:
-        query["matchingType"] = matching_type
-    return queries
-
-
-features_psm = add_matching_type(deepcopy(features), "PSM")
-
-absolute_form_query = create_absolute_form_query(c43_query_id, features, date_range_2020)
-
+absolute_form_query = AbsoluteExportForm(query_id=c43_query_id,
+                                         features=features,
+                                         date_range=date_range_2020)
 absolute_form_query_id = conquery_connection.execute_query(query=absolute_form_query)
 if not conquery_connection.query_succeeded(absolute_form_query_id):
     print("Export Form failed")
 
 # Relative Case
 features = [icd_concept_object]
-relative_form_query = create_relative_form_query(c43_query_id,
-                                                 before_index_queries=features,
-                                                 after_index_queries=features)
 
+relative_form_query = RelativeExportForm(query_id=c43_query_id,
+                                         before_index_queries=features,
+                                         after_index_queries=features)
 relative_form_query_id = conquery_connection.execute_query(query=relative_form_query)
 if not conquery_connection.query_succeeded(relative_form_query_id):
     print("Export Form failed")
+
+
+# PSM Form
+def add_matching_type(queries: List[QueryObject], matching_type: str):
+    for query in queries:
+        query.row_prefix = matching_type
+    return queries
+
+
+features_psm = add_matching_type(deepcopy(features), "PSM")
 
 
 def create_psm_form(treatment_dataset: str, treatment_query: str, control_dataset: str, control_query: str,
@@ -109,9 +113,6 @@ def create_psm_form(treatment_dataset: str, treatment_query: str, control_datase
                     matching_partners: int = 1, index_date_matching=None,
                     varq_p_value: str = "VarQ", exclude_dead: bool = True, exclude_costs: int = 100000,
                     granularity: str = "QUARTERS", maps: bool = False):
-    # for feature_query in feature_queries_list:
-    #    add_matching_type_to_query(feature_query, "PSM")
-
     return {
         "type": "JUPYEND_FORM@PSM_FORM",
         "title": "",
@@ -128,6 +129,7 @@ def create_psm_form(treatment_dataset: str, treatment_query: str, control_datase
         "indexPlacement": index_placement,
         "features": feature_queries_list,
         "outcomes": outcome_queries_list,
+        "excl_concepts": {"value": "no_exclusion"},
         "caliper": caliper,
         "matchingPartners": matching_partners,
         "indexDateMatching": None,
@@ -196,7 +198,7 @@ def create_relative_descriptive_form(query_group: str, features: list,
     }
 
 
-def create_map_form_query(query_group: str, date_range: list, features: list, relative: bool = False,
+def create_map_form_query(query_group: str, date_range: list, features: list, aggregation_mode: str = "mean",
                           resolution: str = "QUARTERS", region: str = "DEUTSCHLAND", granularity: str = "states"):
     return {
         "type": "JUPYEND_FORM@MAP_FORM",
@@ -206,7 +208,7 @@ def create_map_form_query(query_group: str, date_range: list, features: list, re
         "granularity": granularity,
         "queryGroup": query_group,
         "features": features,
-        "relative": relative,
+        "aggregation_mode": aggregation_mode,
         "resolution": resolution,
         "dateRange": {
             "min": date_range[0],
@@ -295,6 +297,7 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
         "ebm_de_features": ebm_de_features,
         "ops_features": ops_features,
         "additional_features": additional_features,
+        "exclusion_features": [],
         "formType_tab": {
             "value": "absolute",
             "dateRange_classifier": {
@@ -312,12 +315,16 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
 
 
 executed_queries = dict()
+
+features = [feature.write_query() for feature in features]
+features_psm = [feature_psm.write_query() for feature_psm in features_psm]
 # execute psm form
 if test_psm:
     psm_form_query = create_psm_form(treatment_dataset=dataset, treatment_query=c43_query_id,
                                      control_dataset=dataset, control_query=c44_query_id,
                                      feature_queries_list=features_psm, outcome_queries_list=features)
     executed_queries["PSM"] = conquery_connection.execute_query(psm_form_query, dataset=dataset)
+
 
 # execute descriptive forms
 if test_desc_abs:
@@ -342,8 +349,9 @@ if test_map:
 # prediction
 if test_pred:
     pred_form_query = create_pred_form_absolute(training_group=c43_query_id,
-                                                classifier=create_pred_form_classifier_var(atc_a_concept_object),
-                                                date_range_training=date_range_2019, date_range_classifier=date_range_2020,
+                                                classifier=create_pred_form_classifier_var(atc_a_concept_object.write_query()),
+                                                date_range_training=date_range_2019,
+                                                date_range_classifier=date_range_2020,
                                                 stamm_features=create_pred_form_stamm_features(),
                                                 atc_features=create_pred_form_atc_features(),
                                                 ops_features=create_pred_form_ops_features(),
