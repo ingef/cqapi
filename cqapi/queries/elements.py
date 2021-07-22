@@ -28,7 +28,8 @@ class QueryObject:
     def write_query(self) -> dict:
         query = {
             Keys.type: self.query_type,
-            Keys.label: self.label
+            Keys.label: self.label,
+            Keys.row_prefix: self.row_prefix
         }
         return remove_null_values_from_query(query)
 
