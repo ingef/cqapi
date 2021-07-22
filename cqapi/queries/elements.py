@@ -625,7 +625,7 @@ class AndOrElement(QueryObject):
     """
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None):
+                 row_prefix: str = None, date_action: str = None):
 
         super().__init__(query_type=query_type)
 
@@ -635,6 +635,7 @@ class AndOrElement(QueryObject):
         self.children = children
         self.label = label
         self.create_exist = create_exist
+        self.date_action = date_action
 
         self.row_prefix = row_prefix
 
@@ -739,7 +740,7 @@ class AndOrElement(QueryObject):
 
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, query_type: str = None):
+                 row_prefix: str = None, date_action: str = None, query_type: str = None):
         """
 
         :param children:
@@ -749,7 +750,7 @@ class AndElement(AndOrElement):
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label, row_prefix=row_prefix)
+                         label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
@@ -758,7 +759,7 @@ class AndElement(AndOrElement):
 
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, query_type: str = None):
+                 date_action: str = None, row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
@@ -768,7 +769,7 @@ class OrElement(AndOrElement):
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label, row_prefix=row_prefix)
+                         label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
