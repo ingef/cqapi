@@ -241,10 +241,9 @@ class ConqueryConnection(object):
 
         return query_info[0]
 
-    def delete_stored_query(self, query_id: str):
+    def delete_stored_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
-        return result
 
     def delete_stored_queries(self, query_ids: List[str]):
         for query_id in query_ids:
