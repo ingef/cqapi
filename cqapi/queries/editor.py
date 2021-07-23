@@ -22,7 +22,7 @@ class QueryEditor:
 
         self.query = query
 
-    def date_restriction(self, date_range: List[str] = None, start_date: str = None, end_date: str = None,
+    def date_restriction(self, date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None,
                          label: str = None):
         self.query = DateRestriction(child=self.query, date_range=date_range, start_date=start_date, end_date=end_date,
                                      label=label)
