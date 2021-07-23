@@ -371,7 +371,7 @@ class ConqueryConnection(object):
         result_urls = response["resultUrls"]
 
         if file_type not in ["csv", "xlsx"]:
-            result_url_base = ".".join(response["resultUrls"].split(".")[:-1])
+            result_url_base = ".".join(response["resultUrls"][0].split(".")[:-1])
             return f'{result_url_base}.{file_type}'
 
         for result_url in result_urls:
