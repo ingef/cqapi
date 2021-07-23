@@ -60,7 +60,7 @@ class QueryObject:
     def set_validity_date(self, validity_date_id: str) -> None:
         pass
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
         pass
 
     def add_concept_select(self, select_id: str) -> None:
@@ -223,8 +223,8 @@ class SingleRootQueryDescription(QueryDescription):
     def get_concept_elements(self):
         return self.root.get_concept_elements()
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
-        self.root.remove_all_tables_but(connector_id=connector_id)
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
+        self.root.remove_all_tables_but(connector_ids=connector_ids)
 
 
 class SingleChildQueryObject(QueryObject):
@@ -285,8 +285,8 @@ class SingleChildQueryObject(QueryObject):
     def get_concept_elements(self):
         return self.child.get_concept_elements()
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
-        self.child.remove_all_tables_but(connector_id=connector_id)
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
+        self.child.remove_all_tables_but(connector_ids=connector_ids)
 
 
 class ExportForm(QueryDescription):
@@ -705,9 +705,9 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.remove_connector_selects(connector_select_ids=connector_select_ids)
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
         for child in self.children:
-            child.remove_all_tables_but(connector_id=connector_id)
+            child.remove_all_tables_but(connector_ids=connector_ids)
 
     def add_filter(self, filter_obj: dict) -> None:
         for child in self.children:
