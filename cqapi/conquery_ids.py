@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Union, List, Set
+from typing import Union, Set
 from cqapi.namespace import Keys
 from cqapi.util import check_arg_type
+import cqapi.datasets
 
 # conquery id info
 conquery_id_separator = "."
@@ -14,20 +15,13 @@ filter_loc = 3
 
 @check_arg_type(["dataset_id"])
 def is_dataset_id(dataset_id: str):
-    if dataset_id.startswith("adb_"):
-        return True
-    if dataset_id.startswith("fdb_"):
-        return True
-    if dataset_id.startswith("dataset"):
-        return True
-
-    return False
+    return dataset_id in cqapi.datasets.get_dataset_list()
 
 
 def change_dataset(new_dataset: str, conquery_id: str):
     eva_id_list = conquery_id.split(".")
     if len(eva_id_list) < 2:
-        raise ValueError(f"Eva_id has to be of shape 'dataset'.'id'.'child_id'..., not {conquery_id}")
+        raise ValueError(f"Eva_id has to be of shape <dataset>.<id>.<child_id>..., not {conquery_id}")
 
     return ".".join([new_dataset, *eva_id_list[1:]])
 
