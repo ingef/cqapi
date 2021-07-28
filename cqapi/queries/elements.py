@@ -7,7 +7,7 @@ from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Type, Union, Tuple
 from copy import deepcopy
-from cqapi.exceptions import SavedQueryTranslationError
+from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 
 
 def remove_null_values_from_query(query: dict):
@@ -16,7 +16,7 @@ def remove_null_values_from_query(query: dict):
 
 class QueryObject:
     """Base Class of all query elements"""
-    matching_type: str = None
+    row_prefix: str = None
 
     def __init__(self, query_type: str, label: str = None):
         self.query_type = query_type
@@ -28,7 +28,8 @@ class QueryObject:
     def write_query(self) -> dict:
         query = {
             Keys.type: self.query_type,
-            Keys.label: self.label
+            Keys.label: self.label,
+            Keys.row_prefix: self.row_prefix
         }
         return remove_null_values_from_query(query)
 
@@ -372,7 +373,6 @@ class EntityDateExportForm(AbsoluteExportForm):
         }
 
 
-
 # TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
 class RelativeExportForm(ExportForm):
     def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
@@ -626,7 +626,7 @@ class AndOrElement(QueryObject):
     """
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None):
+                 row_prefix: str = None):
 
         super().__init__(query_type=query_type)
 
@@ -637,7 +637,7 @@ class AndOrElement(QueryObject):
         self.label = label
         self.create_exist = create_exist
 
-        self.matching_type = matching_type
+        self.row_prefix = row_prefix
 
     def copy(self):
         raise NotImplementedError
@@ -662,11 +662,11 @@ class AndOrElement(QueryObject):
         new_and_element = cls(children=new_children,
                               create_exist=self.create_exist,
                               label=self.label,
-                              matching_type=self.matching_type, query_type=self.query_type)
+                              row_prefix=self.row_prefix, query_type=self.query_type)
         and_element = cls(children=children,
                           create_exist=self.create_exist,
                           label=self.label,
-                          matching_type=self.matching_type, query_type=self.query_type)
+                          row_prefix=self.row_prefix, query_type=self.query_type)
 
         return new_and_element, and_element
 
@@ -680,7 +680,7 @@ class AndOrElement(QueryObject):
             children=children,
             create_exist=query.get(Keys.create_exist),
             label=query.get(Keys.label),
-            matching_type=query.get(Keys.matching_type),
+            row_prefix=query.get(Keys.row_prefix),
             query_type=query[Keys.type]  # this is not used, see class doc
         )
 
@@ -740,17 +740,17 @@ class AndOrElement(QueryObject):
 
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None, query_type: str = None):
+                 row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
         :param create_exist:
         :param label:
-        :param matching_type:
+        :param row_prefix:
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label, matching_type=matching_type)
+                         label=label, row_prefix=row_prefix)
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
@@ -759,75 +759,21 @@ class AndElement(AndOrElement):
 
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 matching_type: str = None, query_type: str = None):
+                 row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
         :param create_exist:
         :param label:
-        :param matching_type:
+        :param row_prefix:
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label, matching_type=matching_type)
+                         label=label, row_prefix=row_prefix)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
                          create_exist=self.create_exist, label=self.label)
-
-
-class SavedQuery(QueryObject):
-
-    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
-        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
-
-        self.query_id = query_id
-        self._exclude_from_secondary_id = exclude_from_secondary_id
-
-    def copy(self):
-        return SavedQuery(query_id=self.query_id, label=self.label,
-                          exclude_from_secondary_id=self._exclude_from_secondary_id)
-
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        raise SavedQueryTranslationError
-
-    def exclude_from_secondary_id(self) -> None:
-        self._exclude_from_secondary_id = True
-
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.query: self.query_id,
-            Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
-        }
-        return remove_null_values_from_query(query)
-
-    @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
-        validate_query_type(cls, query)
-
-        return cls(
-            query_id=query[Keys.query],
-            label=query.get(Keys.label)
-        )
-
-    def add_concept_select(self, select_id: str) -> None:
-        pass
-
-    def add_connector_select(self, select_id: str) -> None:
-        pass
-
-    def add_filter(self, filter_obj: dict) -> None:
-        pass
-
-    def exclude_from_time_aggregation(self) -> None:
-        pass
-
-    def get_concept_ids(self):
-        raise SavedQueryTranslationError
-
-    def get_concept_elements(self) -> List[QueryObject]:
-        raise SavedQueryTranslationError
 
 
 class ConceptTable:
@@ -969,7 +915,7 @@ class ConceptElement(QueryObject):
                  connector_selects: List[str] = None, filter_objs: List[str] = None,
                  exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None,
-                 matching_type: str = None):
+                 row_prefix: str = None):
 
         super().__init__(query_type=obj_to_query_type(ConceptElement), label=label)
 
@@ -977,7 +923,7 @@ class ConceptElement(QueryObject):
         self._exclude_from_secondary_id = exclude_from_secondary_id
         self._exclude_from_time_aggregation = exclude_from_time_aggregation
         self.selects = concept_selects or list()
-        self.matching_type = matching_type
+        self.row_prefix = row_prefix
 
         self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
@@ -1081,7 +1027,7 @@ class ConceptElement(QueryObject):
                    concept_selects=query.get(Keys.selects, []),
                    exclude_from_secondary_id=query.get(Keys.exclude_from_secondary_id),
                    exclude_from_time_aggregation=query.get(Keys.exclude_from_time_aggregation),
-                   matching_type=query.get(Keys.matching_type)
+                   row_prefix=query.get(Keys.row_prefix)
                    )
 
     def create_tables(self, concept: dict, connector_ids: List[str] = None,
@@ -1174,29 +1120,99 @@ class ConceptElement(QueryObject):
         return get_root_concept_id(self.ids[0])
 
 
-class External(QueryObject):
+class SimpleQuery(QueryObject):
 
-    def __init__(self, format: List[str], values: List[List[str]], label: str = None):
-        super().__init__(query_type=obj_to_query_type(External), label=label)
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        raise NotImplementedError
 
-        self.format = format
-        self.values = values
+    def add_concept_select(self, select_id: str) -> None:
+        pass
+
+    def add_connector_select(self, select_id: str) -> None:
+        pass
+
+    def add_filter(self, filter_obj: dict) -> None:
+        pass
+
+    def exclude_from_time_aggregation(self) -> None:
+        pass
+
+    def exclude_from_secondary_id(self) -> None:
+        pass
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        raise NotImplementedError
+
+    def get_concept_ids(self):
+        pass
+
+
+class SavedQuery(SimpleQuery):
+
+    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
+        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
+
+        self.query_id = query_id
+        self._exclude_from_secondary_id = exclude_from_secondary_id
 
     def copy(self):
-        return External(label=self.label, format=self.format, values=self.values)
+        return SavedQuery(query_id=self.query_id, label=self.label,
+                          exclude_from_secondary_id=self._exclude_from_secondary_id)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        # TODO use own specific error
         raise SavedQueryTranslationError
 
     def exclude_from_secondary_id(self) -> None:
-        # TODO maybe pass here ?
-        raise NotImplementedError()
+        self._exclude_from_secondary_id = True
 
     def write_query(self) -> dict:
         query = {
             **super().write_query(),
-            Keys.format: self.format,
+            Keys.query: self.query_id,
+            Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
+        }
+        return remove_null_values_from_query(query)
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        validate_query_type(cls, query)
+
+        return cls(
+            query_id=query[Keys.query],
+            label=query.get(Keys.label)
+        )
+
+
+class External(SimpleQuery):
+
+    def __init__(self, format_list: List[str], values: List[List[str]], label: str = None):
+        super().__init__(query_type=obj_to_query_type(External), label=label)
+
+        self.format_list = format_list
+        self.values = values
+
+    def copy(self):
+        return External(label=self.label, format_list=self.format_list, values=self.values)
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+        raise ExternalQueryTranslationError
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        validate_query_type(cls, query)
+
+        return cls(
+            format_list=query[Keys.format],
+            values=query[Keys.values],
+            label=query[Keys.label]
+        )
+
+    def write_query(self) -> dict:
+        query = {
+            **super().write_query(),
+            Keys.format: self.format_list,
             Keys.values: self.values
         }
         return remove_null_values_from_query(query)

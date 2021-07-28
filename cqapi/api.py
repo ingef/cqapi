@@ -2,11 +2,29 @@ import csv
 from io import StringIO
 from time import sleep
 import requests
+import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries import get_dataset_from_query
 from cqapi.queries.elements import QueryObject
 from typing import Union, List
+from requests import Response
+from requests.exceptions import HTTPError
+
+
+def raise_for_status(response: Response):
+    if response.status_code < 400:
+        return None
+
+    if response.status_code < 500:
+        http_error_msg = f'{response.status_code} Client Error: {response.reason} for url: {response.url}\n' \
+                         f'Response: {response.text}'
+
+    else:
+        http_error_msg = f'{response.status_code} Server Error: {response.reason} for url: {response.url}\n' \
+                         f'Response: {response.text}'
+
+    raise HTTPError(http_error_msg, response=response)
 
 
 def get_json(session, url):
@@ -15,7 +33,7 @@ def get_json(session, url):
 
 def get(session, url, params: dict = None):
     with session.get(url, params=params) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response
 
 
@@ -25,19 +43,19 @@ def get_text(session, url, params: dict = None):
 
 def post(session, url, data):
     with session.post(url, json=data) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.json()
 
 
 def patch(session, url, data):
     with session.patch(url, json=data) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.json()
 
 
 def delete(session, url):
     with session.delete(url) as response:
-        response.raise_for_status()
+        raise_for_status(response)
         return response.text
 
 
@@ -88,11 +106,16 @@ class ConqueryConnection(object):
                         'pretty': 'false'}
         self.open_session()
         self._datasets_with_permission = self.get_datasets()
+        self.store_dataset_list_globally()
+
         if dataset is not None:
             self.set_dataset(dataset)
 
     def set_dataset(self, dataset: str = None):
         self._dataset = self._get_dataset(dataset)
+
+    def store_dataset_list_globally(self):
+        cqapi.datasets.set_dataset_list(self._datasets_with_permission)
 
     def _get_dataset(self, dataset: str = None):
 
@@ -159,15 +182,19 @@ class ConqueryConnection(object):
         secondary_ids = self.get_secondary_ids(dataset)
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
-    def get_concept(self, concept_id: str) -> list:
+    def get_concept(self, concept_id: str, return_raw_format: bool = False) -> Union[List[dict], dict]:
         dataset = get_dataset_from_id(concept_id)
         response_dict = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
+
+        if return_raw_format:
+            return response_dict
+
         response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
         return response_list
 
     def get_stored_queries(self, dataset: str = None) -> list:
         dataset = self._get_dataset(dataset)
-        response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries")
+        response_list = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries")
         return response_list
 
     def get_query_id(self, label: str, dataset: str = None) -> str:
@@ -180,7 +207,7 @@ class ConqueryConnection(object):
 
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result['columnDescriptions']
 
     def get_form_configs(self, dataset: str = None) -> list:
@@ -195,7 +222,7 @@ class ConqueryConnection(object):
 
     def get_query(self, query_id: str) -> dict:
         dataset = get_dataset_from_id(query_id)
-        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result.get('query')
 
     def get_stored_query_info(self, query_id: str = None, label: str = None) -> dict:
@@ -216,7 +243,7 @@ class ConqueryConnection(object):
 
     def delete_stored_query(self, query_id: str):
         dataset = get_dataset_from_id(query_id)
-        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}")
+        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result
 
     def delete_stored_queries(self, query_ids: List[str]):
@@ -268,19 +295,19 @@ class ConqueryConnection(object):
 
         try:
             if label is not None:
-                patch(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{result['id']}",
+                patch(self._session, f"{self._url}/api/datasets/{dataset}/queries/{result['id']}",
                       {"label": label})
             return result['id']
-        
+
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
 
     def reexecute_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
-        post(self._session, f"{self._url}/api/datasets/{dataset}/stored-queries/{query_id}/reexecute", data="")
+        post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
-    def get_query_result(self, query_id: str, return_pandas: bool = False, requests_per_sec=None,
-                         already_reexecuted: bool = False, delete_query: bool = False):
+    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
+                         requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -304,7 +331,8 @@ class ConqueryConnection(object):
         response_status = response["status"]
 
         if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed with code. {response.status_code}")
+            raise Exception(f"Query with {query_id=} failed "
+                            f"with code {response.status_code} and message {response.text}")
         elif response_status == "NEW":
             if already_reexecuted:
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
@@ -312,12 +340,20 @@ class ConqueryConnection(object):
             sleep(0.5)
             data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
-            result_url_csv = self.get_result_url(response=response, file_type="csv")
-            result_string = self._download_query_results(result_url_csv)
             if return_pandas:
                 import pandas as pd
-                data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+                if download_with_arrow:
+                    import pyarrow as pa
+                    result_url_arrow = self._get_result_url(response=response, file_type="arrf")
+                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
+                else:
+                    result_url_csv = self._get_result_url(response=response, file_type="csv")
+                    result_string = self._download_query_results(result_url_csv)
+                    data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+
             else:
+                result_url_csv = self._get_result_url(response=response, file_type="csv")
+                result_string = self._download_query_results(result_url_csv)
                 data = list(csv.reader(result_string.splitlines(), delimiter=';'))
         else:
             raise ValueError(f"Unknown response status {response_status}")
@@ -327,37 +363,11 @@ class ConqueryConnection(object):
 
         return data
 
-    def get_data(self, query_id: str):
-        """ Returns results for given query.
-        Blocks until the query is DONE.
-
-        :param query_id:
-        :return: str containing the returned csv's
-        """
-
-        response = self.get_query_info(query_id)
-
-        while response['status'] == 'RUNNING':
-            response = self.get_query_info(query_id)
-            sleep(1 / 100)
-
-        response_status = response["status"]
-
-        if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed.")
-        elif response_status == "NEW":
-            raise ValueError(f"query stats NEW - query has to be reexecuted")
-        elif response_status == "DONE":
-            import pyarrow as pa
-            result_url_arrow = self.get_result_url(response=response, file_type="arrf")
-            return pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
-        else:
-            raise ValueError(f"Unknown response status {response_status}")
-
     def _download_query_results(self, url):
         return get_text(self._session, url, params={"pretty": "false"})
 
-    def get_result_url(self, response, file_type: str = "csv"):
+    @staticmethod
+    def _get_result_url(response, file_type: str = "csv"):
         result_urls = response["resultUrls"]
 
         if file_type not in ["csv", "xlsx"]:
