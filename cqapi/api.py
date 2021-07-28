@@ -279,6 +279,17 @@ class ConqueryConnection(object):
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
+    def query_id_exists(self, query_id: str) -> bool:
+        dataset = get_dataset_from_id(query_id)
+        with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
+            if response.status_code < 400:
+                return True
+
+            if response.status_code == 404:
+                return False
+
+            raise_for_status(response=response)
+
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
         try:
