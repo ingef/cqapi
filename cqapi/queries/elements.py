@@ -725,7 +725,8 @@ class AndOrElement(QueryObject):
         query = {
             **super().write_query(),
             Keys.children: [child.write_query() for child in self.children],
-            Keys.create_exist: self.create_exist
+            Keys.create_exist: self.create_exist,
+            Keys.date_action: self.date_action
         }
         return remove_null_values_from_query(query)
 
