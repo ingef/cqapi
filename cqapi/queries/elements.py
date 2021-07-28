@@ -756,7 +756,8 @@ class AndElement(AndOrElement):
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
-                          create_exist=self.create_exist, label=self.label)
+                          create_exist=self.create_exist, label=self.label,
+                          date_action=self.date_action)
 
 
 class OrElement(AndOrElement):
@@ -775,7 +776,8 @@ class OrElement(AndOrElement):
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
-                         create_exist=self.create_exist, label=self.label)
+                         create_exist=self.create_exist, label=self.label,
+                         date_action=self.date_action)
 
 
 class ConceptTable:
