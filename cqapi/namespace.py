@@ -19,7 +19,7 @@ class Keys:
     min = "min"
     max = "max"
     label = "label"
-    create_exist = "createExist"
+    create_exist = "createExists"
     value = "value"
     query = "query"
     options = "options"
