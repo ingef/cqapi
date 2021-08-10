@@ -60,7 +60,7 @@ class QueryObject:
     def set_validity_date(self, validity_date_id: str) -> None:
         pass
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
         pass
 
     def add_concept_select(self, select_id: str) -> None:
@@ -223,8 +223,8 @@ class SingleRootQueryDescription(QueryDescription):
     def get_concept_elements(self):
         return self.root.get_concept_elements()
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
-        self.root.remove_all_tables_but(connector_id=connector_id)
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
+        self.root.remove_all_tables_but(connector_ids=connector_ids)
 
 
 class SingleChildQueryObject(QueryObject):
@@ -285,8 +285,8 @@ class SingleChildQueryObject(QueryObject):
     def get_concept_elements(self):
         return self.child.get_concept_elements()
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
-        self.child.remove_all_tables_but(connector_id=connector_id)
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
+        self.child.remove_all_tables_but(connector_ids=connector_ids)
 
 
 class ExportForm(QueryDescription):
@@ -626,7 +626,7 @@ class AndOrElement(QueryObject):
     """
 
     def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None):
+                 row_prefix: str = None, date_action: str = None):
 
         super().__init__(query_type=query_type)
 
@@ -636,6 +636,7 @@ class AndOrElement(QueryObject):
         self.children = children
         self.label = label
         self.create_exist = create_exist
+        self.date_action = date_action
 
         self.row_prefix = row_prefix
 
@@ -704,9 +705,9 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.remove_connector_selects(connector_select_ids=connector_select_ids)
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
+    def remove_all_tables_but(self, connector_ids: List[str]) -> None:
         for child in self.children:
-            child.remove_all_tables_but(connector_id=connector_id)
+            child.remove_all_tables_but(connector_ids=connector_ids)
 
     def add_filter(self, filter_obj: dict) -> None:
         for child in self.children:
@@ -724,7 +725,8 @@ class AndOrElement(QueryObject):
         query = {
             **super().write_query(),
             Keys.children: [child.write_query() for child in self.children],
-            Keys.create_exist: self.create_exist
+            Keys.create_exist: self.create_exist,
+            Keys.date_action: self.date_action
         }
         return remove_null_values_from_query(query)
 
@@ -740,7 +742,7 @@ class AndOrElement(QueryObject):
 
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, query_type: str = None):
+                 row_prefix: str = None, date_action: str = None, query_type: str = None):
         """
 
         :param children:
@@ -750,16 +752,17 @@ class AndElement(AndOrElement):
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label, row_prefix=row_prefix)
+                         label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
-                          create_exist=self.create_exist, label=self.label)
+                          create_exist=self.create_exist, label=self.label,
+                          date_action=self.date_action)
 
 
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, query_type: str = None):
+                 date_action: str = None, row_prefix: str = None, query_type: str = None):
         """
 
         :param children:
@@ -769,11 +772,12 @@ class OrElement(AndOrElement):
         :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
         """
         super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label, row_prefix=row_prefix)
+                         label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
-                         create_exist=self.create_exist, label=self.label)
+                         create_exist=self.create_exist, label=self.label,
+                         date_action=self.date_action)
 
 
 class ConceptTable:
@@ -1111,10 +1115,10 @@ class ConceptElement(QueryObject):
                        for table in self.tables
                        if not is_same_conquery_id(table.connector_id, connector_id)]
 
-    def remove_all_tables_but(self, connector_id: str):
+    def remove_all_tables_but(self, connector_ids: List[str]):
         self.tables = [table
                        for table in self.tables
-                       if is_same_conquery_id(table.connector_id, connector_id)]
+                       if is_in_conquery_ids(table.connector_id, connector_ids)]
 
     def get_root_concept_id(self):
         return get_root_concept_id(self.ids[0])

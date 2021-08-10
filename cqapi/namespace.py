@@ -26,3 +26,8 @@ class Keys:
     row_prefix = 'row_prefix'
     format = 'format'
     values = 'values'
+    date_action = "dateAction"
+    merge = "MERGE"
+    intersect = "INTERSECT"
+    negate = "NEGATE"
+    block = "BLOCK"
