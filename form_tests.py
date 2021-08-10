@@ -1,23 +1,23 @@
 from copy import deepcopy
 from cqapi import ConqueryConnection
-from cqapi.queries.elements import ConceptQuery, AbsoluteExportForm, RelativeExportForm
+from cqapi.queries.elements import AbsoluteExportForm, RelativeExportForm
 import datetime
 import time
 from cqapi.queries.utils import create_query
 from typing import List
 from cqapi.queries.elements import QueryObject
 
-eva_url = "http://lyo-peva01:8080"
+eva_url = "http://lyo-peva02:8070"
 eva_token = "dKRILd5JEKwBSuxJ0DhK/ONzy60wPkY7FzpaQQ+WGXOSsR0JB5gl/IPohUmbcC3R/3MLhg6zxDZiD0KjqdnJfF4o0zW7gBBvsd7ZZ/vR22aHyzOrY4813xtfdxMZFnVJUTllPiM4CeU2JFJdK6pznfehc4refCQO1onpR7QJW5d/8LqJrtThPTizZFCCSoFEK94zpWbTRtLgdKhPBQvSgaz6WzPM7+9lpqHRCTESwdUrjSJLj0zDtXeh9V482gSMdT6DiCIxonI0+YlCYLNref1dhMdG2ok2xw/FUK7Cp7hMKDyHwVm72CB+CN9a3vba"
 conquery_connection = ConqueryConnection(eva_url, eva_token)
 
-dataset = "adb_bosch"
+dataset = "adb_novitas"
 
 test_psm = True
 test_desc_rel = True
 test_desc_abs = True
 test_pred = True
-test_map = False
+test_map = True
 
 concepts = conquery_connection.get_concepts(dataset)
 
