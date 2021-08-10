@@ -241,10 +241,9 @@ class ConqueryConnection(object):
 
         return query_info[0]
 
-    def delete_stored_query(self, query_id: str):
+    def delete_stored_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
         result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
-        return result
 
     def delete_stored_queries(self, query_ids: List[str]):
         for query_id in query_ids:
@@ -279,6 +278,17 @@ class ConqueryConnection(object):
     def get_query_label(self, query_id: str) -> str:
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
+
+    def query_id_exists(self, query_id: str) -> bool:
+        dataset = get_dataset_from_id(query_id)
+        with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
+            if response.status_code < 400:
+                return True
+
+            if response.status_code == 404:
+                return False
+
+            raise_for_status(response=response)
 
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
@@ -371,7 +381,7 @@ class ConqueryConnection(object):
         result_urls = response["resultUrls"]
 
         if file_type not in ["csv", "xlsx"]:
-            result_url_base = ".".join(response["resultUrl"].split(".")[:-1])
+            result_url_base = ".".join(response["resultUrls"][0].split(".")[:-1])
             return f'{result_url_base}.{file_type}'
 
         for result_url in result_urls:
