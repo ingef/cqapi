@@ -31,3 +31,7 @@ class Keys:
     intersect = "INTERSECT"
     negate = "NEGATE"
     block = "BLOCK"
+    alignment_hint = "alignmentHint"
+    time_mode = "timeMode"
+    resolution = "resolution"
+    query_group = "queryGroup"
