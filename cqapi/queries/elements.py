@@ -368,9 +368,9 @@ class EntityDateExportForm(AbsoluteExportForm):
         time_mode = self.write_time_mode()
         time_mode[Keys.date_aggregation_mode] = self.date_aggregation_mode
         time_mode[Keys.value] = "ENTITY_DATE"
+        time_mode[Keys.alignment_hint] = self.alignment_hint
         return {
             **super().write_query(),
-            Keys.alignment_hint: self.alignment_hint,
             Keys.time_mode: time_mode
         }
 
