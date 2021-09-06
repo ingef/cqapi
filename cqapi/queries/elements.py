@@ -356,7 +356,7 @@ class AbsoluteExportForm(ExportForm):
 
 class EntityDateExportForm(AbsoluteExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = "YEAR",
+                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = None,
                  date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
         super().__init__(query_id=query_id, resolution=resolution, features=features,
                          date_range=date_range, start_date=start_date, end_date=end_date)
@@ -371,7 +371,7 @@ class EntityDateExportForm(AbsoluteExportForm):
         time_mode[Keys.alignment_hint] = self.alignment_hint
         return {
             **super().write_query(),
-            Keys.time_mode: time_mode
+            Keys.time_mode: remove_null_values_from_query(time_mode)
         }
 
 
