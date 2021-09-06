@@ -321,8 +321,8 @@ class ExportForm(QueryDescription):
     def write_query(self) -> dict:
         return {
             **super().write_query(),
-            'queryGroup': self.query_id,
-            'resolution': self.resolution
+            Keys.query_group: self.query_id,
+            Keys.resolution: self.resolution
         }
 
 
@@ -339,8 +339,8 @@ class AbsoluteExportForm(ExportForm):
 
     def write_time_mode(self):
         return {
-            "value": "ABSOLUTE",
-            'dateRange': {
+            Keys.value: "ABSOLUTE",
+            Keys.date_range: {
                 'min': self.start_date,
                 'max': self.end_date
             },
@@ -350,26 +350,28 @@ class AbsoluteExportForm(ExportForm):
     def write_query(self) -> dict:
         return {
             **super().write_query(),
-            "timeMode": self.write_time_mode()
+            Keys.time_mode: self.write_time_mode()
         }
 
 
 class EntityDateExportForm(AbsoluteExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_aggregation_mode: str = "LOGICAL",
+                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = "YEAR",
                  date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
         super().__init__(query_id=query_id, resolution=resolution, features=features,
                          date_range=date_range, start_date=start_date, end_date=end_date)
 
         self.date_aggregation_mode = date_aggregation_mode
+        self.alignment_hint = alignment_hint
 
     def write_query(self) -> dict:
         time_mode = self.write_time_mode()
-        time_mode["dateAggregationMode"] = self.date_aggregation_mode
-        time_mode["value"] = "ENTITY_DATE"
+        time_mode[Keys.date_aggregation_mode] = self.date_aggregation_mode
+        time_mode[Keys.value] = "ENTITY_DATE"
+        time_mode[Keys.alignment_hint] = self.alignment_hint
         return {
             **super().write_query(),
-            "timeMode": time_mode
+            Keys.time_mode: time_mode
         }
 
 
@@ -412,8 +414,8 @@ class RelativeExportForm(ExportForm):
     def write_query(self) -> dict:
         return {
             **super().write_query(),
-            "timeMode": {
-                'value': 'RELATIVE',
+            Keys.time_mode: {
+                Keys.value: 'RELATIVE',
                 'timeUnit': self.time_unit,
                 'timeCountBefore': self.time_count_before,
                 'timeCountAfter': self.time_count_after,
