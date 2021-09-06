@@ -299,7 +299,7 @@ class ConqueryConnection(object):
                 raise TypeError(f"{query=} must be of type dict or QueryObject with method write_query")
 
         if dataset is None:
-            dataset = get_dataset_from_query(query)
+            dataset = self._dataset if self._dataset is not None else get_dataset_from_query(query)
 
         result = post(self._session, f"{self._url}/api/datasets/{dataset}/queries", query)
 
