@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
-from cqapi.queries.elements import QueryObject, convert_query_dict, SavedQuery, DateRestriction, ConceptQuery, \
+from cqapi.queries.elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement
 from cqapi.queries.utils import create_query, translate_query
 from cqapi.api import ConqueryConnection
@@ -13,7 +13,7 @@ class QueryEditor:
 
     def __init__(self, query: Union[QueryObject, dict, str] = None):
         if isinstance(query, dict):
-            query = convert_query_dict(query)
+            query = create_query_obj(query)
         if isinstance(query, str):
             query = SavedQuery(query_id=query)
         if query is not None and not isinstance(query, QueryObject):
@@ -45,7 +45,7 @@ class QueryEditor:
             if isinstance(query, str):
                 query = SavedQuery(query_id=query)
             if isinstance(query, dict):
-                query = convert_query_dict(query)
+                query = create_query_obj(query)
             if isinstance(query, QueryEditor):
                 query = query.query
             if not isinstance(query, QueryObject):
@@ -119,7 +119,7 @@ class QueryEditor:
         self.query.add_filters(filter_objs)
 
     def write_query(self) -> dict:
-        return self.query.write_query()
+        return self.query.to_dict()
 
     def translate(self, concepts: dict, conquery_conn: ConqueryConnection, return_removed_ids: bool = False) -> \
             Union[Tuple[Union[QueryObject, None], Union[QueryObject, None], ConqueryIdCollection],
