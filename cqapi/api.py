@@ -243,7 +243,7 @@ class ConqueryConnection(object):
 
     def delete_stored_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
-        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
 
     def delete_stored_queries(self, query_ids: List[str]):
         for query_id in query_ids:
@@ -293,7 +293,7 @@ class ConqueryConnection(object):
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
         try:
-            query = query.write_query()
+            query = query.to_dict()
         except AttributeError:
             if not isinstance(query, dict):
                 raise TypeError(f"{query=} must be of type dict or QueryObject with method write_query")

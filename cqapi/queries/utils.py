@@ -1,7 +1,7 @@
 from typing import List, Union, Tuple
 from cqapi.conquery_ids import get_root_concept_id, ConqueryIdCollection, get_dataset, change_dataset
 from cqapi.namespace import Keys
-from cqapi.queries.elements import QueryObject, ConceptElement, DateRestriction, ConceptQuery, convert_query_dict
+from cqapi.queries.elements import QueryObject, ConceptElement, DateRestriction, ConceptQuery, create_query_obj
 from cqapi import ConqueryConnection
 from cqapi.exceptions import QueryTranslationError
 
@@ -105,7 +105,7 @@ def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery
 
     # translate queryGroup
     original_query = conquery_conn.get_query(query_id)
-    original_query = convert_query_dict(original_query)
+    original_query = create_query_obj(original_query)
 
     translated_query, original_query, removed_ids = \
         translate_query(query=original_query,
