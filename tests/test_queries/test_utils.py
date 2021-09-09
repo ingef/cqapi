@@ -67,7 +67,7 @@ def test_create_query():
                  "tables": [
                      {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter.alter.ausgabe_alter"]}]}
     query_out = create_query(concept_id="dataset1.alter", concepts=concepts,
-                             connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).write_query()
+                             connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).to_dict()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
 def test_translate_query():
@@ -226,8 +226,8 @@ def test_translate_query():
     new_negation_val = Negation(child=ConceptElement(ids=["dataset1.icd.a"],
                                                      tables=[ConceptTable(connector_id="dataset1.icd.au_fall")]))
 
-    assert remaining_negation.write_query() == negation_val.write_query()
-    assert new_negation.write_query() == new_negation_val.write_query()
+    assert remaining_negation.to_dict() == negation_val.to_dict()
+    assert new_negation.to_dict() == new_negation_val.to_dict()
 
     # test no survivors
     concept_element = ConceptElement(ids=["dataset2.icd.to_drop"],
@@ -256,5 +256,5 @@ def test_translate_query():
                                      tables=[ConceptTable(connector_id="dataset1.icd.au_fall")])
     new_and_element_val = AndElement(children=[new_child_2_val])
 
-    assert remaining_and_element.write_query() == and_element_val.write_query()
-    assert new_and_element.write_query() == new_and_element_val.write_query()
+    assert remaining_and_element.to_dict() == and_element_val.to_dict()
+    assert new_and_element.to_dict() == new_and_element_val.to_dict()

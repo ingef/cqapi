@@ -5,33 +5,41 @@ from cqapi.queries.validate import validate_resolution, validate_time_unit, vali
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Type, Union, Tuple
+from typing import List, Type, Union, Tuple, Dict
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
+import attr
+import json
+from enum import Enum, unique
 
 
-def remove_null_values_from_query(query: dict):
-    return {key: value for key, value in query.items() if value is not None}
+def remove_null_values(func):
+    def wrapper(*args, **kwargs):
+        return {key: value for key, value in func(*args, **kwargs).items() if value is not None}
+
+    return wrapper
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class QueryObject:
     """Base Class of all query elements"""
-    row_prefix: str = None
-
-    def __init__(self, query_type: str, label: str = None):
-        self.query_type = query_type
-        self.label = label
+    row_prefix: str = attr.ib(None, init=False)
+    query_type: QueryType
+    label: str
 
     def copy(self):
         return QueryObject(query_type=self.query_type, label=self.label)
 
-    def write_query(self) -> dict:
-        query = {
-            Keys.type: self.query_type,
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            Keys.type: self.query_type.value,
             Keys.label: self.label,
             Keys.row_prefix: self.row_prefix
         }
-        return remove_null_values_from_query(query)
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=4)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -163,7 +171,7 @@ class QueryDescription(QueryObject):
 
 
 class SingleRootQueryDescription(QueryDescription):
-    def __init__(self, root: QueryObject, query_type: str, date_aggregation_mode: str):
+    def __init__(self, root: QueryObject, query_type: QueryType, date_aggregation_mode: str):
         super().__init__(query_type)
         self.validate_sub_query(root)
         self.root = root
@@ -179,13 +187,13 @@ class SingleRootQueryDescription(QueryDescription):
     def from_query(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
-    def write_query(self) -> dict:
-        query = {
-            Keys.type: self.query_type,
-            Keys.root: self.root.write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            Keys.type: self.query_type.value,
+            Keys.root: self.root.to_dict(),
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
-        return remove_null_values_from_query(query)
 
     def set_label(self, label: str) -> None:
         raise ValueError(f"Class QueryDescription has no attribute label")
@@ -233,7 +241,7 @@ class SingleChildQueryObject(QueryObject):
     CONCEPT_QUERY, SECONDARY_ID_QUERY, DATE_RESTRICTION, NEGATION, ..
     """
 
-    def __init__(self, child: QueryObject, query_type: str, label: str = None):
+    def __init__(self, child: QueryObject, query_type: QueryType, label: str = None):
         super().__init__(query_type, label=label)
         self.validate_sub_query(child)
         self.child = child
@@ -248,12 +256,12 @@ class SingleChildQueryObject(QueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.child: self.child.write_query()
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            Keys.child: self.child.to_dict()
         }
-        return remove_null_values_from_query(query)
 
     def set_validity_date(self, validity_date_id: str) -> None:
         self.child.set_validity_date(validity_date_id=validity_date_id)
@@ -290,8 +298,12 @@ class SingleChildQueryObject(QueryObject):
 
 
 class ExportForm(QueryDescription):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        pass
+
     def __init__(self, query_id: str, resolution: str):
-        super().__init__(query_type=obj_to_query_type(ExportForm))
+        super().__init__(query_type=QueryType.EXPORT_FORM)
         validate_resolution(resolution)
         self.query_id = query_id
         self.resolution = resolution
@@ -318,9 +330,9 @@ class ExportForm(QueryDescription):
 
         return new_features
 
-    def write_query(self) -> dict:
+    def to_dict(self) -> dict:
         return {
-            **super().write_query(),
+            **super().to_dict(),
             Keys.query_group: self.query_id,
             Keys.resolution: self.resolution
         }
@@ -344,12 +356,12 @@ class AbsoluteExportForm(ExportForm):
                 'min': self.start_date,
                 'max': self.end_date
             },
-            'features': [feature.write_query() for feature in self.features]
+            'features': [feature.to_dict() for feature in self.features]
         }
 
-    def write_query(self) -> dict:
+    def to_dict(self) -> dict:
         return {
-            **super().write_query(),
+            **super().to_dict(),
             Keys.time_mode: self.write_time_mode()
         }
 
@@ -364,13 +376,13 @@ class EntityDateExportForm(AbsoluteExportForm):
         self.date_aggregation_mode = date_aggregation_mode
         self.alignment_hint = alignment_hint
 
-    def write_query(self) -> dict:
+    def to_dict(self) -> dict:
         time_mode = self.write_time_mode()
         time_mode[Keys.date_aggregation_mode] = self.date_aggregation_mode
         time_mode[Keys.value] = "ENTITY_DATE"
         time_mode[Keys.alignment_hint] = self.alignment_hint
         return {
-            **super().write_query(),
+            **super().to_dict(),
             Keys.time_mode: time_mode
         }
 
@@ -411,9 +423,9 @@ class RelativeExportForm(ExportForm):
             after_index_queries = self.validate_and_prepare_features(after_index_queries)
         self.after_index_queries = after_index_queries
 
-    def write_query(self) -> dict:
+    def to_dict(self) -> dict:
         return {
-            **super().write_query(),
+            **super().to_dict(),
             Keys.time_mode: {
                 Keys.value: 'RELATIVE',
                 'timeUnit': self.time_unit,
@@ -421,9 +433,30 @@ class RelativeExportForm(ExportForm):
                 'timeCountAfter': self.time_count_after,
                 'indexSelector': self.index_selector,
                 'indexPlacement': self.index_placement,
-                'features': [query.write_query() for query in self.before_index_queries],
-                'outcomes': [query.write_query() for query in self.after_index_queries]
+                'features': [query.to_dict() for query in self.before_index_queries],
+                'outcomes': [query.to_dict() for query in self.after_index_queries]
             }
+        }
+
+
+class FullExportForm(QueryDescription):
+    def __init__(self, query_id: str,
+                 concept_id: str, concept: dict, start_date: str = None, end_date: str = None,
+                 date_range: Union[List[str], Dict[str, str]] = None):
+        super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
+        self.query_id = query_id
+        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
+        self.start_date = start_date
+        self.end_date = end_date
+
+        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept)]
+
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            Keys.query_group: self.query_id,
+            Keys.date_range: {"min": self.start_date, "max": self.end_date},
+            Keys.tables: [table.to_dict() for table in self.tables]
         }
 
 
@@ -431,7 +464,7 @@ class ConceptQuery(SingleRootQueryDescription):
 
     def __init__(self, root: QueryObject,
                  date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(ConceptQuery),
+        super().__init__(root=root, query_type=QueryType.CONCEPT_QUERY,
                          date_aggregation_mode=date_aggregation_mode)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
@@ -454,7 +487,7 @@ class ConceptQuery(SingleRootQueryDescription):
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
-        root = convert_query_dict(query[Keys.root])
+        root = create_query_obj(query[Keys.root])
 
         return cls(
             root=root,
@@ -466,7 +499,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
     secondary_id = None
 
     def __init__(self, root: QueryObject, secondary_id: str = None, date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(SecondaryIdQuery),
+        super().__init__(root=root, query_type=QueryType.SECONDARY_ID_QUERY,
                          date_aggregation_mode=date_aggregation_mode)
 
         self.set_secondary_id(secondary_id=secondary_id)
@@ -493,18 +526,18 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         return SecondaryIdQuery(root=self.root.copy(), secondary_id=self.secondary_id,
                                 date_aggregation_mode=self.date_aggregation_mode)
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.secondary_id: self.secondary_id,
         }
-        return remove_null_values_from_query(query)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        root = convert_query_dict(query[Keys.root])
+        root = create_query_obj(query[Keys.root])
         return cls(
             root=root,
             secondary_id=query[Keys.secondary_id]
@@ -536,7 +569,7 @@ class DateRestriction(SingleChildQueryObject):
     def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], dict] = None,
                  label: str = None):
-        super().__init__(child=child, query_type=obj_to_query_type(DateRestriction), label=label)
+        super().__init__(child=child, query_type=QueryType.DATE_RESTRICTION, label=label)
 
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
         self.start_date = start_date
@@ -567,7 +600,7 @@ class DateRestriction(SingleChildQueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        child = convert_query_dict(query[Keys.child])
+        child = create_query_obj(query[Keys.child])
 
         return cls(
             child=child,
@@ -576,17 +609,17 @@ class DateRestriction(SingleChildQueryObject):
             label=query.get(Keys.label)
         )
 
-    def write_query(self):
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self):
+        return {
+            **super().to_dict(),
             Keys.date_range: {"min": self.start_date, "max": self.end_date}
         }
-        return remove_null_values_from_query(query)
 
 
 class Negation(SingleChildQueryObject):
     def __init__(self, child: QueryObject, label: str = None):
-        super().__init__(child=child, query_type=obj_to_query_type(Negation), label=label)
+        super().__init__(child=child, query_type=QueryType.NEGATION, label=label)
 
     def copy(self):
         return Negation(child=self.child.copy(),
@@ -610,15 +643,15 @@ class Negation(SingleChildQueryObject):
         validate_query_type(cls, query)
 
         return cls(
-            child=convert_query_dict(query[Keys.child]),
+            child=create_query_obj(query[Keys.child]),
             label=query.get(Keys.label)
         )
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query()
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict()
         }
-        return remove_null_values_from_query(query)
 
 
 class AndOrElement(QueryObject):
@@ -627,7 +660,7 @@ class AndOrElement(QueryObject):
     E.g. "AND", "OR"
     """
 
-    def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
+    def __init__(self, query_type: QueryType, children: List[QueryObject], create_exist: bool = None, label: str = None,
                  row_prefix: str = None, date_action: str = None):
 
         super().__init__(query_type=query_type)
@@ -677,7 +710,7 @@ class AndOrElement(QueryObject):
     def from_query(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        children = [convert_query_dict(child) for child in query[Keys.children]]
+        children = [create_query_obj(child) for child in query[Keys.children]]
 
         return cls(
             children=children,
@@ -723,14 +756,14 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.exclude_from_secondary_id()
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.children: [child.write_query() for child in self.children],
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            Keys.children: [child.to_dict() for child in self.children],
             Keys.create_exist: self.create_exist,
             Keys.date_action: self.date_action
         }
-        return remove_null_values_from_query(query)
 
     def get_concept_ids(self):
         root_concept_ids = set()
@@ -744,16 +777,19 @@ class AndOrElement(QueryObject):
 
 class AndElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, date_action: str = None, query_type: str = None):
+                 row_prefix: str = None, date_action: str = None, query_type: QueryType = None):
         """
-
         :param children:
         :param create_exist:
         :param label:
         :param row_prefix:
-        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
+        :param query_type:
         """
-        super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
+        if query_type not in [None, QueryType.OR, QueryType.AND]:
+            # we do this for now becuase we need a query_type in AndOrElement.from_query() but this smells bad..
+            raise ValueError(f"{query_type=} does not match and/or/None")
+
+        super().__init__(query_type=QueryType.AND, children=children, create_exist=create_exist,
                          label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
@@ -764,16 +800,19 @@ class AndElement(AndOrElement):
 
 class OrElement(AndOrElement):
     def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 date_action: str = None, row_prefix: str = None, query_type: str = None):
+                 date_action: str = None, row_prefix: str = None, query_type: QueryType = None):
         """
-
         :param children:
         :param create_exist:
         :param label:
         :param row_prefix:
-        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
+        :param query_type:
         """
-        super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
+        if query_type not in [None, QueryType.OR, QueryType.AND]:
+            # we do this for now becuase we need a query_type in AndOrElement.from_query() but this smells bad..
+            raise ValueError(f"{query_type=} does not match and/or/None")
+
+        super().__init__(query_type=QueryType.OR, children=children, create_exist=create_exist,
                          label=label, date_action=date_action, row_prefix=row_prefix)
 
     def copy(self):
@@ -893,16 +932,16 @@ class ConceptTable:
                              )
         return new_table, table
 
+    @remove_null_values
     def write_table(self) -> dict:
         date_column = {Keys.value: self.date_column_id} if self.date_column_id is not None else None
 
-        query = {
+        return {
             Keys.id: self.connector_id,
             Keys.date_column: date_column,
             Keys.filters: self.filters if self.filters else None,
             Keys.selects: self.selects if self.selects else None
         }
-        return remove_null_values_from_query(query)
 
     def __eq__(self, other: ConceptTable):
         if isinstance(other, ConceptTable):
@@ -923,7 +962,7 @@ class ConceptElement(QueryObject):
                  exclude_from_time_aggregation: bool = None, label: str = None,
                  row_prefix: str = None):
 
-        super().__init__(query_type=obj_to_query_type(ConceptElement), label=label)
+        super().__init__(query_type=QueryType.CONCEPT, label=label)
 
         self.ids = ids
         self._exclude_from_secondary_id = exclude_from_secondary_id
@@ -1095,16 +1134,16 @@ class ConceptElement(QueryObject):
     def exclude_from_time_aggregation(self) -> None:
         self._exclude_from_time_aggregation = True
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.ids: self.ids,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id,
             Keys.exclude_from_time_aggregation: self._exclude_from_time_aggregation,
             Keys.selects: self.selects if self.selects else None,
             Keys.tables: [table.write_table() for table in self.tables]
         }
-        return remove_null_values_from_query(query)
 
     def get_concept_ids(self):
         return set(self.ids)
@@ -1158,7 +1197,7 @@ class SimpleQuery(QueryObject):
 class SavedQuery(SimpleQuery):
 
     def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
-        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
+        super().__init__(query_type=QueryType.SAVED_QUERY, label=label)
 
         self.query_id = query_id
         self._exclude_from_secondary_id = exclude_from_secondary_id
@@ -1173,13 +1212,13 @@ class SavedQuery(SimpleQuery):
     def exclude_from_secondary_id(self) -> None:
         self._exclude_from_secondary_id = True
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.query: self.query_id,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
         }
-        return remove_null_values_from_query(query)
 
     @classmethod
     def from_query(cls, query: dict) -> QueryObject:
@@ -1194,7 +1233,7 @@ class SavedQuery(SimpleQuery):
 class External(SimpleQuery):
 
     def __init__(self, format_list: List[str], values: List[List[str]], label: str = None):
-        super().__init__(query_type=obj_to_query_type(External), label=label)
+        super().__init__(query_type=QueryType.EXTERNAL, label=label)
 
         self.format_list = format_list
         self.values = values
@@ -1215,51 +1254,66 @@ class External(SimpleQuery):
             label=query[Keys.label]
         )
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.format: self.format_list,
             Keys.values: self.values
         }
-        return remove_null_values_from_query(query)
 
 
-query_type_to_obj_map = {
-    "CONCEPT": ConceptElement,
-    "CONCEPT_QUERY": ConceptQuery,
-    "AND": AndElement,
-    "OR": OrElement,
-    "SECONDARY_ID_QUERY": SecondaryIdQuery,
-    "DATE_RESTRICTION": DateRestriction,
-    "NEGATION": Negation,
-    "SAVED_QUERY": SavedQuery,
-    "EXPORT_FORM": ExportForm,
-    "EXTERNAL": External
-}
+@unique
+class QueryType(Enum):
+    CONCEPT = "CONCEPT",
+    CONCEPT_QUERY = "CONCEPT_QUERY",
+    AND = "AND"
+    OR = "OR"
+    SECONDARY_ID_QUERY = "SECONDARY_ID_QUERY"
+    DATE_RESTRICTION = "DATE_RESTRICTION"
+    NEGATION = "NEGATION"
+    SAVED_QUERY = "SAVED_QUERY"
+    EXPORT_FORM = "EXPORT_FORM"
+    EXTERNAL = "EXTERNAL"
+    FULL_EXPORT_FORM = "FULL_EXPORT_FORM"
 
 
-def convert_query_dict(query: dict) -> QueryObject:
-    return query_type_to_obj_map[query[Keys.type]].from_query(query)
-
-
-def convert_query_dict_list(queries: List[dict]) -> List[QueryObject]:
-    return [convert_query_dict(query) for query in queries]
-
-
-def query_type_to_obj(query_type: str) -> Type[QueryObject]:
-    return query_type_to_obj_map[query_type]
-
-
-def obj_to_query_type(query_object_type: Type[QueryObject]) -> str:
+def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
+    """Helper to map ENUM to query_type, since we have to call value for each enum member"""
+    query_type_to_obj_map = {
+        QueryType.CONCEPT: ConceptElement,
+        QueryType.CONCEPT_QUERY: ConceptQuery,
+        QueryType.AND: AndElement,
+        QueryType.OR: OrElement,
+        QueryType.SECONDARY_ID_QUERY: SecondaryIdQuery,
+        QueryType.DATE_RESTRICTION: DateRestriction,
+        QueryType.NEGATION: Negation,
+        QueryType.SAVED_QUERY: SavedQuery,
+        QueryType.EXPORT_FORM: ExportForm,
+        QueryType.EXTERNAL: External,
+        QueryType.FULL_EXPORT_FORM: FullExportForm
+    }
     for key, value in query_type_to_obj_map.items():
-        if value == query_object_type:
-            return key
+        if key.value == query[Keys.type]:
+            return value
+    raise ValueError(f"Could not find query_type {query[Keys.type]}")
+
+
+def create_query_obj(query: dict) -> QueryObject:
+    """Converts dict query to QueryObject"""
+    return get_query_obj_from_query_type(query).from_query(query)
+
+
+def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
+    """Converts list of dicts to list of QueryObjects"""
+    return [create_query_obj(query) for query in queries]
 
 
 def validate_query_type(query_object_type: Type[QueryObject], query: dict):
+    """Validates if type of query dict matches QueryObject"""
     query_type = query[Keys.type]
     class_type = query_object_type
-    valid_query_type = query_type_to_obj_map[query_type]
+    valid_query_type = get_query_obj_from_query_type(query)
     if valid_query_type != class_type:
         raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
                          f"only from {valid_query_type}")

@@ -316,8 +316,8 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
 
 executed_queries = dict()
 
-features = [feature.write_query() for feature in features]
-features_psm = [feature_psm.write_query() for feature_psm in features_psm]
+features = [feature.to_dict() for feature in features]
+features_psm = [feature_psm.to_dict() for feature_psm in features_psm]
 # execute psm form
 if test_psm:
     psm_form_query = create_psm_form(treatment_dataset=dataset, treatment_query=c43_query_id,
@@ -349,7 +349,7 @@ if test_map:
 # prediction
 if test_pred:
     pred_form_query = create_pred_form_absolute(training_group=c43_query_id,
-                                                classifier=create_pred_form_classifier_var(atc_a_concept_object.write_query()),
+                                                classifier=create_pred_form_classifier_var(atc_a_concept_object.to_dict()),
                                                 date_range_training=date_range_2019,
                                                 date_range_classifier=date_range_2020,
                                                 stamm_features=create_pred_form_stamm_features(),
