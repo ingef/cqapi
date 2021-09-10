@@ -1,7 +1,6 @@
-from cqapi.queries.elements import *
 from unittest import TestCase
-
-from cqapi.queries.base_elements import create_query
+from cqapi.queries.base_elements import create_query, ConceptTable, ConceptElement, AndElement, Negation, ConceptQuery
+from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
 
 
 def test_create_query():
@@ -69,6 +68,7 @@ def test_create_query():
     query_out = create_query(concept_id="dataset1.alter", concepts=concepts,
                              connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).to_dict()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
+
 
 def test_translate_query():
     # translate table
