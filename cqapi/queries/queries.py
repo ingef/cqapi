@@ -3,7 +3,7 @@ from cqapi.util import check_input_list
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
-from cqapi.queries.elements import QueryObject
+from cqapi.queries.base_elements import QueryObject
 
 cq_element_description = {
     "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
