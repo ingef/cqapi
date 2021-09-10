@@ -1,5 +1,4 @@
 from enum import unique, Enum
-from typing import Type
 
 
 class Keys:
@@ -43,8 +42,8 @@ class Keys:
 
 @unique
 class QueryType(Enum):
-    CONCEPT = "CONCEPT",
-    CONCEPT_QUERY = "CONCEPT_QUERY",
+    CONCEPT = "CONCEPT"
+    CONCEPT_QUERY = "CONCEPT_QUERY"
     AND = "AND"
     OR = "OR"
     SECONDARY_ID_QUERY = "SECONDARY_ID_QUERY"
@@ -54,5 +53,3 @@ class QueryType(Enum):
     EXPORT_FORM = "EXPORT_FORM"
     EXTERNAL = "EXTERNAL"
     FULL_EXPORT_FORM = "FULL_EXPORT_FORM"
-
-

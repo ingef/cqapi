@@ -5,6 +5,7 @@ from cqapi.datasets import set_dataset_list
 
 set_dataset_list(["dataset1", "dataset2"])
 
+
 def test_create_query():
     concepts = {
         "dataset1.alter": {'parent': 'dataset1.sozdem_infonet_struc',
