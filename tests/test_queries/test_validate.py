@@ -1,4 +1,4 @@
-from cqapi.queries.validate import *
+from cqapi.queries import validate_date
 import pytest
 
 

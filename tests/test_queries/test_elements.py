@@ -1,8 +1,10 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
-from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, \
-    ConceptQuery, ConceptTable, EntityDateExportForm, FullExportForm, QueryType
+from cqapi.queries.base_elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, \
+    ConceptQuery, ConceptTable, QueryType
+from cqapi.queries.form_elements import EntityDateExportForm, FullExportForm, RelativeExportForm
 from cqapi.namespace import Keys
+
 
 def test_from_write_query():
     concept_element = {
@@ -162,6 +164,7 @@ def test_entity_date_export_form():
     test.maxDiff = None
     test.assertDictEqual(export_form_val, export_form_out)
 
+
 def test_full_export_form():
     concept = {Keys.tables: [{
         Keys.connector_id: "dataset1.alter.alter"
@@ -184,6 +187,3 @@ def test_full_export_form():
     test_case = TestCase()
     test_case.maxDiff = None
     test_case.assertDictEqual(form_val, form_out)
-
-
-print(test_full_export_form())
