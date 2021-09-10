@@ -1,10 +1,10 @@
 from __future__ import annotations
-from cqapi.namespace import Keys
-from cqapi.queries import remove_null_values, get_start_end_date, create_query_obj, validate_query_type, QueryType
+from cqapi.namespace import Keys, QueryType
+from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Type
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 import attr
@@ -1070,3 +1070,79 @@ class External(SimpleQuery):
             Keys.format: self.format_list,
             Keys.values: self.values
         }
+
+
+def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
+    """Helper to map ENUM to query_type, since we have to call value for each enum member"""
+    query_type_to_obj_map = {
+        QueryType.CONCEPT: ConceptElement,
+        QueryType.CONCEPT_QUERY: ConceptQuery,
+        QueryType.AND: AndElement,
+        QueryType.OR: OrElement,
+        QueryType.SECONDARY_ID_QUERY: SecondaryIdQuery,
+        QueryType.DATE_RESTRICTION: DateRestriction,
+        QueryType.NEGATION: Negation,
+        QueryType.SAVED_QUERY: SavedQuery,
+        QueryType.EXTERNAL: External
+
+    }
+    for key, value in query_type_to_obj_map.items():
+        if key.value == query[Keys.type]:
+            return value
+    raise ValueError(f"Could not find query_type {query[Keys.type]}")
+
+
+def create_query_obj(query: dict) -> QueryObject:
+    """Converts dict query to QueryObject"""
+    return get_query_obj_from_query_type(query).from_query(query)
+
+
+def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
+    """Converts list of dicts to list of QueryObjects"""
+    return [create_query_obj(query) for query in queries]
+
+
+def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False,
+                 connector_ids: List[str] = None,
+                 concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
+                 filter_objs: List[dict] = None,
+                 exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
+                 date_aggregation_mode: str = None,
+                 start_date: str = None, end_date: str = None,
+                 label: str = None) -> QueryObject:
+    if isinstance(concept_id, list):
+        root_concept_id = get_root_concept_id(concept_id[0])
+        concept_ids = concept_id
+    elif isinstance(concept_id, str):
+        root_concept_id = get_root_concept_id(concept_id)
+        concept_ids = [concept_id]
+    else:
+        raise ValueError(f"{concept_id=} must be of type List[str] or str")
+
+    query = ConceptElement(ids=concept_ids, concept=concepts[root_concept_id],
+                           connector_ids=connector_ids,
+                           concept_selects=concept_select_ids,
+                           connector_selects=connector_select_ids,
+                           filter_objs=filter_objs,
+                           exclude_from_secondary_id=exclude_from_secondary_id,
+                           exclude_from_time_aggregation=exclude_from_time_aggregation,
+                           label=label
+                           )
+
+    if start_date is not None or end_date is not None:
+        query = DateRestriction(child=query, start_date=start_date, end_date=end_date)
+
+    if concept_query:
+        return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
+
+    return query
+
+
+def validate_query_type(query_object_type: Type[QueryObject], query: dict):
+    """Validates if type of query dict matches QueryObject"""
+    query_type = query[Keys.type]
+    class_type = query_object_type
+    valid_query_type = get_query_obj_from_query_type(query)
+    if valid_query_type != class_type:
+        raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
+                         f"only from {valid_query_type}")

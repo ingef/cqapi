@@ -1,9 +1,9 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
 from cqapi.queries.base_elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, \
-    ConceptQuery, ConceptTable, QueryType
+    ConceptQuery, ConceptTable
 from cqapi.queries.form_elements import EntityDateExportForm, FullExportForm, RelativeExportForm
-from cqapi.namespace import Keys
+from cqapi.namespace import Keys, QueryType
 
 
 def test_from_write_query():

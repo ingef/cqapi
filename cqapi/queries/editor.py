@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Union, List, Tuple
-from cqapi.queries.elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement
-from cqapi.queries.utils import create_query, translate_query
+from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
+    SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
+from cqapi.queries.translation import translate_query
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection
 
@@ -158,4 +158,4 @@ class QueryEditor:
         return self.query.get_concept_elements()
 
     def remove_all_tables_but(self, connector_id: str) -> None:
-        self.query.remove_all_tables_but(connector_id=connector_id)
+        self.query.remove_all_tables_but(connector_ids=[connector_id])

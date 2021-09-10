@@ -1,7 +1,7 @@
 from cqapi.queries.elements import *
 from unittest import TestCase
 
-from cqapi.queries.utils import create_query
+from cqapi.queries.base_elements import create_query
 
 
 def test_create_query():
