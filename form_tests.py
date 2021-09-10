@@ -1,11 +1,10 @@
 from copy import deepcopy
 from cqapi import ConqueryConnection
-from cqapi.queries.elements import AbsoluteExportForm, RelativeExportForm
+from cqapi.queries.form_elements import AbsoluteExportForm, RelativeExportForm
 import datetime
 import time
-from cqapi.queries.utils import create_query
 from typing import List
-from cqapi.queries.elements import QueryObject
+from cqapi.queries.base_elements import QueryObject, create_query
 
 eva_url = "http://lyo-peva02:8070"
 eva_token = "dKRILd5JEKwBSuxJ0DhK/ONzy60wPkY7FzpaQQ+WGXOSsR0JB5gl/IPohUmbcC3R/3MLhg6zxDZiD0KjqdnJfF4o0zW7gBBvsd7ZZ/vR22aHyzOrY4813xtfdxMZFnVJUTllPiM4CeU2JFJdK6pznfehc4refCQO1onpR7QJW5d/8LqJrtThPTizZFCCSoFEK94zpWbTRtLgdKhPBQvSgaz6WzPM7+9lpqHRCTESwdUrjSJLj0zDtXeh9V482gSMdT6DiCIxonI0+YlCYLNref1dhMdG2ok2xw/FUK7Cp7hMKDyHwVm72CB+CN9a3vba"

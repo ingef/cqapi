@@ -1,5 +1,5 @@
 from cqapi.queries.editor import *
-from cqapi.queries.utils import check_concept_ids_in_concepts_for_new_dataset
+from cqapi.queries import check_concept_ids_in_concepts_for_new_dataset
 
 
 def test_check_concept_ids_in_concepts_for_new_dataset():

@@ -1,7 +1,8 @@
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Type
 
-from cqapi.namespace import Keys
-from cqapi.queries import QueryObject, QueryType, remove_null_values, get_start_end_date, ConceptElement
+from cqapi.namespace import Keys, QueryType
+from cqapi.queries.base_elements import QueryObject, ConceptElement
+from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.queries.base_elements import QueryDescription, SingleRootQueryDescription, SingleChildQueryObject
 from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
     validate_index_selector, validate_index_plament
@@ -169,3 +170,15 @@ class FullExportForm(QueryDescription):
             Keys.date_range: {"min": self.start_date, "max": self.end_date},
             Keys.tables: [table.to_dict() for table in self.tables]
         }
+
+
+def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
+    """Helper to map ENUM to query_type, since we have to call value for each enum member"""
+    query_type_to_obj_map = {
+        QueryType.EXPORT_FORM: ExportForm,
+        QueryType.FULL_EXPORT_FORM: FullExportForm
+    }
+    for key, value in query_type_to_obj_map.items():
+        if key.value == query[Keys.type]:
+            return value
+    raise ValueError(f"Could not find query_type {query[Keys.type]}")
