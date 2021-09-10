@@ -1,7 +1,9 @@
 from unittest import TestCase
 from cqapi.queries.base_elements import create_query, ConceptTable, ConceptElement, AndElement, Negation, ConceptQuery
 from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
+from cqapi.datasets import set_dataset_list
 
+set_dataset_list(["dataset1", "dataset2"])
 
 def test_create_query():
     concepts = {
