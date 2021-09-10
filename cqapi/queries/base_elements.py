@@ -16,7 +16,7 @@ class QueryObject:
     """Base Class of all query elements"""
     row_prefix: str = attr.ib(None, init=False)
     query_type: QueryType
-    label: str
+    label: str = None
 
     def copy(self):
         return QueryObject(query_type=self.query_type, label=self.label)
@@ -163,7 +163,7 @@ class QueryDescription(QueryObject):
 
 class SingleRootQueryDescription(QueryDescription):
     def __init__(self, root: QueryObject, query_type: QueryType, date_aggregation_mode: str):
-        super().__init__(query_type)
+        super().__init__(query_type=query_type)
         self.validate_sub_query(root)
         self.root = root
         self.date_aggregation_mode = date_aggregation_mode
@@ -233,7 +233,7 @@ class SingleChildQueryObject(QueryObject):
     """
 
     def __init__(self, child: QueryObject, query_type: QueryType, label: str = None):
-        super().__init__(query_type, label=label)
+        super().__init__(query_type=query_type, label=label)
         self.validate_sub_query(child)
         self.child = child
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Union, Set
 from cqapi.namespace import Keys
-from cqapi.util import check_arg_type
 import cqapi.datasets
+from typeguard import typechecked
 
 # conquery id info
 conquery_id_separator = "."
@@ -13,7 +13,7 @@ select_loc = 3
 filter_loc = 3
 
 
-@check_arg_type(["dataset_id"])
+@typechecked
 def is_dataset_id(dataset_id: str):
     return dataset_id in cqapi.datasets.get_dataset_list()
 
@@ -26,12 +26,14 @@ def change_dataset(new_dataset: str, conquery_id: str):
     return ".".join([new_dataset, *conquery_id_list[1:]])
 
 
-@check_arg_type(convert_to_list={"conquery_id_elements": str})
-def id_elements_to_id(conquery_id_elements: list):
+@typechecked
+def id_elements_to_id(conquery_id_elements: Union[list, str]):
+    if isinstance(conquery_id_elements, str):
+        conquery_id_elements = [conquery_id_elements]
     return conquery_id_separator.join(conquery_id_elements)
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def get_conquery_id_element(conquery_id: str, index: int = None):
     conquery_id_elements = conquery_id.split(".")
 
@@ -69,12 +71,12 @@ def get_conquery_id_slice(conquery_id: str, first_index: int = None, second_inde
                      f"{from_then_on=}\n")
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def contains_dataset_id(conquery_id: str):
     return is_dataset_id(get_conquery_id_element(conquery_id, dataset_loc))
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def add_dataset_id_to_conquery_id(conquery_id: str, dataset_id: str):
     if not is_dataset_id(dataset_id):
         raise ValueError(f"{dataset_id=} is not a valid id.")
@@ -86,7 +88,7 @@ def add_dataset_id_to_conquery_id(conquery_id: str, dataset_id: str):
     return id_elements_to_id([dataset_id, *get_conquery_id_slice(conquery_id)])
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def remove_dataset_id_from_conquery_id(conquery_id: str):
     if contains_dataset_id(conquery_id):
         return id_elements_to_id(get_conquery_id_slice(conquery_id,
@@ -95,7 +97,7 @@ def remove_dataset_id_from_conquery_id(conquery_id: str):
     return conquery_id
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def get_root_concept_id(conquery_id: str):
     if contains_dataset_id(conquery_id):
         return id_elements_to_id(get_conquery_id_slice(conquery_id,
@@ -105,7 +107,7 @@ def get_root_concept_id(conquery_id: str):
         return get_conquery_id_element(conquery_id, concept_loc - 1)
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def get_connector_id(conquery_id: str):
     if contains_dataset_id(conquery_id):
         return id_elements_to_id(get_conquery_id_slice(conquery_id,
@@ -117,7 +119,7 @@ def get_connector_id(conquery_id: str):
                                                        until_then=True))
 
 
-@check_arg_type(["conquery_id"])
+@typechecked()
 def get_dataset(conquery_id: str):
     if not contains_dataset_id(conquery_id):
         raise ValueError(f"Can not extract dataset for id {conquery_id}.")
