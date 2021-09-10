@@ -1,23 +1,14 @@
 from __future__ import annotations
 from cqapi.namespace import Keys
-from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
-    validate_index_selector, validate_index_plament, validate_date
+from cqapi.queries import remove_null_values, get_start_end_date, create_query_obj, validate_query_type, QueryType
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Type, Union, Tuple, Dict
+from typing import List, Union, Tuple
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 import attr
 import json
-from enum import Enum, unique
-
-
-def remove_null_values(func):
-    def wrapper(*args, **kwargs):
-        return {key: value for key, value in func(*args, **kwargs).items() if value is not None}
-
-    return wrapper
 
 
 @attr.s(auto_attribs=True, kw_only=True)
@@ -297,169 +288,6 @@ class SingleChildQueryObject(QueryObject):
         self.child.remove_all_tables_but(connector_ids=connector_ids)
 
 
-class ExportForm(QueryDescription):
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
-            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
-        pass
-
-    def __init__(self, query_id: str, resolution: str):
-        super().__init__(query_type=QueryType.EXPORT_FORM)
-        validate_resolution(resolution)
-        self.query_id = query_id
-        self.resolution = resolution
-
-    @staticmethod
-    def validate_and_prepare_features(features):
-        new_features = list()
-        for feature in features:
-            if not isinstance(feature, QueryObject):
-                raise ValueError(f"{feature=} not of type QueryObject")
-
-            if isinstance(feature, QueryDescription):
-                if isinstance(feature, SingleRootQueryDescription):
-                    new_features.append(feature.root)
-                    continue
-                if isinstance(feature, SingleChildQueryObject):
-                    new_features.append(feature.child)
-
-                raise ValueError(f"At least one export form feature is of type QueryDescription "
-                                 f"but not SingleRootQueryDescription: \n"
-                                 f"{feature=}")
-            else:
-                new_features.append(feature)
-
-        return new_features
-
-    def to_dict(self) -> dict:
-        return {
-            **super().to_dict(),
-            Keys.query_group: self.query_id,
-            Keys.resolution: self.resolution
-        }
-
-
-class AbsoluteExportForm(ExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution)
-
-        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
-
-        self.features = self.validate_and_prepare_features(features)
-        self.start_date = start_date
-        self.end_date = end_date
-
-    def write_time_mode(self):
-        return {
-            Keys.value: "ABSOLUTE",
-            Keys.date_range: {
-                'min': self.start_date,
-                'max': self.end_date
-            },
-            'features': [feature.to_dict() for feature in self.features]
-        }
-
-    def to_dict(self) -> dict:
-        return {
-            **super().to_dict(),
-            Keys.time_mode: self.write_time_mode()
-        }
-
-
-class EntityDateExportForm(AbsoluteExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = "YEAR",
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution, features=features,
-                         date_range=date_range, start_date=start_date, end_date=end_date)
-
-        self.date_aggregation_mode = date_aggregation_mode
-        self.alignment_hint = alignment_hint
-
-    def to_dict(self) -> dict:
-        time_mode = self.write_time_mode()
-        time_mode[Keys.date_aggregation_mode] = self.date_aggregation_mode
-        time_mode[Keys.value] = "ENTITY_DATE"
-        time_mode[Keys.alignment_hint] = self.alignment_hint
-        return {
-            **super().to_dict(),
-            Keys.time_mode: time_mode
-        }
-
-
-# TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
-class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
-                 after_index_queries: list = None,
-                 time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
-                 index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
-
-        super().__init__(query_id=query_id, resolution=resolution)
-
-        validate_time_unit(time_unit)
-        self.time_unit = time_unit
-        validate_time_count(time_count_before)
-        self.time_count_before = time_count_before
-        validate_time_count(time_count_after)
-        self.time_count_after = time_count_after
-        validate_index_selector(index_selector)
-        self.index_selector = index_selector
-        validate_index_plament(index_placement)
-        self.index_placement = index_placement
-
-        # extract concept from "CONCEPT_QUERY"-Objects
-        if before_index_queries is None and after_index_queries is None:
-            raise ValueError(f"Either before_index_queries or after_index_queries must be a list of QueryObjects")
-
-        if before_index_queries is None:
-            before_index_queries = list()
-        else:
-            before_index_queries = self.validate_and_prepare_features(before_index_queries)
-        self.before_index_queries = before_index_queries
-
-        if after_index_queries is None:
-            after_index_queries = list()
-        else:
-            after_index_queries = self.validate_and_prepare_features(after_index_queries)
-        self.after_index_queries = after_index_queries
-
-    def to_dict(self) -> dict:
-        return {
-            **super().to_dict(),
-            Keys.time_mode: {
-                Keys.value: 'RELATIVE',
-                'timeUnit': self.time_unit,
-                'timeCountBefore': self.time_count_before,
-                'timeCountAfter': self.time_count_after,
-                'indexSelector': self.index_selector,
-                'indexPlacement': self.index_placement,
-                'features': [query.to_dict() for query in self.before_index_queries],
-                'outcomes': [query.to_dict() for query in self.after_index_queries]
-            }
-        }
-
-
-class FullExportForm(QueryDescription):
-    def __init__(self, query_id: str,
-                 concept_id: str, concept: dict, start_date: str = None, end_date: str = None,
-                 date_range: Union[List[str], Dict[str, str]] = None):
-        super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
-        self.query_id = query_id
-        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
-        self.start_date = start_date
-        self.end_date = end_date
-
-        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept)]
-
-    def to_dict(self) -> dict:
-        return {
-            **super().to_dict(),
-            Keys.query_group: self.query_id,
-            Keys.date_range: {"min": self.start_date, "max": self.end_date},
-            Keys.tables: [table.to_dict() for table in self.tables]
-        }
-
-
 class ConceptQuery(SingleRootQueryDescription):
 
     def __init__(self, root: QueryObject,
@@ -542,25 +370,6 @@ class SecondaryIdQuery(SingleRootQueryDescription):
             root=root,
             secondary_id=query[Keys.secondary_id]
         )
-
-
-def get_start_end_date(date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-    if date_range is not None:
-        if isinstance(date_range, dict):
-            start_date = date_range["min"]
-            end_date = date_range["max"]
-        elif isinstance(date_range, list):
-            start_date = date_range[0]
-            end_date = date_range[1]
-        else:
-            raise TypeError(f"{date_range=} must be type List[str] or dict, not {type(date_range)}")
-
-    if start_date is not None:
-        validate_date(start_date)
-    if end_date is not None:
-        validate_date(end_date)
-
-    return start_date, end_date
 
 
 class DateRestriction(SingleChildQueryObject):
@@ -1261,59 +1070,3 @@ class External(SimpleQuery):
             Keys.format: self.format_list,
             Keys.values: self.values
         }
-
-
-@unique
-class QueryType(Enum):
-    CONCEPT = "CONCEPT",
-    CONCEPT_QUERY = "CONCEPT_QUERY",
-    AND = "AND"
-    OR = "OR"
-    SECONDARY_ID_QUERY = "SECONDARY_ID_QUERY"
-    DATE_RESTRICTION = "DATE_RESTRICTION"
-    NEGATION = "NEGATION"
-    SAVED_QUERY = "SAVED_QUERY"
-    EXPORT_FORM = "EXPORT_FORM"
-    EXTERNAL = "EXTERNAL"
-    FULL_EXPORT_FORM = "FULL_EXPORT_FORM"
-
-
-def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
-    """Helper to map ENUM to query_type, since we have to call value for each enum member"""
-    query_type_to_obj_map = {
-        QueryType.CONCEPT: ConceptElement,
-        QueryType.CONCEPT_QUERY: ConceptQuery,
-        QueryType.AND: AndElement,
-        QueryType.OR: OrElement,
-        QueryType.SECONDARY_ID_QUERY: SecondaryIdQuery,
-        QueryType.DATE_RESTRICTION: DateRestriction,
-        QueryType.NEGATION: Negation,
-        QueryType.SAVED_QUERY: SavedQuery,
-        QueryType.EXPORT_FORM: ExportForm,
-        QueryType.EXTERNAL: External,
-        QueryType.FULL_EXPORT_FORM: FullExportForm
-    }
-    for key, value in query_type_to_obj_map.items():
-        if key.value == query[Keys.type]:
-            return value
-    raise ValueError(f"Could not find query_type {query[Keys.type]}")
-
-
-def create_query_obj(query: dict) -> QueryObject:
-    """Converts dict query to QueryObject"""
-    return get_query_obj_from_query_type(query).from_query(query)
-
-
-def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
-    """Converts list of dicts to list of QueryObjects"""
-    return [create_query_obj(query) for query in queries]
-
-
-def validate_query_type(query_object_type: Type[QueryObject], query: dict):
-    """Validates if type of query dict matches QueryObject"""
-    query_type = query[Keys.type]
-    class_type = query_object_type
-    valid_query_type = get_query_obj_from_query_type(query)
-    if valid_query_type != class_type:
-        raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
-                         f"only from {valid_query_type}")
