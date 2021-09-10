@@ -133,7 +133,6 @@ def create_psm_form(treatment_dataset: str, treatment_query: str, control_datase
         "matchingPartners": matching_partners,
         "indexDateMatching": None,
         "varqPValue": varq_p_value,
-        "excludeOutliersDeadBefore": exclude_dead,
         "excludeOutliersDeadAfter": exclude_dead,
         "excludeOutliersMaxMoneyBefore": exclude_costs,
         "excludeOutliersMaxMoneyAfter": exclude_costs,
