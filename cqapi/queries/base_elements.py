@@ -43,7 +43,7 @@ class QueryObject:
         return json.dumps(self.to_dict(), indent=4)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
     def set_label(self, label: str) -> None:
@@ -139,7 +139,7 @@ class QueryDescription(QueryObject):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
     def add_concept_select(self, select_id: str) -> None:
@@ -166,7 +166,6 @@ class QueryDescription(QueryObject):
 
 @attr.s(auto_attribs=True, kw_only=True)
 class SingleRootQueryDescription(QueryDescription):
-    query_type: QueryType
     root: QueryObject = attr.ib(validator=validate_root_child_query)
     date_aggregation_mode: str = None
 
@@ -177,7 +176,7 @@ class SingleRootQueryDescription(QueryDescription):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
     @remove_null_values
@@ -234,9 +233,7 @@ class SingleChildQueryObject(QueryObject):
     Base Class for all query elements that have one sub-query element with key "root" or "child":
     CONCEPT_QUERY, SECONDARY_ID_QUERY, DATE_RESTRICTION, NEGATION, ..
     """
-    query_type: QueryType
     child: QueryObject = attr.ib(validator=validate_root_child_query)
-    label: str = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         raise NotImplementedError
@@ -245,7 +242,7 @@ class SingleChildQueryObject(QueryObject):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
     @remove_null_values
@@ -292,8 +289,6 @@ class SingleChildQueryObject(QueryObject):
 @attr.s(auto_attribs=True, kw_only=True)
 class ConceptQuery(SingleRootQueryDescription):
     query_type: QueryType = attr.ib(QueryType.CONCEPT_QUERY, init=False)
-    root: QueryObject
-    date_aggregation_mode: str = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
@@ -313,7 +308,7 @@ class ConceptQuery(SingleRootQueryDescription):
                             date_aggregation_mode=self.date_aggregation_mode)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
         root = create_query_obj(query[Keys.root])
 
@@ -326,9 +321,7 @@ class ConceptQuery(SingleRootQueryDescription):
 @attr.s(auto_attribs=True, kw_only=True)
 class SecondaryIdQuery(SingleRootQueryDescription):
     query_type: QueryType = attr.ib(QueryType.SECONDARY_ID_QUERY, init=False)
-    root: QueryObject
     secondary_id: str = None
-    date_aggregation_mode: str = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
@@ -357,7 +350,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         }
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         root = create_query_obj(query[Keys.root])
@@ -401,7 +394,7 @@ class DateRestriction(SingleChildQueryObject):
                                label=self.label)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         child = create_query_obj(query[Keys.child])
@@ -445,7 +438,7 @@ class Negation(SingleChildQueryObject):
         return new_negation, negation
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
@@ -545,7 +538,7 @@ class AndOrElement(QueryObject):
         }
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
     def get_concept_ids(self):
@@ -597,7 +590,7 @@ class AndElement(AndOrElement):
         return new_and_element, and_element
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
 
         return cls(
             children=[create_query_obj(child) for child in query[Keys.children]],
@@ -646,7 +639,7 @@ class OrElement(AndOrElement):
         return new_or_element, or_element
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
 
         return cls(
             children=[create_query_obj(child) for child in query[Keys.children]],
@@ -887,7 +880,7 @@ class ConceptElement(QueryObject):
         return new_concept, concept
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         tables = list()
@@ -1003,7 +996,7 @@ class ConceptElement(QueryObject):
 class SimpleQuery(QueryObject):
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
     def add_concept_select(self, select_id: str) -> None:
@@ -1055,7 +1048,7 @@ class SavedQuery(SimpleQuery):
         }
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
@@ -1078,7 +1071,7 @@ class External(SimpleQuery):
         raise ExternalQueryTranslationError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
@@ -1118,7 +1111,7 @@ def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
 
 def create_query_obj(query: dict) -> QueryObject:
     """Converts dict query to QueryObject"""
-    return get_query_obj_from_query_type(query).from_query(query)
+    return get_query_obj_from_query_type(query).from_dict(query)
 
 
 def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
