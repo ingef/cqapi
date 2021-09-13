@@ -499,20 +499,6 @@ class AndOrElement(QueryObject):
 
         return new_children, children
 
-    @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
-        validate_query_type(cls, query)
-
-        children = [create_query_obj(child) for child in query[Keys.children]]
-
-        return cls(
-            children=children,
-            create_exist=query.get(Keys.create_exist),
-            label=query.get(Keys.label),
-            row_prefix=query.get(Keys.row_prefix),
-            query_type=query[Keys.type]  # this is not used, see class doc
-        )
-
     def set_validity_date(self, validity_date_id: str) -> None:
         for child in self.children:
             child.set_validity_date(validity_date_id=validity_date_id)
@@ -557,6 +543,10 @@ class AndOrElement(QueryObject):
             Keys.create_exist: self.create_exist,
             Keys.date_action: self.date_action
         }
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+        raise NotImplementedError
 
     def get_concept_ids(self):
         root_concept_ids = set()
@@ -606,6 +596,16 @@ class AndElement(AndOrElement):
 
         return new_and_element, and_element
 
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+
+        return cls(
+            children=[create_query_obj(child) for child in query[Keys.children]],
+            create_exist=query.get(Keys.create_exist),
+            label=query.get(Keys.label),
+            row_prefix=query.get(Keys.row_prefix)
+        )
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class OrElement(AndOrElement):
@@ -644,6 +644,16 @@ class OrElement(AndOrElement):
                                row_prefix=self.row_prefix)
 
         return new_or_element, or_element
+
+    @classmethod
+    def from_query(cls, query: dict) -> QueryObject:
+
+        return cls(
+            children=[create_query_obj(child) for child in query[Keys.children]],
+            create_exist=query.get(Keys.create_exist),
+            label=query.get(Keys.label),
+            row_prefix=query.get(Keys.row_prefix)
+        )
 
 
 class ConceptTable:
