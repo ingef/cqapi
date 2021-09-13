@@ -25,7 +25,7 @@ def test_from_write_query():
                         "value": {
                             "min": 10,
                             "max": 20}}]}]}
-    TestCase().assertDictEqual(concept_element, ConceptElement.from_query(concept_element).to_dict())
+    TestCase().assertDictEqual(concept_element, ConceptElement.from_dict(concept_element).to_dict())
 
     or_element = {
         "type": "OR",
@@ -42,7 +42,7 @@ def test_from_write_query():
                          "selects": [
                              "dataset1.alter.dates"]}]}
 
-    TestCase().assertDictEqual(or_element, OrElement.from_query(or_element).to_dict())
+    TestCase().assertDictEqual(or_element, OrElement.from_dict(or_element).to_dict())
 
     date_restriction = {
         "type": "DATE_RESTRICTION",
@@ -51,7 +51,7 @@ def test_from_write_query():
             "max": "2020-12-31"},
         "child": or_element}
 
-    TestCase().assertDictEqual(date_restriction, DateRestriction.from_query(date_restriction).to_dict())
+    TestCase().assertDictEqual(date_restriction, DateRestriction.from_dict(date_restriction).to_dict())
 
     secondary_id_query = {"type": "SECONDARY_ID_QUERY",
                           "secondaryId":
@@ -59,7 +59,7 @@ def test_from_write_query():
                           "root": {"type": "AND",
                                    "children": [date_restriction]}}
 
-    TestCase().assertDictEqual(secondary_id_query, SecondaryIdQuery.from_query(secondary_id_query).to_dict())
+    TestCase().assertDictEqual(secondary_id_query, SecondaryIdQuery.from_dict(secondary_id_query).to_dict())
 
 
 def test_and_query():
