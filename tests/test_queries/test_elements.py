@@ -87,7 +87,7 @@ def test_and_query():
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
 
-
+test_and_query()
 def test_remove_selects():
     query_object_1 = ConceptElement(ids=["dataset1.concept1"],
                                     tables=[ConceptTable(connector_id="dataset1.concept1.table1",
@@ -180,7 +180,7 @@ def test_full_export_form():
         Keys.type: "FULL_EXPORT_FORM",
         Keys.query_group: "dataset1.query_id",
         Keys.date_range: {"min": "2020-01-01", "max": "2020-12-31"},
-        Keys.tables: [{Keys.type: QueryType.CONCEPT,
+        Keys.tables: [{Keys.type: QueryType.CONCEPT.value,
                        Keys.ids: ["dataset1.alter"],
                        Keys.tables: [{Keys.id: "dataset1.alter.alter"}]}]
     }
