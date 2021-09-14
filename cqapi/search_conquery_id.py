@@ -1,15 +1,18 @@
 from __future__ import annotations
-from cqapi.util import check_arg_type
 from cqapi.conquery_ids import get_root_concept_id, get_connector_id
-from typing import List
+from typing import List, Union
+from typeguard import typechecked
 
 
-@check_arg_type(["conquery_id_type"], convert_to_list={"conquery_ids": str})
-def id_to_label_list(conquery_ids: list, concepts: dict, conquery_id_type: str):
+@typechecked()
+def id_to_label_list(conquery_ids: Union[List[str], str], concepts: dict, conquery_id_type: str):
+    if isinstance(conquery_ids, str):
+        conquery_ids = [conquery_ids]
     return [id_to_label(conquery_id, concepts, conquery_id_type) for conquery_id in conquery_ids]
 
 
-@check_arg_type(["conquery_id", "concepts", "conquery_id_type"])
+
+@typechecked()
 def id_to_label(conquery_id: str, concepts: dict, conquery_id_type: str):
     conquery_id_type = conquery_id_type.lower()
     conquery_id_list = conquery_id.split(".")
@@ -63,7 +66,8 @@ def id_to_label(conquery_id: str, concepts: dict, conquery_id_type: str):
     raise ValueError(f"Unknown conquery_id_type {conquery_id_type}")
 
 
-@check_arg_type(["concept_id"])
+
+@typechecked()
 def find_concept_id(concept_id: str, concepts: dict, children_ids: List[str]):
     """
     Searches for concept_id in concepts or concept_obj. If concept_id is found True is returned.
