@@ -3,8 +3,7 @@ from cqapi.util import check_input_list
 from cqapi.queries.validate import validate_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_dataset, contains_dataset_id, \
     add_dataset_id_to_conquery_id
-from cqapi.queries.elements import QueryObject
-from typing import Union
+from cqapi.queries.base_elements import QueryObject
 
 cq_element_description = {
     "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
@@ -17,7 +16,7 @@ cq_elements = [__ for _ in cq_element_description.values() for __ in _]
 def get_label_from_query(query: QueryObject):
     """Returns label from query. If there is more than one child, only the label of the first child is returned"""
 
-    query = query.write_query()
+    query = query.to_dict()
 
     if query["type"] in cq_element_description["base_cq_elements"]:
         return query.get('label', '')
@@ -35,7 +34,7 @@ def return_labels_from_queries(queries: list):
 
 def get_selects_from_query(query: dict) -> list:
     """Returns list of all selects in query (on concept and table level)"""
-    selects = []
+
     if "type" not in query.keys():
         raise ValueError(f"Query object {query} has no key 'type'")
 
@@ -45,6 +44,7 @@ def get_selects_from_query(query: dict) -> list:
     if query.get("type") == "DATE_RESTRICTION":
         return get_selects_from_query(query.get("child"))
 
+    selects = []
     if query.get("type") in ["AND", "OR"]:
         for child in query.get("children"):
             selects.extend(get_selects_from_query(child))

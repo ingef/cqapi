@@ -1,4 +1,4 @@
-from cqapi.queries.validate import *
+from cqapi.queries.validate import validate_date
 import pytest
 
 
@@ -15,3 +15,5 @@ def test_validate_date():
 
     with pytest.raises(ValueError):
         validate_date("2000-12-32")
+
+test_validate_date()

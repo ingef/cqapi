@@ -1,11 +1,10 @@
 from copy import deepcopy
 from cqapi import ConqueryConnection
-from cqapi.queries.elements import AbsoluteExportForm, RelativeExportForm
+from cqapi.queries.form_elements import AbsoluteExportForm, RelativeExportForm
 import datetime
 import time
-from cqapi.queries.utils import create_query
 from typing import List
-from cqapi.queries.elements import QueryObject
+from cqapi.queries.base_elements import QueryObject, create_query
 
 eva_url = "http://lyo-peva02:8070"
 eva_token = "dKRILd5JEKwBSuxJ0DhK/ONzy60wPkY7FzpaQQ+WGXOSsR0JB5gl/IPohUmbcC3R/3MLhg6zxDZiD0KjqdnJfF4o0zW7gBBvsd7ZZ/vR22aHyzOrY4813xtfdxMZFnVJUTllPiM4CeU2JFJdK6pznfehc4refCQO1onpR7QJW5d/8LqJrtThPTizZFCCSoFEK94zpWbTRtLgdKhPBQvSgaz6WzPM7+9lpqHRCTESwdUrjSJLj0zDtXeh9V482gSMdT6DiCIxonI0+YlCYLNref1dhMdG2ok2xw/FUK7Cp7hMKDyHwVm72CB+CN9a3vba"
@@ -134,7 +133,6 @@ def create_psm_form(treatment_dataset: str, treatment_query: str, control_datase
         "matchingPartners": matching_partners,
         "indexDateMatching": None,
         "varqPValue": varq_p_value,
-        "excludeOutliersDeadBefore": exclude_dead,
         "excludeOutliersDeadAfter": exclude_dead,
         "excludeOutliersMaxMoneyBefore": exclude_costs,
         "excludeOutliersMaxMoneyAfter": exclude_costs,
@@ -316,8 +314,8 @@ def create_pred_form_absolute(training_group: str, classifier: dict, date_range_
 
 executed_queries = dict()
 
-features = [feature.write_query() for feature in features]
-features_psm = [feature_psm.write_query() for feature_psm in features_psm]
+features = [feature.to_dict() for feature in features]
+features_psm = [feature_psm.to_dict() for feature_psm in features_psm]
 # execute psm form
 if test_psm:
     psm_form_query = create_psm_form(treatment_dataset=dataset, treatment_query=c43_query_id,
@@ -349,7 +347,7 @@ if test_map:
 # prediction
 if test_pred:
     pred_form_query = create_pred_form_absolute(training_group=c43_query_id,
-                                                classifier=create_pred_form_classifier_var(atc_a_concept_object.write_query()),
+                                                classifier=create_pred_form_classifier_var(atc_a_concept_object.to_dict()),
                                                 date_range_training=date_range_2019,
                                                 date_range_classifier=date_range_2020,
                                                 stamm_features=create_pred_form_stamm_features(),
