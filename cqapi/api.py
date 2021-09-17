@@ -355,7 +355,7 @@ class ConqueryConnection(object):
                 if download_with_arrow:
                     import pyarrow as pa
                     result_url_arrow = self._get_result_url(response=response, file_type="arrf")
-                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
+                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas(date_as_object=False)
                 else:
                     result_url_csv = self._get_result_url(response=response, file_type="csv")
                     result_string = self._download_query_results(result_url_csv)
