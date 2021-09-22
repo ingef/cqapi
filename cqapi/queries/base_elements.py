@@ -9,6 +9,7 @@ from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 import attr
 import json
+from typeguard import typechecked
 
 
 def validate_root_child_query(instance, attribute, value):
@@ -1119,6 +1120,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
     return [create_query_obj(query) for query in queries]
 
 
+@typechecked()
 def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False,
                  connector_ids: List[str] = None,
                  concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
