@@ -5,8 +5,8 @@ import requests
 import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
-from cqapi.queries import get_dataset_from_query
-from cqapi.queries.elements import QueryObject
+from cqapi.queries.utils import get_dataset_from_query
+from cqapi.queries.base_elements import QueryObject
 from typing import Union, List
 from requests import Response
 from requests.exceptions import HTTPError
@@ -243,7 +243,7 @@ class ConqueryConnection(object):
 
     def delete_stored_query(self, query_id: str) -> None:
         dataset = get_dataset_from_id(query_id)
-        result = delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+        delete(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
 
     def delete_stored_queries(self, query_ids: List[str]):
         for query_id in query_ids:
@@ -293,7 +293,7 @@ class ConqueryConnection(object):
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
         try:
-            query = query.write_query()
+            query = query.to_dict()
         except AttributeError:
             if not isinstance(query, dict):
                 raise TypeError(f"{query=} must be of type dict or QueryObject with method write_query")
@@ -355,7 +355,8 @@ class ConqueryConnection(object):
                 if download_with_arrow:
                     import pyarrow as pa
                     result_url_arrow = self._get_result_url(response=response, file_type="arrf")
-                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas()
+                    # if date_as_object=False, date columns will be in numpy Int64 / pd.Timestamp format
+                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas(date_as_object=False)
                 else:
                     result_url_csv = self._get_result_url(response=response, file_type="csv")
                     result_string = self._download_query_results(result_url_csv)
