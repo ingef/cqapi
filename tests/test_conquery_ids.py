@@ -1,5 +1,4 @@
 from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
-from cqapi import ConqueryConnection
 import cqapi.conquery_ids as con
 import pytest
 import cqapi.datasets
@@ -14,6 +13,9 @@ def test_compare_conquery_ids():
     assert con.is_same_conquery_id("age.age_select", "age.age_select")
     assert not con.is_same_conquery_id("age", "age.age_select")
     assert not con.is_same_conquery_id("age.not_select", "age")
+
+    assert con.is_same_conquery_id("dataset1.age.age.age_select",
+                                   "dataset2.age.age.age_select")
 
 
 def test_contains_dataset_id():
