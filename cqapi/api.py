@@ -7,7 +7,7 @@ from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject
-from typing import Union, List
+from typing import Union, List, Dict, NoReturn
 from requests import Response
 from requests.exceptions import HTTPError
 
@@ -279,7 +279,7 @@ class ConqueryConnection(object):
         query_info = self.get_query_info(query_id)
         return query_info.get("label")
 
-    def query_id_exists(self, query_id: str) -> bool:
+    def query_id_exists(self, query_id: str) -> Union[bool, NoReturn]:
         dataset = get_dataset_from_id(query_id)
         with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
             if response.status_code < 400:
@@ -288,7 +288,7 @@ class ConqueryConnection(object):
             if response.status_code == 404:
                 return False
 
-            raise_for_status(response=response)
+        raise_for_status(response=response)
 
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
@@ -316,11 +316,12 @@ class ConqueryConnection(object):
         dataset = get_dataset_from_id(query_id)
         post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
-    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
+    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = True,
                          requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
+        :param download_with_arrow: Use apache arrow for transferring data from backend to cqapi
         :param query_id:
         :param already_reexecuted: only needed when reexecuting query, to know when trapped in an endless loop
         :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
@@ -356,7 +357,8 @@ class ConqueryConnection(object):
                     import pyarrow as pa
                     result_url_arrow = self._get_result_url(response=response, file_type="arrf")
                     # if date_as_object=False, date columns will be in numpy Int64 / pd.Timestamp format
-                    data = pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas(date_as_object=False)
+                    data = \
+                        pa.ipc.open_file(get(self._session, result_url_arrow).content).read_pandas(date_as_object=False)
                 else:
                     result_url_csv = self._get_result_url(response=response, file_type="csv")
                     result_string = self._download_query_results(result_url_csv)
