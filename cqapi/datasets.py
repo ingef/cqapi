@@ -19,7 +19,7 @@ def _dataset_list_set() -> bool:
 
 
 def get_dataset_list() -> List[str]:
-    if not _dataset_list_set:
+    if not _dataset_list_set():
         raise RuntimeError("dataset_list variable is not set.")
     return this_module.dataset_list
 

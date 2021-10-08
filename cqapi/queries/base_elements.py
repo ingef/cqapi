@@ -1,40 +1,50 @@
 from __future__ import annotations
-from cqapi.namespace import Keys
-from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
-    validate_index_selector, validate_index_plament, validate_date
+from cqapi.namespace import Keys, QueryType
+from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.conquery_ids import is_same_conquery_id, is_in_conquery_ids, get_root_concept_id, get_connector_id, \
     get_dataset, change_dataset, ConqueryId, ConqueryIdCollection
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Type, Union, Tuple
+from typing import List, Union, Tuple, Type
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
+import attr
+import json
+from typeguard import typechecked
 
 
-def remove_null_values_from_query(query: dict):
-    return {key: value for key, value in query.items() if value is not None}
+def validate_root_child_query(instance, attribute, value):
+    if isinstance(value, QueryDescription):
+        raise TypeError(f"QueryDescription {value} can not be {attribute.name} of query {instance}")
 
 
+def validate_children_queries(instance, attribute, value):
+    for value_entry in value:
+        validate_root_child_query(instance, attribute, value_entry)
+
+
+@attr.s(auto_attribs=True, kw_only=True)
 class QueryObject:
     """Base Class of all query elements"""
-    row_prefix: str = None
-
-    def __init__(self, query_type: str, label: str = None):
-        self.query_type = query_type
-        self.label = label
+    row_prefix: str = attr.ib(None, init=False)
+    query_type: QueryType
+    label: str = None
 
     def copy(self):
         return QueryObject(query_type=self.query_type, label=self.label)
 
-    def write_query(self) -> dict:
-        query = {
-            Keys.type: self.query_type,
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            Keys.type: self.query_type.value,
             Keys.label: self.label,
             Keys.row_prefix: self.row_prefix
         }
-        return remove_null_values_from_query(query)
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=4)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
     def set_label(self, label: str) -> None:
@@ -96,13 +106,6 @@ class QueryObject:
     def or_with(self, *queries: QueryObject):
         return OrElement(children=[self, *queries])
 
-    def validate_sub_query(self, sub_query: QueryObject):
-        if isinstance(sub_query, QueryDescription):
-            self.raise_query_description_as_sub_query_error()
-
-    def raise_query_description_as_sub_query_error(self):
-        raise TypeError(f"QueryDescription can not be Sub-Query of {type(self)}")
-
     def unwrap(self):
         pass
 
@@ -137,7 +140,7 @@ class QueryDescription(QueryObject):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
     def add_concept_select(self, select_id: str) -> None:
@@ -162,12 +165,10 @@ class QueryDescription(QueryObject):
         raise NotImplementedError()
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class SingleRootQueryDescription(QueryDescription):
-    def __init__(self, root: QueryObject, query_type: str, date_aggregation_mode: str):
-        super().__init__(query_type)
-        self.validate_sub_query(root)
-        self.root = root
-        self.date_aggregation_mode = date_aggregation_mode
+    root: QueryObject = attr.ib(validator=validate_root_child_query)
+    date_aggregation_mode: str = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         raise NotImplementedError
@@ -176,16 +177,16 @@ class SingleRootQueryDescription(QueryDescription):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
-    def write_query(self) -> dict:
-        query = {
-            Keys.type: self.query_type,
-            Keys.root: self.root.write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            Keys.type: self.query_type.value,
+            Keys.root: self.root.to_dict(),
             Keys.date_aggregation_mode: self.date_aggregation_mode
         }
-        return remove_null_values_from_query(query)
 
     def set_label(self, label: str) -> None:
         raise ValueError(f"Class QueryDescription has no attribute label")
@@ -227,16 +228,13 @@ class SingleRootQueryDescription(QueryDescription):
         self.root.remove_all_tables_but(connector_ids=connector_ids)
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class SingleChildQueryObject(QueryObject):
     """
     Base Class for all query elements that have one sub-query element with key "root" or "child":
     CONCEPT_QUERY, SECONDARY_ID_QUERY, DATE_RESTRICTION, NEGATION, ..
     """
-
-    def __init__(self, child: QueryObject, query_type: str, label: str = None):
-        super().__init__(query_type, label=label)
-        self.validate_sub_query(child)
-        self.child = child
+    child: QueryObject = attr.ib(validator=validate_root_child_query)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         raise NotImplementedError
@@ -245,15 +243,15 @@ class SingleChildQueryObject(QueryObject):
         raise NotImplementedError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError()
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.child: self.child.write_query()
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            Keys.child: self.child.to_dict()
         }
-        return remove_null_values_from_query(query)
 
     def set_validity_date(self, validity_date_id: str) -> None:
         self.child.set_validity_date(validity_date_id=validity_date_id)
@@ -289,150 +287,9 @@ class SingleChildQueryObject(QueryObject):
         self.child.remove_all_tables_but(connector_ids=connector_ids)
 
 
-class ExportForm(QueryDescription):
-    def __init__(self, query_id: str, resolution: str):
-        super().__init__(query_type=obj_to_query_type(ExportForm))
-        validate_resolution(resolution)
-        self.query_id = query_id
-        self.resolution = resolution
-
-    @staticmethod
-    def validate_and_prepare_features(features):
-        new_features = list()
-        for feature in features:
-            if not isinstance(feature, QueryObject):
-                raise ValueError(f"{feature=} not of type QueryObject")
-
-            if isinstance(feature, QueryDescription):
-                if isinstance(feature, SingleRootQueryDescription):
-                    new_features.append(feature.root)
-                    continue
-                if isinstance(feature, SingleChildQueryObject):
-                    new_features.append(feature.child)
-
-                raise ValueError(f"At least one export form feature is of type QueryDescription "
-                                 f"but not SingleRootQueryDescription: \n"
-                                 f"{feature=}")
-            else:
-                new_features.append(feature)
-
-        return new_features
-
-    def write_query(self) -> dict:
-        return {
-            **super().write_query(),
-            Keys.query_group: self.query_id,
-            Keys.resolution: self.resolution
-        }
-
-
-class AbsoluteExportForm(ExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution)
-
-        start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
-
-        self.features = self.validate_and_prepare_features(features)
-        self.start_date = start_date
-        self.end_date = end_date
-
-    def write_time_mode(self):
-        return {
-            Keys.value: "ABSOLUTE",
-            Keys.date_range: {
-                'min': self.start_date,
-                'max': self.end_date
-            },
-            'features': [feature.write_query() for feature in self.features]
-        }
-
-    def write_query(self) -> dict:
-        return {
-            **super().write_query(),
-            Keys.time_mode: self.write_time_mode()
-        }
-
-
-class EntityDateExportForm(AbsoluteExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = None,
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution, features=features,
-                         date_range=date_range, start_date=start_date, end_date=end_date)
-
-        self.date_aggregation_mode = date_aggregation_mode
-        self.alignment_hint = alignment_hint
-
-    def write_query(self) -> dict:
-        time_mode = self.write_time_mode()
-        time_mode[Keys.date_aggregation_mode] = self.date_aggregation_mode
-        time_mode[Keys.value] = "ENTITY_DATE"
-        time_mode[Keys.alignment_hint] = self.alignment_hint
-        return {
-            **super().write_query(),
-            Keys.time_mode: remove_null_values_from_query(time_mode)
-        }
-
-
-# TODO: Deal with differences between ExportForm and QueryDescription -> Probably BaseQueryObject
-class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
-                 after_index_queries: list = None,
-                 time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
-                 index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
-
-        super().__init__(query_id=query_id, resolution=resolution)
-
-        validate_time_unit(time_unit)
-        self.time_unit = time_unit
-        validate_time_count(time_count_before)
-        self.time_count_before = time_count_before
-        validate_time_count(time_count_after)
-        self.time_count_after = time_count_after
-        validate_index_selector(index_selector)
-        self.index_selector = index_selector
-        validate_index_plament(index_placement)
-        self.index_placement = index_placement
-
-        # extract concept from "CONCEPT_QUERY"-Objects
-        if before_index_queries is None and after_index_queries is None:
-            raise ValueError(f"Either before_index_queries or after_index_queries must be a list of QueryObjects")
-
-        if before_index_queries is None:
-            before_index_queries = list()
-        else:
-            before_index_queries = self.validate_and_prepare_features(before_index_queries)
-        self.before_index_queries = before_index_queries
-
-        if after_index_queries is None:
-            after_index_queries = list()
-        else:
-            after_index_queries = self.validate_and_prepare_features(after_index_queries)
-        self.after_index_queries = after_index_queries
-
-    def write_query(self) -> dict:
-        return {
-            **super().write_query(),
-            Keys.time_mode: {
-                Keys.value: 'RELATIVE',
-                'timeUnit': self.time_unit,
-                'timeCountBefore': self.time_count_before,
-                'timeCountAfter': self.time_count_after,
-                'indexSelector': self.index_selector,
-                'indexPlacement': self.index_placement,
-                'features': [query.write_query() for query in self.before_index_queries],
-                'outcomes': [query.write_query() for query in self.after_index_queries]
-            }
-        }
-
-
+@attr.s(auto_attribs=True, kw_only=True)
 class ConceptQuery(SingleRootQueryDescription):
-
-    def __init__(self, root: QueryObject,
-                 date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(ConceptQuery),
-                         date_aggregation_mode=date_aggregation_mode)
+    query_type: QueryType = attr.ib(QueryType.CONCEPT_QUERY, init=False)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
@@ -452,9 +309,9 @@ class ConceptQuery(SingleRootQueryDescription):
                             date_aggregation_mode=self.date_aggregation_mode)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
-        root = convert_query_dict(query[Keys.root])
+        root = create_query_obj(query[Keys.root])
 
         return cls(
             root=root,
@@ -462,17 +319,10 @@ class ConceptQuery(SingleRootQueryDescription):
         )
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class SecondaryIdQuery(SingleRootQueryDescription):
-    secondary_id = None
-
-    def __init__(self, root: QueryObject, secondary_id: str = None, date_aggregation_mode: str = None):
-        super().__init__(root=root, query_type=obj_to_query_type(SecondaryIdQuery),
-                         date_aggregation_mode=date_aggregation_mode)
-
-        self.set_secondary_id(secondary_id=secondary_id)
-
-    def set_secondary_id(self, secondary_id: str = None):
-        self.secondary_id = secondary_id
+    query_type: QueryType = attr.ib(QueryType.SECONDARY_ID_QUERY, init=False)
+    secondary_id: str = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
@@ -493,41 +343,22 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         return SecondaryIdQuery(root=self.root.copy(), secondary_id=self.secondary_id,
                                 date_aggregation_mode=self.date_aggregation_mode)
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.secondary_id: self.secondary_id,
         }
-        return remove_null_values_from_query(query)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        root = convert_query_dict(query[Keys.root])
+        root = create_query_obj(query[Keys.root])
         return cls(
             root=root,
             secondary_id=query[Keys.secondary_id]
         )
-
-
-def get_start_end_date(date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-    if date_range is not None:
-        if isinstance(date_range, dict):
-            start_date = date_range["min"]
-            end_date = date_range["max"]
-        elif isinstance(date_range, list):
-            start_date = date_range[0]
-            end_date = date_range[1]
-        else:
-            raise TypeError(f"{date_range=} must be type List[str] or dict, not {type(date_range)}")
-
-    if start_date is not None:
-        validate_date(start_date)
-    if end_date is not None:
-        validate_date(end_date)
-
-    return start_date, end_date
 
 
 class DateRestriction(SingleChildQueryObject):
@@ -536,7 +367,7 @@ class DateRestriction(SingleChildQueryObject):
     def __init__(self, child: QueryObject, start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], dict] = None,
                  label: str = None):
-        super().__init__(child=child, query_type=obj_to_query_type(DateRestriction), label=label)
+        super().__init__(child=child, query_type=QueryType.DATE_RESTRICTION, label=label)
 
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
         self.start_date = start_date
@@ -564,10 +395,10 @@ class DateRestriction(SingleChildQueryObject):
                                label=self.label)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
-        child = convert_query_dict(query[Keys.child])
+        child = create_query_obj(query[Keys.child])
 
         return cls(
             child=child,
@@ -576,17 +407,19 @@ class DateRestriction(SingleChildQueryObject):
             label=query.get(Keys.label)
         )
 
-    def write_query(self):
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self):
+        return {
+            **super().to_dict(),
             Keys.date_range: {"min": self.start_date, "max": self.end_date}
         }
-        return remove_null_values_from_query(query)
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class Negation(SingleChildQueryObject):
-    def __init__(self, child: QueryObject, label: str = None):
-        super().__init__(child=child, query_type=obj_to_query_type(Negation), label=label)
+    query_type: QueryType = attr.ib(QueryType.NEGATION, init=False)
+    child: QueryObject
+    label: str = None
 
     def copy(self):
         return Negation(child=self.child.copy(),
@@ -606,48 +439,47 @@ class Negation(SingleChildQueryObject):
         return new_negation, negation
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
-            child=convert_query_dict(query[Keys.child]),
+            child=create_query_obj(query[Keys.child]),
             label=query.get(Keys.label)
         )
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query()
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict()
         }
-        return remove_null_values_from_query(query)
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class AndOrElement(QueryObject):
     """
     Base class for query elements that have multiple sub query elements ("children").
     E.g. "AND", "OR"
     """
+    query_type: QueryType = attr.ib()
+    children: List[QueryObject] = attr.ib(validator=validate_children_queries)
+    create_exist: bool = None
+    label: str = None
+    row_prefix: str = None
+    date_action: str = None
 
-    def __init__(self, query_type: str, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, date_action: str = None):
+    @query_type.validator
+    def validate_query_type(self, attribute, value):
+        if value not in [QueryType.AND, QueryType.OR]:
+            raise ValueError(f"{value} as {attribute.name} must be in {[QueryType.AND, QueryType.OR]}")
 
-        super().__init__(query_type=query_type)
-
-        for child in children:
-            if isinstance(child, QueryDescription):
-                raise TypeError(f"{child=} is of type QueryDescription and not allowed to be child of {self.__class__}")
-        self.children = children
-        self.label = label
-        self.create_exist = create_exist
-        self.date_action = date_action
-
-        self.row_prefix = row_prefix
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]) -> \
+            Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
+        raise NotImplementedError
 
     def copy(self):
         raise NotImplementedError
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
-        cls = type(self)
-
+    def translate_children(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         children = list()
         new_children = list()
 
@@ -659,33 +491,7 @@ class AndOrElement(QueryObject):
                 new_children.append(new_child)
                 children.append(child)
 
-        if not new_children:
-            return None, None
-
-        new_and_element = cls(children=new_children,
-                              create_exist=self.create_exist,
-                              label=self.label,
-                              row_prefix=self.row_prefix, query_type=self.query_type)
-        and_element = cls(children=children,
-                          create_exist=self.create_exist,
-                          label=self.label,
-                          row_prefix=self.row_prefix, query_type=self.query_type)
-
-        return new_and_element, and_element
-
-    @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
-        validate_query_type(cls, query)
-
-        children = [convert_query_dict(child) for child in query[Keys.children]]
-
-        return cls(
-            children=children,
-            create_exist=query.get(Keys.create_exist),
-            label=query.get(Keys.label),
-            row_prefix=query.get(Keys.row_prefix),
-            query_type=query[Keys.type]  # this is not used, see class doc
-        )
+        return new_children, children
 
     def set_validity_date(self, validity_date_id: str) -> None:
         for child in self.children:
@@ -723,14 +529,18 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.exclude_from_secondary_id()
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
-            Keys.children: [child.write_query() for child in self.children],
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
+            Keys.children: [child.to_dict() for child in self.children],
             Keys.create_exist: self.create_exist,
             Keys.date_action: self.date_action
         }
-        return remove_null_values_from_query(query)
+
+    @classmethod
+    def from_dict(cls, query: dict) -> QueryObject:
+        raise NotImplementedError
 
     def get_concept_ids(self):
         root_concept_ids = set()
@@ -742,44 +552,102 @@ class AndOrElement(QueryObject):
         return [concept_element for child in self.children for concept_element in child.get_concept_elements()]
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class AndElement(AndOrElement):
-    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 row_prefix: str = None, date_action: str = None, query_type: str = None):
-        """
+    query_type: QueryType = attr.ib(QueryType.AND, init=False)
+    children: List[QueryObject]
+    create_exist: bool = None
+    label: str = None
+    date_action: str = None
+    row_prefix: str = None
 
-        :param children:
-        :param create_exist:
-        :param label:
-        :param row_prefix:
-        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
-        """
-        super().__init__(query_type=obj_to_query_type(AndElement), children=children, create_exist=create_exist,
-                         label=label, date_action=date_action, row_prefix=row_prefix)
+    @query_type.validator
+    def validate_query_type(self, attribute, value):
+        if value != QueryType.AND:
+            raise ValueError(f"{value} as {attribute.name} must be {QueryType.AND}")
 
     def copy(self):
         return AndElement(children=[child.copy() for child in self.children],
                           create_exist=self.create_exist, label=self.label,
                           date_action=self.date_action)
 
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
 
+        new_children, children = self.translate_children(concepts=concepts,
+                                                         removed_ids=removed_ids,
+                                                         children_ids=children_ids)
+        if not new_children:
+            return None, None
+
+        new_and_element = AndElement(children=new_children,
+                                     create_exist=self.create_exist,
+                                     label=self.label,
+                                     row_prefix=self.row_prefix)
+        and_element = AndElement(children=children,
+                                 create_exist=self.create_exist,
+                                 label=self.label,
+                                 row_prefix=self.row_prefix)
+
+        return new_and_element, and_element
+
+    @classmethod
+    def from_dict(cls, query: dict) -> QueryObject:
+
+        return cls(
+            children=[create_query_obj(child) for child in query[Keys.children]],
+            create_exist=query.get(Keys.create_exist),
+            label=query.get(Keys.label),
+            row_prefix=query.get(Keys.row_prefix)
+        )
+
+
+@attr.s(auto_attribs=True, kw_only=True)
 class OrElement(AndOrElement):
-    def __init__(self, children: List[QueryObject], create_exist: bool = None, label: str = None,
-                 date_action: str = None, row_prefix: str = None, query_type: str = None):
-        """
+    query_type: QueryType = attr.ib(QueryType.OR, init=False)
+    children: List[QueryObject]
+    create_exist: bool = None
+    label: str = None
+    date_action: str = None
+    row_prefix: str = None
 
-        :param children:
-        :param create_exist:
-        :param label:
-        :param row_prefix:
-        :param query_type: Not used. Implemented "set" a query type in AndOrElement.from_query()
-        """
-        super().__init__(query_type=obj_to_query_type(OrElement), children=children, create_exist=create_exist,
-                         label=label, date_action=date_action, row_prefix=row_prefix)
+    @query_type.validator
+    def validate_query_type(self, attribute, value):
+        if value != QueryType.OR:
+            raise ValueError(f"{value} as {attribute.name} must be {QueryType.OR}")
 
     def copy(self):
         return OrElement(children=[child.copy() for child in self.children],
                          create_exist=self.create_exist, label=self.label,
                          date_action=self.date_action)
+
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
+
+        new_children, children = self.translate_children(concepts=concepts,
+                                                         removed_ids=removed_ids,
+                                                         children_ids=children_ids)
+        if not new_children:
+            return None, None
+
+        new_or_element = OrElement(children=new_children,
+                                   create_exist=self.create_exist,
+                                   label=self.label,
+                                   row_prefix=self.row_prefix)
+        or_element = OrElement(children=children,
+                               create_exist=self.create_exist,
+                               label=self.label,
+                               row_prefix=self.row_prefix)
+
+        return new_or_element, or_element
+
+    @classmethod
+    def from_dict(cls, query: dict) -> QueryObject:
+
+        return cls(
+            children=[create_query_obj(child) for child in query[Keys.children]],
+            create_exist=query.get(Keys.create_exist),
+            label=query.get(Keys.label),
+            row_prefix=query.get(Keys.row_prefix)
+        )
 
 
 class ConceptTable:
@@ -893,16 +761,16 @@ class ConceptTable:
                              )
         return new_table, table
 
+    @remove_null_values
     def write_table(self) -> dict:
         date_column = {Keys.value: self.date_column_id} if self.date_column_id is not None else None
 
-        query = {
+        return {
             Keys.id: self.connector_id,
             Keys.date_column: date_column,
             Keys.filters: self.filters if self.filters else None,
             Keys.selects: self.selects if self.selects else None
         }
-        return remove_null_values_from_query(query)
 
     def __eq__(self, other: ConceptTable):
         if isinstance(other, ConceptTable):
@@ -923,7 +791,7 @@ class ConceptElement(QueryObject):
                  exclude_from_time_aggregation: bool = None, label: str = None,
                  row_prefix: str = None):
 
-        super().__init__(query_type=obj_to_query_type(ConceptElement), label=label)
+        super().__init__(query_type=QueryType.CONCEPT, label=label)
 
         self.ids = ids
         self._exclude_from_secondary_id = exclude_from_secondary_id
@@ -1013,7 +881,7 @@ class ConceptElement(QueryObject):
         return new_concept, concept
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         tables = list()
@@ -1095,16 +963,16 @@ class ConceptElement(QueryObject):
     def exclude_from_time_aggregation(self) -> None:
         self._exclude_from_time_aggregation = True
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.ids: self.ids,
             Keys.exclude_from_secondary_id: self._exclude_from_secondary_id,
             Keys.exclude_from_time_aggregation: self._exclude_from_time_aggregation,
             Keys.selects: self.selects if self.selects else None,
             Keys.tables: [table.write_table() for table in self.tables]
         }
-        return remove_null_values_from_query(query)
 
     def get_concept_ids(self):
         return set(self.ids)
@@ -1129,7 +997,7 @@ class ConceptElement(QueryObject):
 class SimpleQuery(QueryObject):
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
     def add_concept_select(self, select_id: str) -> None:
@@ -1155,34 +1023,33 @@ class SimpleQuery(QueryObject):
         pass
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class SavedQuery(SimpleQuery):
-
-    def __init__(self, query_id: str, label: str = None, exclude_from_secondary_id: bool = None):
-        super().__init__(query_type=obj_to_query_type(SavedQuery), label=label)
-
-        self.query_id = query_id
-        self._exclude_from_secondary_id = exclude_from_secondary_id
+    query_type: QueryType = attr.ib(QueryType.SAVED_QUERY, init=False)
+    query_id: str
+    label: str = None
+    exclude_from_secondary_id_bool: bool = None
 
     def copy(self):
         return SavedQuery(query_id=self.query_id, label=self.label,
-                          exclude_from_secondary_id=self._exclude_from_secondary_id)
+                          exclude_from_secondary_id_bool=self.exclude_from_secondary_id_bool)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[str]):
         raise SavedQueryTranslationError
 
     def exclude_from_secondary_id(self) -> None:
-        self._exclude_from_secondary_id = True
+        self.exclude_from_secondary_id_bool = True
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.query: self.query_id,
-            Keys.exclude_from_secondary_id: self._exclude_from_secondary_id
+            Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
         }
-        return remove_null_values_from_query(query)
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
@@ -1191,13 +1058,12 @@ class SavedQuery(SimpleQuery):
         )
 
 
+@attr.s(auto_attribs=True, kw_only=True)
 class External(SimpleQuery):
-
-    def __init__(self, format_list: List[str], values: List[List[str]], label: str = None):
-        super().__init__(query_type=obj_to_query_type(External), label=label)
-
-        self.format_list = format_list
-        self.values = values
+    format_list: List[str]
+    values: List[List[str]]
+    label: str = None
+    query_type: QueryType = QueryType.EXTERNAL
 
     def copy(self):
         return External(label=self.label, format_list=self.format_list, values=self.values)
@@ -1206,7 +1072,7 @@ class External(SimpleQuery):
         raise ExternalQueryTranslationError
 
     @classmethod
-    def from_query(cls, query: dict) -> QueryObject:
+    def from_dict(cls, query: dict) -> QueryObject:
         validate_query_type(cls, query)
 
         return cls(
@@ -1215,51 +1081,87 @@ class External(SimpleQuery):
             label=query[Keys.label]
         )
 
-    def write_query(self) -> dict:
-        query = {
-            **super().write_query(),
+    @remove_null_values
+    def to_dict(self) -> dict:
+        return {
+            **super().to_dict(),
             Keys.format: self.format_list,
             Keys.values: self.values
         }
-        return remove_null_values_from_query(query)
 
 
-query_type_to_obj_map = {
-    "CONCEPT": ConceptElement,
-    "CONCEPT_QUERY": ConceptQuery,
-    "AND": AndElement,
-    "OR": OrElement,
-    "SECONDARY_ID_QUERY": SecondaryIdQuery,
-    "DATE_RESTRICTION": DateRestriction,
-    "NEGATION": Negation,
-    "SAVED_QUERY": SavedQuery,
-    "EXPORT_FORM": ExportForm,
-    "EXTERNAL": External
-}
+def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
+    """Helper to map ENUM to query_type, since we have to call value for each enum member"""
+    query_type_to_obj_map = {
+        QueryType.CONCEPT: ConceptElement,
+        QueryType.CONCEPT_QUERY: ConceptQuery,
+        QueryType.AND: AndElement,
+        QueryType.OR: OrElement,
+        QueryType.SECONDARY_ID_QUERY: SecondaryIdQuery,
+        QueryType.DATE_RESTRICTION: DateRestriction,
+        QueryType.NEGATION: Negation,
+        QueryType.SAVED_QUERY: SavedQuery,
+        QueryType.EXTERNAL: External
 
-
-def convert_query_dict(query: dict) -> QueryObject:
-    return query_type_to_obj_map[query[Keys.type]].from_query(query)
-
-
-def convert_query_dict_list(queries: List[dict]) -> List[QueryObject]:
-    return [convert_query_dict(query) for query in queries]
-
-
-def query_type_to_obj(query_type: str) -> Type[QueryObject]:
-    return query_type_to_obj_map[query_type]
-
-
-def obj_to_query_type(query_object_type: Type[QueryObject]) -> str:
+    }
     for key, value in query_type_to_obj_map.items():
-        if value == query_object_type:
-            return key
+        if key.value == query[Keys.type]:
+            return value
+    raise ValueError(f"Could not find query_type {query[Keys.type]}")
+
+
+def create_query_obj(query: dict) -> QueryObject:
+    """Converts dict query to QueryObject"""
+    return get_query_obj_from_query_type(query).from_dict(query)
+
+
+def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
+    """Converts list of dicts to list of QueryObjects"""
+    return [create_query_obj(query) for query in queries]
+
+
+@typechecked()
+def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_query: bool = False,
+                 connector_ids: List[str] = None,
+                 concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
+                 filter_objs: List[dict] = None,
+                 exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
+                 date_aggregation_mode: str = None,
+                 start_date: str = None, end_date: str = None,
+                 label: str = None) -> QueryObject:
+    if isinstance(concept_id, list):
+        root_concept_id = get_root_concept_id(concept_id[0])
+        concept_ids = concept_id
+    elif isinstance(concept_id, str):
+        root_concept_id = get_root_concept_id(concept_id)
+        concept_ids = [concept_id]
+    else:
+        raise ValueError(f"{concept_id=} must be of type List[str] or str")
+
+    query = ConceptElement(ids=concept_ids, concept=concepts[root_concept_id],
+                           connector_ids=connector_ids,
+                           concept_selects=concept_select_ids,
+                           connector_selects=connector_select_ids,
+                           filter_objs=filter_objs,
+                           exclude_from_secondary_id=exclude_from_secondary_id,
+                           exclude_from_time_aggregation=exclude_from_time_aggregation,
+                           label=label
+                           )
+
+    if start_date is not None or end_date is not None:
+        query = DateRestriction(child=query, start_date=start_date, end_date=end_date)
+
+    if concept_query:
+        return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
+
+    return query
 
 
 def validate_query_type(query_object_type: Type[QueryObject], query: dict):
+    """Validates if type of query dict matches QueryObject"""
     query_type = query[Keys.type]
     class_type = query_object_type
-    valid_query_type = query_type_to_obj_map[query_type]
+    valid_query_type = get_query_obj_from_query_type(query)
     if valid_query_type != class_type:
         raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
                          f"only from {valid_query_type}")
