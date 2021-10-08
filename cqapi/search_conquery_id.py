@@ -1,15 +1,18 @@
 from __future__ import annotations
-from cqapi.util import check_arg_type
 from cqapi.conquery_ids import get_root_concept_id, get_connector_id
-from typing import List
+from typing import List, Union
+from typeguard import typechecked
 
 
-@check_arg_type(["eva_id_type"], convert_to_list={"eva_ids": str})
-def id_to_label_list(eva_ids: list, concepts: dict, eva_id_type: str):
+@typechecked()
+def id_to_label_list(eva_ids: Union[List[str], str], concepts: dict, eva_id_type: str):
+    if isinstance(eva_ids, str):
+        eva_ids = [eva_ids]
     return [id_to_label(eva_id, concepts, eva_id_type) for eva_id in eva_ids]
 
 
-@check_arg_type(["eva_id", "concepts", "eva_id_type"])
+
+@typechecked()
 def id_to_label(eva_id: str, concepts: dict, eva_id_type: str):
     eva_id_type = eva_id_type.lower()
     eva_id_list = eva_id.split(".")
@@ -63,7 +66,8 @@ def id_to_label(eva_id: str, concepts: dict, eva_id_type: str):
     raise ValueError(f"Unknown eva_id_type {eva_id_type}")
 
 
-@check_arg_type(["concept_id"])
+
+@typechecked()
 def find_concept_id(concept_id: str, concepts: dict, children_ids: List[str]):
     """
     Searches for concept_id in concepts or concept_obj. If concept_id is found True is returned.

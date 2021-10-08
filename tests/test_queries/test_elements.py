@@ -1,8 +1,10 @@
 from unittest.case import TestCase
 from cqapi.queries.editor import QueryEditor
-from cqapi.queries.elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, RelativeExportForm, \
-    ConceptQuery, ConceptTable, EntityDateExportForm
-from cqapi.namespace import Keys
+from cqapi.queries.base_elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, \
+    ConceptQuery, ConceptTable
+from cqapi.queries.form_elements import EntityDateExportForm, FullExportForm, RelativeExportForm
+from cqapi.namespace import Keys, QueryType
+
 
 def test_from_write_query():
     concept_element = {
@@ -23,7 +25,7 @@ def test_from_write_query():
                         "value": {
                             "min": 10,
                             "max": 20}}]}]}
-    TestCase().assertDictEqual(concept_element, ConceptElement.from_query(concept_element).write_query())
+    TestCase().assertDictEqual(concept_element, ConceptElement.from_dict(concept_element).to_dict())
 
     or_element = {
         "type": "OR",
@@ -40,7 +42,7 @@ def test_from_write_query():
                          "selects": [
                              "dataset1.alter.dates"]}]}
 
-    TestCase().assertDictEqual(or_element, OrElement.from_query(or_element).write_query())
+    TestCase().assertDictEqual(or_element, OrElement.from_dict(or_element).to_dict())
 
     date_restriction = {
         "type": "DATE_RESTRICTION",
@@ -49,7 +51,7 @@ def test_from_write_query():
             "max": "2020-12-31"},
         "child": or_element}
 
-    TestCase().assertDictEqual(date_restriction, DateRestriction.from_query(date_restriction).write_query())
+    TestCase().assertDictEqual(date_restriction, DateRestriction.from_dict(date_restriction).to_dict())
 
     secondary_id_query = {"type": "SECONDARY_ID_QUERY",
                           "secondaryId":
@@ -57,7 +59,7 @@ def test_from_write_query():
                           "root": {"type": "AND",
                                    "children": [date_restriction]}}
 
-    TestCase().assertDictEqual(secondary_id_query, SecondaryIdQuery.from_query(secondary_id_query).write_query())
+    TestCase().assertDictEqual(secondary_id_query, SecondaryIdQuery.from_dict(secondary_id_query).to_dict())
 
 
 def test_and_query():
@@ -85,7 +87,7 @@ def test_and_query():
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
 
-
+test_and_query()
 def test_remove_selects():
     query_object_1 = ConceptElement(ids=["dataset1.concept1"],
                                     tables=[ConceptTable(connector_id="dataset1.concept1.table1",
@@ -112,7 +114,7 @@ def test_relativ_export_form():
         time_count_after=2
     )
 
-    export_form_out = export_form.write_query()
+    export_form_out = export_form.to_dict()
     export_form_val = {
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
@@ -124,7 +126,7 @@ def test_relativ_export_form():
             'timeCountAfter': 2,
             'indexSelector': 'EARLIEST',
             'indexPlacement': 'BEFORE',
-            'features': [query_object_1.write_query(), query_object_2.root.write_query()],
+            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()],
             'outcomes': []
         }
     }
@@ -145,7 +147,7 @@ def test_entity_date_export_form():
         alignment_hint="YEAR"
     )
 
-    export_form_out = export_form.write_query()
+    export_form_out = export_form.to_dict()
     export_form_val = {
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
@@ -155,9 +157,33 @@ def test_entity_date_export_form():
             Keys.alignment_hint: "YEAR",
             "dateAggregationMode": "MERGE",
             "dateRange": {"min": "2020-01-01", "max": "2020-12-31"},
-            "features": [query_object_1.write_query(), query_object_2.root.write_query()]
+            "features": [query_object_1.to_dict(), query_object_2.root.to_dict()]
         }
     }
     test = TestCase()
     test.maxDiff = None
     test.assertDictEqual(export_form_val, export_form_out)
+
+
+def test_full_export_form():
+    concept = {Keys.tables: [{
+        Keys.connector_id: "dataset1.alter.alter"
+    }]}
+
+    full_export_form = FullExportForm(query_id="dataset1.query_id",
+                                      concept_id="dataset1.alter",
+                                      concept=concept,
+                                      start_date="2020-01-01",
+                                      end_date="2020-12-31")
+    form_out = full_export_form.to_dict()
+    form_val = {
+        Keys.type: "FULL_EXPORT_FORM",
+        Keys.query_group: "dataset1.query_id",
+        Keys.date_range: {"min": "2020-01-01", "max": "2020-12-31"},
+        Keys.tables: [{Keys.type: QueryType.CONCEPT.value,
+                       Keys.ids: ["dataset1.alter"],
+                       Keys.tables: [{Keys.id: "dataset1.alter.alter"}]}]
+    }
+    test_case = TestCase()
+    test_case.maxDiff = None
+    test_case.assertDictEqual(form_val, form_out)
