@@ -14,6 +14,10 @@ def set_dataset_list(dataset_list: List[str]) -> None:
     this_module.dataset_list = list(set(dataset_list))
 
 
+def set_test_datasets():
+    set_dataset_list(["dataset1", "dataset2"])
+
+
 def _dataset_list_set() -> bool:
     return this_module.dataset_list is not None
 
