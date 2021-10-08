@@ -8,7 +8,7 @@ def validate_date(date: str) -> None:
     @return:
     """
     if not isinstance(date, str):
-        raise ValueError(f"{date=} must be of type str, not {type(str)}")
+        raise ValueError(f"{date=} must be of type str, not {type(date)}")
 
     rex = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
     if not rex.match(date) or not 0 < int(date.split("-")[1]) <= 12 or not 0 <= int(date.split("-")[2]) <= 31:

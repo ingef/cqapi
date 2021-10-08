@@ -29,6 +29,9 @@ class QueryObject:
     query_type: QueryType
     label: str = None
 
+    def __eq__(self, other):
+        return isinstance(other, QueryObject) and self.to_dict() == other.to_dict()
+
     def copy(self):
         return QueryObject(query_type=self.query_type, label=self.label)
 
@@ -786,7 +789,7 @@ class ConceptElement(QueryObject):
 
     def __init__(self, ids: list, concept: dict = None, tables: List[ConceptTable] = None,
                  connector_ids: List[str] = None, concept_selects: list = None,
-                 connector_selects: List[str] = None, filter_objs: List[str] = None,
+                 connector_selects: List[str] = None, filter_objs: List[dict] = None,
                  exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None,
                  row_prefix: str = None):
