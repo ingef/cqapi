@@ -139,18 +139,11 @@ def is_in_conquery_ids(conquery_id: str, conquery_ids: list):
     return any(is_same_conquery_id(conquery_id, conquery_id_from_list) for conquery_id_from_list in conquery_ids)
 
 
-def is_same_conquery_id(conquery_id_1: str, conquery_id_2: str, id_separator=conquery_id_separator,
-                        can_diff_in_depth=True):
+def is_same_conquery_id(conquery_id_1: str, conquery_id_2: str):
     """Splits ids by 'id_separator' and iterates over both reversed list.
     If 'can_diff_in_depth' is True, comparison between 'age.age_select' and 'age' will be True"""
-    if not can_diff_in_depth and conquery_id_1 != conquery_id_2:
-        return False
 
-    for id_section_1, id_section_2 in zip(reversed(conquery_id_1.split(id_separator)),
-                                          reversed(conquery_id_2.split(id_separator))):
-        if id_section_1 != id_section_2:
-            return False
-    return True
+    return remove_dataset_id_from_conquery_id(conquery_id_1) == remove_dataset_id_from_conquery_id(conquery_id_2)
 
 
 class ConqueryId:
