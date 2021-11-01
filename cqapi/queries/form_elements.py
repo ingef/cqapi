@@ -45,7 +45,7 @@ class ExportForm(QueryDescription):
             **super().to_dict(),
             Keys.query_group: self.query_id,
             Keys.resolution: self.resolution,
-            Keys.alsoCreateCoarserSubdivisions: self.resolution_subdivisions
+            Keys.resolution_subdivisions: self.resolution_subdivisions
         }
 
 
