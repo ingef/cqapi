@@ -1,10 +1,11 @@
 from cqapi.queries.validate import validate_date_range, validate_resolutions, validate_time_unit, validate_time_count, \
     validate_index_plament, validate_index_selector
 from cqapi.namespace import Keys
+from typing import List
 
 
 def create_entitiy_date_form_query(query_id: str, date_range: list, feature_queries: list,
-                                   resolutions: list[str] = None, date_aggregation_mode: str = "LOGICAL"):
+                                   resolutions: List[str] = None, date_aggregation_mode: str = "LOGICAL"):
     """
     @param query_id: ID of the query that will be used to get the patient group
     @param resolutions: String of resolution for the output. Possible values: for example ['COMPLETE']
@@ -40,7 +41,7 @@ def create_entitiy_date_form_query(query_id: str, date_range: list, feature_quer
     }
 
 
-def create_absolute_form_query(query_id: str, feature_queries: list, date_range: list, resolutions: list[str] = None):
+def create_absolute_form_query(query_id: str, feature_queries: list, date_range: list, resolutions: List[str] = None):
     """
 
     @param query_id: ID of the query that will be used to get the patient group
@@ -76,7 +77,7 @@ def create_absolute_form_query(query_id: str, feature_queries: list, date_range:
     }
 
 
-def create_relative_form_query(query_id: str, resolutions: list[str] = None, before_index_queries: list = None,
+def create_relative_form_query(query_id: str, resolutions: List[str] = None, before_index_queries: list = None,
                                after_index_queries: list = None,
                                time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                                index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
