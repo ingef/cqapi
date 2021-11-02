@@ -37,7 +37,7 @@ class Keys:
     alignment_hint = "alignmentHint"
     time_mode = "timeMode"
     resolution = "resolution"
-    resolution_subdivisions = "alsoCreateCoarserSubdivisions"
+    create_resolution_subdivisions = "alsoCreateCoarserSubdivisions"
     query_group = "queryGroup"
 
 
