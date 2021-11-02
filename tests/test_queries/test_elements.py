@@ -119,6 +119,7 @@ def test_relativ_export_form():
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
         "resolution": "QUARTERS",
+        "alsoCreateCoarserSubdivisions": True,
         "timeMode": {
             "value": "RELATIVE",
             "timeUnit": "QUARTERS",
@@ -152,6 +153,7 @@ def test_entity_date_export_form():
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
         "resolution": "QUARTERS",
+        "alsoCreateCoarserSubdivisions": True,
         "timeMode": {
             "value": "ENTITY_DATE",
             Keys.alignment_hint: "YEAR",
