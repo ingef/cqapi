@@ -1,21 +1,23 @@
-from cqapi.queries.validate import validate_date_range, validate_resolution, validate_time_unit, validate_time_count, \
+from cqapi.queries.validate import validate_date_range, validate_resolutions, validate_time_unit, validate_time_count, \
     validate_index_plament, validate_index_selector
+from cqapi.namespace import Keys
 
 
 def create_entitiy_date_form_query(query_id: str, date_range: list, feature_queries: list,
-                                   resolution: str = "COMPLETE", date_aggregation_mode: str = "LOGICAL"):
+                                   resolutions: list[str] = None, date_aggregation_mode: str = "LOGICAL"):
     """
     @param query_id: ID of the query that will be used to get the patient group
-    @param resolution: Resolution for the output. Possible values: 'COMPLETE' (default), 'QUARTERS', 'YEARS
+    @param resolutions: String of resolution for the output. Possible values: for example ['COMPLETE']
     @param feature_queries: list of concept queries
     @param form_type: Can be one of ['ABSOLUTE', 'ENTITY_DATE']
-    @param resolution:
     @param date_aggregation_mode:
     @param date_range:
     @return:
     """
 
-    validate_resolution(resolution)
+    if resolutions is None:
+        resolutions = ["COMPLETE"]
+    validate_resolutions(resolutions)
 
     # extract concept from "CONCEPT_QUERY"-Objects
     feature_queries = [feature_query.get("root")
@@ -23,33 +25,34 @@ def create_entitiy_date_form_query(query_id: str, date_range: list, feature_quer
                        for feature_query in feature_queries]
 
     return {
-        'type': "EXPORT_FORM",
-        'queryGroup': query_id,
-        'resolution': resolution,
-        'timeMode': {
-            "value": "ENTITY_DATE",
-            "dateAggregationMode": date_aggregation_mode,
-            'dateRange': {
-                'min': date_range[0],
-                'max': date_range[1]
+        Keys.type: "EXPORT_FORM",
+        Keys.query_group: query_id,
+        Keys.resolutions: resolutions,
+        Keys.time_mode: {
+            Keys.value: "ENTITY_DATE",
+            Keys.date_aggregation_mode: date_aggregation_mode,
+            Keys.date_range: {
+                Keys.min: date_range[0],
+                Keys.max: date_range[1]
             },
-            'features': feature_queries
+            Keys.features: feature_queries
         }
     }
 
 
-def create_absolute_form_query(query_id: str, feature_queries: list, date_range: list, resolution: str = "COMPLETE"):
+def create_absolute_form_query(query_id: str, feature_queries: list, date_range: list, resolutions: list[str] = None):
     """
 
     @param query_id: ID of the query that will be used to get the patient group
-    @param resolution: Resolution for the output. Possible values: 'COMPLETE' (default), 'QUARTERS', 'YEARS
+    @param resolutions: List of resolution for the output. Possible values: e.g. 'COMPLETE' (default)
     @param feature_queries: list of concept queries
     @param date_range: list of two dates (start and end) each date must be of form YYYY-MM-DD
-    @param resolution:
     @return:
     """
 
-    validate_resolution(resolution)
+    if resolutions is None:
+        resolutions = ["COMPLETE"]
+    validate_resolutions(resolutions)
 
     validate_date_range(date_range)
 
@@ -59,28 +62,28 @@ def create_absolute_form_query(query_id: str, feature_queries: list, date_range:
                        for feature_query in feature_queries]
 
     return {
-        'type': "EXPORT_FORM",
-        'queryGroup': query_id,
-        'resolution': resolution,
-        'timeMode': {
-            "value": "ABSOLUTE",
-            'dateRange': {
-                'min': date_range[0],
-                'max': date_range[1]
+        Keys.type: "EXPORT_FORM",
+        Keys.query_group: query_id,
+        Keys.resolutions: resolutions,
+        Keys.time_mode: {
+            Keys.value: "ABSOLUTE",
+            Keys.date_range: {
+                Keys.min: date_range[0],
+                Keys.max: date_range[1]
             },
-            'features': feature_queries
+            Keys.features: feature_queries
         }
     }
 
 
-def create_relative_form_query(query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
+def create_relative_form_query(query_id: str, resolutions: list[str] = None, before_index_queries: list = None,
                                after_index_queries: list = None,
                                time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                                index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
     """
 
     @param query_id: ID of the query that will be used to get the patient group
-    @param resolution: Resolution for the output. Possible values: 'COMPLETE' (default), 'QUARTERS', 'YEARS
+    @param resolutions: List of resolution for the output. Possible values: e.g. 'COMPLETE' (default)
     @param before_index_queries: list of concept queries that are collected before the index date
     @param after_index_queries: list of concept queries that are collected after the index date
     @param time_unit: Possible values: 'QUARTERS' (default) , 'DAYS'
@@ -91,7 +94,9 @@ def create_relative_form_query(query_id: str, resolution: str = "COMPLETE", befo
     @return:
     """
     # validate
-    validate_resolution(resolution)
+    if resolutions is None:
+        resolutions = ["COMPLETE"]
+    validate_resolutions(resolutions)
     validate_time_unit(time_unit)
     validate_time_count(time_count_before)
     validate_time_count(time_count_after)
@@ -114,17 +119,17 @@ def create_relative_form_query(query_id: str, resolution: str = "COMPLETE", befo
                            for outcome_query in after_index_queries]
 
     return {
-        'type': 'EXPORT_FORM',
-        'queryGroup': query_id,
-        'resolution': resolution,
-        'timeMode': {
-            'value': 'RELATIVE',
-            'timeUnit': time_unit,
-            'timeCountBefore': time_count_before,
-            'timeCountAfter': time_count_after,
-            'indexSelector': index_selector,
-            'indexPlacement': index_placement,
-            'features': before_index_queries,
-            'outcomes': after_index_queries
+        Keys.type: 'EXPORT_FORM',
+        Keys.query_group: query_id,
+        Keys.resolutions: resolutions,
+        Keys.time_mode: {
+            Keys.value: 'RELATIVE',
+            Keys.time_unit: time_unit,
+            Keys.time_count_before: time_count_before,
+            Keys.time_count_after: time_count_after,
+            Keys.index_selector: index_selector,
+            Keys.index_placement: index_placement,
+            Keys.features: before_index_queries,
+            Keys.outcomes: after_index_queries
         }
     }
