@@ -10,7 +10,7 @@ from cqapi.queries.validate import validate_resolutions, validate_time_unit, val
 
 class ExportForm(QueryDescription):
 
-    def __init__(self, query_id: str, resolutions: list[str], create_resolution_subdivisions: bool = True):
+    def __init__(self, query_id: str, resolutions: List[str], create_resolution_subdivisions: bool = True):
         super().__init__(query_type=QueryType.EXPORT_FORM)
         validate_resolutions(resolutions)
         self.query_id = query_id
@@ -50,7 +50,7 @@ class ExportForm(QueryDescription):
 
 
 class AbsoluteExportForm(ExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolutions: list[str] = None,
+    def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
                  create_resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
                  start_date: str = None, end_date: str = None):
         if resolutions is None:
@@ -84,7 +84,7 @@ class AbsoluteExportForm(ExportForm):
 
 
 class EntityDateExportForm(AbsoluteExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolutions: list[str] = None,
+    def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
                  create_resolution_subdivisions: bool = True, date_aggregation_mode: str = "LOGICAL",
                  alignment_hint: str = "YEAR", date_range: Union[List[str], dict] = None, start_date: str = None,
                  end_date: str = None):
@@ -111,7 +111,7 @@ class EntityDateExportForm(AbsoluteExportForm):
 
 
 class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolutions: list[str] = None, create_resolution_subdivisions: bool = True,
+    def __init__(self, query_id: str, resolutions: List[str] = None, create_resolution_subdivisions: bool = True,
                  before_index_queries: list = None, after_index_queries: list = None,
                  time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                  index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):

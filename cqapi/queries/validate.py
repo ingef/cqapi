@@ -1,4 +1,5 @@
 import re
+from typing import List
 
 
 def validate_date(date: str) -> None:
@@ -26,7 +27,7 @@ def validate_date_range(date_range: list) -> None:
         validate_date(date)
 
 
-def validate_resolutions(resolutions: list[str]) -> None:
+def validate_resolutions(resolutions: List[str]) -> None:
     known_resolution = ["COMPLETE", "YEARS", "QUARTERS", "DAYS"]
     for resolution in resolutions:
         if resolution not in known_resolution:
