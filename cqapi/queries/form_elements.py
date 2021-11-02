@@ -10,12 +10,12 @@ from cqapi.queries.validate import validate_resolution, validate_time_unit, vali
 
 class ExportForm(QueryDescription):
 
-    def __init__(self, query_id: str, resolution: str, resolution_subdivisions: bool = True):
+    def __init__(self, query_id: str, resolution: str, create_resolution_subdivisions: bool = True):
         super().__init__(query_type=QueryType.EXPORT_FORM)
         validate_resolution(resolution)
         self.query_id = query_id
         self.resolution = resolution
-        self.resolution_subdivisions = resolution_subdivisions
+        self.create_resolution_subdivisions = create_resolution_subdivisions
 
     @staticmethod
     def validate_and_prepare_features(features):
@@ -45,15 +45,16 @@ class ExportForm(QueryDescription):
             **super().to_dict(),
             Keys.query_group: self.query_id,
             Keys.resolution: self.resolution,
-            Keys.resolution_subdivisions: self.resolution_subdivisions
+            Keys.create_resolution_subdivisions: self.create_resolution_subdivisions
         }
 
 
 class AbsoluteExportForm(ExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
+                 create_resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
                  start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution, resolution_subdivisions=resolution_subdivisions)
+        super().__init__(query_id=query_id, resolution=resolution,
+                         create_resolution_subdivisions=create_resolution_subdivisions)
 
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
 
@@ -81,10 +82,11 @@ class AbsoluteExportForm(ExportForm):
 
 class EntityDateExportForm(AbsoluteExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 resolution_subdivisions: bool = True, date_aggregation_mode: str = "LOGICAL",
+                 create_resolution_subdivisions: bool = True, date_aggregation_mode: str = "LOGICAL",
                  alignment_hint: str = "YEAR", date_range: Union[List[str], dict] = None, start_date: str = None,
                  end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution, resolution_subdivisions=resolution_subdivisions,
+        super().__init__(query_id=query_id, resolution=resolution,
+                         create_resolution_subdivisions=create_resolution_subdivisions,
                          features=features, date_range=date_range, start_date=start_date, end_date=end_date)
 
         self.date_aggregation_mode = date_aggregation_mode
@@ -103,12 +105,13 @@ class EntityDateExportForm(AbsoluteExportForm):
 
 
 class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolution: str = "COMPLETE", resolution_subdivisions: bool = True,
+    def __init__(self, query_id: str, resolution: str = "COMPLETE", create_resolution_subdivisions: bool = True,
                  before_index_queries: list = None, after_index_queries: list = None,
                  time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                  index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
 
-        super().__init__(query_id=query_id, resolution=resolution, resolution_subdivisions=resolution_subdivisions)
+        super().__init__(query_id=query_id, resolution=resolution,
+                         create_resolution_subdivisions=create_resolution_subdivisions)
 
         validate_time_unit(time_unit)
         self.time_unit = time_unit
