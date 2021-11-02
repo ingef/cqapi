@@ -26,9 +26,11 @@ class Keys:
     value = "value"
     query = "query"
     options = "options"
-    row_prefix = 'row_prefix'
-    format = 'format'
-    values = 'values'
+    row_prefix = "row_prefix"
+    format = "format"
+    features = "features"
+    outcomes = "outcomes"
+    values = "values"
     date_action = "dateAction"
     merge = "MERGE"
     intersect = "INTERSECT"
@@ -36,7 +38,12 @@ class Keys:
     block = "BLOCK"
     alignment_hint = "alignmentHint"
     time_mode = "timeMode"
-    resolution = "resolution"
+    time_unit = "timeUnit"
+    time_count_before = "timeCountBefore"
+    time_count_after = "timeCountAfter"
+    index_selector = "indexSelector"
+    index_placement = "indexPlacement"
+    resolutions = "resolution"
     create_resolution_subdivisions = "alsoCreateCoarserSubdivisions"
     query_group = "queryGroup"
 
