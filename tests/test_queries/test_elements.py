@@ -108,7 +108,7 @@ def test_relativ_export_form():
 
     export_form = RelativeExportForm(
         query_id="dataset1.query_id",
-        resolution="QUARTERS",
+        resolutions=["QUARTERS"],
         before_index_queries=[query_object_1, query_object_2],
         after_index_queries=None,
         time_count_after=2
@@ -118,7 +118,7 @@ def test_relativ_export_form():
     export_form_val = {
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
-        "resolution": "QUARTERS",
+        "resolution": ["QUARTERS"],
         "alsoCreateCoarserSubdivisions": True,
         "timeMode": {
             "value": "RELATIVE",
@@ -141,7 +141,7 @@ def test_entity_date_export_form():
 
     export_form = EntityDateExportForm(
         query_id="dataset1.query_id",
-        resolution="QUARTERS",
+        resolutions=["QUARTERS"],
         features=[query_object_1, query_object_2],
         date_aggregation_mode="MERGE",
         date_range={"min": "2020-01-01", "max": "2020-12-31"},
@@ -152,7 +152,7 @@ def test_entity_date_export_form():
     export_form_val = {
         "type": "EXPORT_FORM",
         "queryGroup": "dataset1.query_id",
-        "resolution": "QUARTERS",
+        "resolution": ["QUARTERS"],
         "alsoCreateCoarserSubdivisions": True,
         "timeMode": {
             "value": "ENTITY_DATE",
