@@ -10,7 +10,9 @@ from cqapi.queries.validate import validate_resolutions, validate_time_unit, val
 
 class ExportForm(QueryDescription):
 
-    def __init__(self, query_id: str, resolutions: List[str], create_resolution_subdivisions: bool = True):
+    def __init__(self, query_id: str, resolutions=None, create_resolution_subdivisions: bool = True):
+        if resolutions is None:
+            resolutions = ["COMPLETE"]
         super().__init__(query_type=QueryType.EXPORT_FORM)
         validate_resolutions(resolutions)
         self.query_id = query_id
@@ -53,9 +55,6 @@ class AbsoluteExportForm(ExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
                  create_resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
                  start_date: str = None, end_date: str = None):
-        if resolutions is None:
-            resolutions = ["COMPLETE"]
-
         super().__init__(query_id=query_id, resolutions=resolutions,
                          create_resolution_subdivisions=create_resolution_subdivisions)
 
@@ -88,9 +87,6 @@ class EntityDateExportForm(AbsoluteExportForm):
                  create_resolution_subdivisions: bool = True, date_aggregation_mode: str = "LOGICAL",
                  alignment_hint: str = "YEAR", date_range: Union[List[str], dict] = None, start_date: str = None,
                  end_date: str = None):
-        if resolutions is None:
-            resolutions = ["COMPLETE"]
-
         super().__init__(query_id=query_id, resolutions=resolutions,
                          create_resolution_subdivisions=create_resolution_subdivisions,
                          features=features, date_range=date_range, start_date=start_date, end_date=end_date)
@@ -115,10 +111,6 @@ class RelativeExportForm(ExportForm):
                  before_index_queries: list = None, after_index_queries: list = None,
                  time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                  index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
-
-        if resolutions is None:
-            resolutions = ["COMPLETE"]
-
         super().__init__(query_id=query_id, resolutions=resolutions,
                          create_resolution_subdivisions=create_resolution_subdivisions)
 
