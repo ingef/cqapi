@@ -87,7 +87,7 @@ def test_and_query():
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
 
-test_and_query()
+
 def test_remove_selects():
     query_object_1 = ConceptElement(ids=["dataset1.concept1"],
                                     tables=[ConceptTable(connector_id="dataset1.concept1.table1",
