@@ -1,4 +1,5 @@
 import re
+from typing import List
 
 
 def validate_date(date: str) -> None:
@@ -26,10 +27,11 @@ def validate_date_range(date_range: list) -> None:
         validate_date(date)
 
 
-def validate_resolution(resolution: str) -> None:
+def validate_resolutions(resolutions: List[str]) -> None:
     known_resolution = ["COMPLETE", "YEARS", "QUARTERS", "DAYS"]
-    if resolution not in known_resolution:
-        raise ValueError(f"Unknown {resolution=}. Must be in {known_resolution}")
+    for resolution in resolutions:
+        if resolution not in known_resolution:
+            raise ValueError(f"Unknown {resolution=}. Must be in {known_resolution}")
 
 
 def validate_time_unit(time_unit: str):
