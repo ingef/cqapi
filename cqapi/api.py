@@ -207,7 +207,11 @@ class ConqueryConnection(object):
 
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
+
+        self.wait_for_query_to_finish(query_id=query_id)
+
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+
         return result['columnDescriptions']
 
     def get_form_configs(self, dataset: str = None) -> list:
@@ -261,6 +265,15 @@ class ConqueryConnection(object):
             return -1
 
         return int(n_results)
+
+    def wait_for_query_to_finish(self, query_id: str, requests_per_sec: int = None):
+        response = self.get_query_info(query_id)
+
+        while response['status'] == 'RUNNING':
+            response = self.get_query_info(query_id)
+            if requests_per_sec is None:
+                continue
+            sleep(1 / requests_per_sec)
 
     def get_query_info(self, query_id: str):
         dataset = get_dataset_from_id(query_id)
@@ -316,8 +329,11 @@ class ConqueryConnection(object):
         dataset = get_dataset_from_id(query_id)
         post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
-    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = True,
-                         requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
+
+
+
+    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
+                         already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
@@ -331,6 +347,8 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
 
+        self.wait_for_query_to_finish(query_id=query_id)
+
         response = self.get_query_info(query_id)
 
         while response['status'] == 'RUNNING':
@@ -342,8 +360,7 @@ class ConqueryConnection(object):
         response_status = response["status"]
 
         if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed "
-                            f"with code {response.status_code} and message {response.text}")
+            raise Exception(f"Query with {query_id=} failed.")
         elif response_status == "NEW":
             if already_reexecuted:
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
@@ -394,3 +411,15 @@ class ConqueryConnection(object):
         result_url_message = '\n'.join(result_urls)
         raise ValueError(f"Could not find result url for {file_type=}. \n"
                          f"Result Urls: \n {result_url_message}")
+
+
+
+
+
+conquery_url = "http://localhost.:8080"
+conquery_token = "token"
+dataset = "dataset1"
+conquery_conn = ConqueryConnection(conquery_url, conquery_token, dataset=dataset)
+
+print(conquery_conn.get_query("dataset1.049ce7eb-a1df-4935-b348-89d1fa500655"))
+
