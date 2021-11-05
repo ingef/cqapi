@@ -329,9 +329,6 @@ class ConqueryConnection(object):
         dataset = get_dataset_from_id(query_id)
         post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
-
-
-
     def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = False,
                          already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
@@ -411,15 +408,3 @@ class ConqueryConnection(object):
         result_url_message = '\n'.join(result_urls)
         raise ValueError(f"Could not find result url for {file_type=}. \n"
                          f"Result Urls: \n {result_url_message}")
-
-
-
-
-
-conquery_url = "http://localhost.:8080"
-conquery_token = "token"
-dataset = "dataset1"
-conquery_conn = ConqueryConnection(conquery_url, conquery_token, dataset=dataset)
-
-print(conquery_conn.get_query("dataset1.049ce7eb-a1df-4935-b348-89d1fa500655"))
-
