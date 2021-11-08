@@ -12,7 +12,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 
-def raise_for_status(response: Response):
+def raise_for_status(response: Response) -> Union[None, NoReturn]:
     if response.status_code < 400:
         return None
 
@@ -117,7 +117,7 @@ class ConqueryConnection(object):
     def store_dataset_list_globally(self):
         cqapi.datasets.set_dataset_list(self._datasets_with_permission)
 
-    def _get_dataset(self, dataset: str = None):
+    def _get_dataset(self, dataset: str = None) -> str:
 
         if dataset is None:
             if self._dataset is not None:
@@ -151,7 +151,7 @@ class ConqueryConnection(object):
         response_list = get_json(self._session, f"{self._url}/api/datasets")
         return [d['id'] for d in response_list]
 
-    def get_datasets_label_dict(self) -> dict:
+    def get_datasets_label_dict(self) -> Dict[str, str]:
         response_list = get_json(self._session, f"{self._url}/api/datasets")
         return {dataset_info.get('id'): dataset_info.get('label') for dataset_info in response_list}
 
@@ -160,7 +160,7 @@ class ConqueryConnection(object):
         dataset_label_dict = self.get_datasets_label_dict()
         if dataset not in dataset_label_dict.keys():
             raise ValueError(f"There is no permission on {dataset=}")
-        return dataset_label_dict.get(dataset)
+        return dataset_label_dict[dataset]
 
     def get_concepts(self, dataset: str = None, remove_structure_elements: bool = True) -> dict:
         dataset = self._get_dataset(dataset)
@@ -198,6 +198,7 @@ class ConqueryConnection(object):
         return response_list
 
     def get_query_id(self, label: str, dataset: str = None) -> str:
+        dataset = self._get_dataset(dataset=dataset)
         queries = self.get_stored_queries()
         queries_with_label = [query["id"] for query in queries if query["label"] == label]
         if not queries_with_label:
@@ -207,7 +208,11 @@ class ConqueryConnection(object):
 
     def get_column_descriptions(self, query_id: str) -> list:
         dataset = get_dataset_from_id(query_id)
+
+        self.wait_for_query_to_finish(query_id=query_id)
+
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
+
         return result['columnDescriptions']
 
     def get_form_configs(self, dataset: str = None) -> list:
@@ -225,7 +230,7 @@ class ConqueryConnection(object):
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result.get('query')
 
-    def get_stored_query_info(self, query_id: str = None, label: str = None) -> dict:
+    def get_stored_query_info(self, query_id: str, label: str = None) -> dict:
         dataset = get_dataset_from_id(query_id)
         stored_queries = self.get_stored_queries(dataset)
         if query_id is not None:
@@ -262,6 +267,15 @@ class ConqueryConnection(object):
 
         return int(n_results)
 
+    def wait_for_query_to_finish(self, query_id: str, requests_per_sec: int = None):
+        response = self.get_query_info(query_id)
+
+        while response['status'] == 'RUNNING':
+            response = self.get_query_info(query_id)
+            if requests_per_sec is None:
+                continue
+            sleep(1 / requests_per_sec)
+
     def get_query_info(self, query_id: str):
         dataset = get_dataset_from_id(query_id)
         result = get_json(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
@@ -281,17 +295,21 @@ class ConqueryConnection(object):
 
     def query_id_exists(self, query_id: str) -> Union[bool, NoReturn]:
         dataset = get_dataset_from_id(query_id)
-        with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
-            if response.status_code < 400:
-                return True
 
+        if self._session is None:
+            raise ValueError("No Session running")
+
+        with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
             if response.status_code == 404:
                 return False
 
-        raise_for_status(response=response)
+            raise_for_status(response=response)
+
+        return True
 
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
                       label: str = None) -> str:
+
         try:
             query = query.to_dict()
         except AttributeError:
@@ -317,33 +335,27 @@ class ConqueryConnection(object):
         post(self._session, f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
     def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = True,
-                         requests_per_sec=None, already_reexecuted: bool = False, delete_query: bool = False):
+                         already_reexecuted: bool = False, delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
         :param download_with_arrow: Use apache arrow for transferring data from backend to cqapi
         :param query_id:
         :param already_reexecuted: only needed when reexecuting query, to know when trapped in an endless loop
-        :param requests_per_sec: Number of request to do per second (default None -> as many as possible)
         e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
         :param return_pandas: when true, returns data as pandas.DataFrame
         :param delete_query: deletes query after getting result
         :return: str containing the returned csv's
         """
 
-        response = self.get_query_info(query_id)
+        self.wait_for_query_to_finish(query_id=query_id)
 
-        while response['status'] == 'RUNNING':
-            response = self.get_query_info(query_id)
-            if requests_per_sec is None:
-                continue
-            sleep(1 / requests_per_sec)
+        response = self.get_query_info(query_id)
 
         response_status = response["status"]
 
         if response_status == "FAILED":
-            raise Exception(f"Query with {query_id=} failed "
-                            f"with code {response.status_code} and message {response.text}")
+            raise Exception(f"Query with {query_id=} failed.")
         elif response_status == "NEW":
             if already_reexecuted:
                 raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
