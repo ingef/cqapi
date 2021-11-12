@@ -29,6 +29,9 @@ class QueryObject:
     query_type: QueryType
     label: str = None
 
+    def __eq__(self, other):
+        return isinstance(other, QueryObject) and self.to_dict() == other.to_dict()
+
     def copy(self):
         return QueryObject(query_type=self.query_type, label=self.label)
 
@@ -40,8 +43,8 @@ class QueryObject:
             Keys.row_prefix: self.row_prefix
         }
 
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict(), indent=4)
+    def print(self) -> str:
+        print(json.dumps(self.to_dict(), indent=4))
 
     @classmethod
     def from_dict(cls, query: dict) -> QueryObject:
@@ -786,7 +789,7 @@ class ConceptElement(QueryObject):
 
     def __init__(self, ids: list, concept: dict = None, tables: List[ConceptTable] = None,
                  connector_ids: List[str] = None, concept_selects: list = None,
-                 connector_selects: List[str] = None, filter_objs: List[str] = None,
+                 connector_selects: List[str] = None, filter_objs: List[dict] = None,
                  exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None,
                  row_prefix: str = None):
@@ -1045,7 +1048,9 @@ class SavedQuery(SimpleQuery):
         return {
             **super().to_dict(),
             Keys.query: self.query_id,
-            Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
+            #TODO war typo in conquery(Hotfix)
+            # Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
+            "excludeFromSecondaryId": self.exclude_from_secondary_id_bool
         }
 
     @classmethod
@@ -1128,7 +1133,8 @@ def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_quer
                  exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
                  date_aggregation_mode: str = None,
                  start_date: str = None, end_date: str = None,
-                 label: str = None) -> QueryObject:
+                 label: str = None,
+                 negate: bool = False) -> QueryObject:
     if isinstance(concept_id, list):
         root_concept_id = get_root_concept_id(concept_id[0])
         concept_ids = concept_id
@@ -1145,11 +1151,13 @@ def create_query(concept_id: Union[str, List[str]], concepts: dict, concept_quer
                            filter_objs=filter_objs,
                            exclude_from_secondary_id=exclude_from_secondary_id,
                            exclude_from_time_aggregation=exclude_from_time_aggregation,
-                           label=label
-                           )
+                           label=label)
 
     if start_date is not None or end_date is not None:
         query = DateRestriction(child=query, start_date=start_date, end_date=end_date)
+
+    if negate:
+        query = Negation(child=query)
 
     if concept_query:
         return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)

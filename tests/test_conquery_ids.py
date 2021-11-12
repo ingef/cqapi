@@ -1,9 +1,9 @@
 from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
 import cqapi.conquery_ids as con
 import pytest
-import cqapi.datasets
+from cqapi.datasets import set_test_datasets
 
-cqapi.datasets.set_dataset_list(["dataset1", "dataset2"])
+set_test_datasets()
 
 
 def test_compare_conquery_ids():
@@ -68,16 +68,16 @@ def test_get_dataset():
     assert con.get_dataset("dataset2.concept.connector.select") == "dataset2"
 
 
+@pytest.mark.skip("Needs conquery connetion")
 def test_label():
-    if False:
-        concepts = dict()
-        ids = ConqueryIdCollection()
+    concepts = dict()
+    ids = ConqueryIdCollection()
 
-        ids.add(ConqueryId("dataset1.icd", "concept"))
-        ids.add(ConqueryId("dataset1.icd.au_fall_21c.sum_au", "connector_select"))
-        ids.add(ConqueryId("dataset1.icd.au_fall_21c.krankheitsursache", "filter"))
-        ids.add(ConqueryId("dataset1.atc.atc", "connector"))
+    ids.add(ConqueryId("dataset1.icd", "concept"))
+    ids.add(ConqueryId("dataset1.icd.au_fall_21c.sum_au", "connector_select"))
+    ids.add(ConqueryId("dataset1.icd.au_fall_21c.krankheitsursache", "filter"))
+    ids.add(ConqueryId("dataset1.atc.atc", "connector"))
 
-        print(ids.create_label_dicts(concepts=concepts))
+    ids.create_label_dicts(concepts=concepts)
 
-        table = ids.print_id_labels_as_table(concepts=concepts)
+    ids.print_id_labels_as_table(concepts=concepts)

@@ -4,17 +4,20 @@ from cqapi.namespace import Keys, QueryType
 from cqapi.queries.base_elements import QueryObject, ConceptElement
 from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.queries.base_elements import QueryDescription, SingleRootQueryDescription, SingleChildQueryObject
-from cqapi.queries.validate import validate_resolution, validate_time_unit, validate_time_count, \
+from cqapi.queries.validate import validate_resolutions, validate_time_unit, validate_time_count, \
     validate_index_selector, validate_index_plament
 
 
 class ExportForm(QueryDescription):
 
-    def __init__(self, query_id: str, resolution: str):
+    def __init__(self, query_id: str, resolutions=None, create_resolution_subdivisions: bool = True):
+        if resolutions is None:
+            resolutions = ["COMPLETE"]
         super().__init__(query_type=QueryType.EXPORT_FORM)
-        validate_resolution(resolution)
+        validate_resolutions(resolutions)
         self.query_id = query_id
-        self.resolution = resolution
+        self.resolutions = resolutions
+        self.create_resolution_subdivisions = create_resolution_subdivisions
 
     @staticmethod
     def validate_and_prepare_features(features):
@@ -43,14 +46,17 @@ class ExportForm(QueryDescription):
         return {
             **super().to_dict(),
             Keys.query_group: self.query_id,
-            Keys.resolution: self.resolution
+            Keys.resolutions: self.resolutions,
+            Keys.create_resolution_subdivisions: self.create_resolution_subdivisions
         }
 
 
 class AbsoluteExportForm(ExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution)
+    def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
+                 create_resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
+                 start_date: str = None, end_date: str = None):
+        super().__init__(query_id=query_id, resolutions=resolutions,
+                         create_resolution_subdivisions=create_resolution_subdivisions)
 
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
 
@@ -77,11 +83,13 @@ class AbsoluteExportForm(ExportForm):
 
 
 class EntityDateExportForm(AbsoluteExportForm):
-    def __init__(self, query_id: str, features: List[QueryObject], resolution: str = "COMPLETE",
-                 date_aggregation_mode: str = "LOGICAL", alignment_hint: str = "YEAR",
-                 date_range: Union[List[str], dict] = None, start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolution=resolution, features=features,
-                         date_range=date_range, start_date=start_date, end_date=end_date)
+    def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
+                 create_resolution_subdivisions: bool = True, date_aggregation_mode: str = "LOGICAL",
+                 alignment_hint: str = "YEAR", date_range: Union[List[str], dict] = None, start_date: str = None,
+                 end_date: str = None):
+        super().__init__(query_id=query_id, resolutions=resolutions,
+                         create_resolution_subdivisions=create_resolution_subdivisions,
+                         features=features, date_range=date_range, start_date=start_date, end_date=end_date)
 
         self.date_aggregation_mode = date_aggregation_mode
         self.alignment_hint = alignment_hint
@@ -99,12 +107,12 @@ class EntityDateExportForm(AbsoluteExportForm):
 
 
 class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolution: str = "COMPLETE", before_index_queries: list = None,
-                 after_index_queries: list = None,
+    def __init__(self, query_id: str, resolutions: List[str] = None, create_resolution_subdivisions: bool = True,
+                 before_index_queries: list = None, after_index_queries: list = None,
                  time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                  index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
-
-        super().__init__(query_id=query_id, resolution=resolution)
+        super().__init__(query_id=query_id, resolutions=resolutions,
+                         create_resolution_subdivisions=create_resolution_subdivisions)
 
         validate_time_unit(time_unit)
         self.time_unit = time_unit
