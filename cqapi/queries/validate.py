@@ -1,4 +1,5 @@
 import re
+from typing import List
 
 
 def validate_date(date: str) -> None:
@@ -8,7 +9,7 @@ def validate_date(date: str) -> None:
     @return:
     """
     if not isinstance(date, str):
-        raise ValueError(f"{date=} must be of type str, not {type(str)}")
+        raise ValueError(f"{date=} must be of type str, not {type(date)}")
 
     rex = re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
     if not rex.match(date) or not 0 < int(date.split("-")[1]) <= 12 or not 0 <= int(date.split("-")[2]) <= 31:
@@ -26,10 +27,11 @@ def validate_date_range(date_range: list) -> None:
         validate_date(date)
 
 
-def validate_resolution(resolution: str) -> None:
+def validate_resolutions(resolutions: List[str]) -> None:
     known_resolution = ["COMPLETE", "YEARS", "QUARTERS", "DAYS"]
-    if resolution not in known_resolution:
-        raise ValueError(f"Unknown {resolution=}. Must be in {known_resolution}")
+    for resolution in resolutions:
+        if resolution not in known_resolution:
+            raise ValueError(f"Unknown {resolution=}. Must be in {known_resolution}")
 
 
 def validate_time_unit(time_unit: str):

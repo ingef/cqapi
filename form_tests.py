@@ -67,7 +67,7 @@ icd_concept_object = create_query(concept_id=icd_id,
                                   concepts=concepts,
                                   connector_ids=[f"{dataset}.icd.kh_diagnose_icd_code"],
                                   connector_select_ids=[f"{dataset}.icd.kh_diagnose_icd_code.anzahl_krankenhaeuser"],
-                                  concept_select_ids=[f"{dataset}.icd.icd_exists"])
+                                  concept_select_ids=[f"{dataset}.icd.exists"])
 
 atc_a_concept_object = create_query(concept_id=f"{dataset}.atc.a",
                                     concepts=concepts)
