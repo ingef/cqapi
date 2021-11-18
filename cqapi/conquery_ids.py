@@ -1,263 +1,420 @@
 from __future__ import annotations
-from typing import Union, Set
-from cqapi.namespace import Keys
-import cqapi.datasets
-from typeguard import typechecked
+from typing import List, Union, Set
+from abc import ABC, abstractmethod
 
-# conquery id info
+# Conquery Id Info
 conquery_id_separator = "."
-dataset_loc = 0
-concept_loc = 1
-connector_loc = 2
-select_loc = 3
-filter_loc = 3
+dataset_length = 1
+concept_length = 2
+concept_select_length = 3
+connector_length = 3
+child_length = 3
+connector_select_length = 4
+filter_length = 4
+date_length = 4
 
 
-@typechecked
-def is_dataset_id(dataset_id: str):
-    return dataset_id in cqapi.datasets.get_dataset_list()
-
-
-def change_dataset(new_dataset: str, conquery_id: str):
-    eva_id_list = conquery_id.split(".")
-    if len(eva_id_list) < 2:
-        raise ValueError(f"Eva_id has to be of shape <dataset>.<id>.<child_id>..., not {conquery_id}")
-
-    return ".".join([new_dataset, *eva_id_list[1:]])
-
-
-@typechecked
-def id_elements_to_id(conquery_id_elements: Union[list, str]):
-    if isinstance(conquery_id_elements, str):
-        conquery_id_elements = [conquery_id_elements]
-    return conquery_id_separator.join(conquery_id_elements)
-
-
-@typechecked()
-def get_conquery_id_element(conquery_id: str, index: int = None):
-    conquery_id_elements = conquery_id.split(".")
-
-    if index is None:
-        return conquery_id_elements
-
-    return conquery_id_elements[index]
-
-
-def get_conquery_id_slice(conquery_id: str, first_index: int = None, second_index: int = None, until_then: bool = False,
-                          from_then_on: bool = False):
-    conquery_id_elements = conquery_id.split(".")
-    if second_index is not None and first_index is None:
-        raise ValueError("First index must be specified if second index is not None")
-    if second_index is not None and first_index > second_index:
-        raise ValueError("First index must be greater than second index")
-
-    if first_index is None:
-        return conquery_id_elements
-
-    if second_index is not None:
-        return conquery_id_elements[first_index:second_index]
-
-    if until_then:
-        return conquery_id_elements[:first_index]
-
-    if from_then_on:
-        return conquery_id_elements[first_index:]
-
-    raise ValueError("Unexpected variable combination: \n"
-                     f"{conquery_id=}\n"
-                     f"{first_index=}\n"
-                     f"{second_index=}\n"
-                     f"{until_then=}\n"
-                     f"{from_then_on=}\n")
-
-
-@typechecked()
-def contains_dataset_id(conquery_id: str):
-    return is_dataset_id(get_conquery_id_element(conquery_id, dataset_loc))
-
-
-@typechecked()
-def add_dataset_id_to_conquery_id(conquery_id: str, dataset_id: str):
-    if not is_dataset_id(dataset_id):
-        raise ValueError(f"{dataset_id=} is not a valid id.")
-
-    if contains_dataset_id(conquery_id):
-        return id_elements_to_id([dataset_id, *get_conquery_id_slice(conquery_id, dataset_loc + 1,
-                                                                     from_then_on=True)])
-
-    return id_elements_to_id([dataset_id, *get_conquery_id_slice(conquery_id)])
-
-
-@typechecked()
-def remove_dataset_id_from_conquery_id(conquery_id: str):
-    if contains_dataset_id(conquery_id):
-        return id_elements_to_id(get_conquery_id_slice(conquery_id,
-                                                       concept_loc,
-                                                       from_then_on=True))
-    return conquery_id
-
-
-@typechecked()
-def get_root_concept_id(conquery_id: str):
-    if contains_dataset_id(conquery_id):
-        return id_elements_to_id(get_conquery_id_slice(conquery_id,
-                                                       concept_loc + 1,
-                                                       until_then=True))
-    else:
-        return get_conquery_id_element(conquery_id, concept_loc - 1)
-
-
-@typechecked()
-def get_connector_id(conquery_id: str):
-    if contains_dataset_id(conquery_id):
-        return id_elements_to_id(get_conquery_id_slice(conquery_id,
-                                                       connector_loc + 1,
-                                                       until_then=True))
-    else:
-        return id_elements_to_id(get_conquery_id_slice(conquery_id,
-                                                       connector_loc,
-                                                       until_then=True))
-
-
-@typechecked()
-def get_dataset(conquery_id: str):
-    if not contains_dataset_id(conquery_id):
-        raise ValueError(f"Can not extract dataset for id {conquery_id}.")
-
-    return get_conquery_id_element(conquery_id, dataset_loc)
-
-
-def child_id_in_concept(child_id: str, concept: dict):
-    """Searches for child id in concepts dictionary"""
-    for children_ids in [concept_element.get('children', []) for concept_element in concept]:
-        if child_id in children_ids:
-            return True
-    return False
-
-
-def is_in_conquery_ids(conquery_id: str, conquery_ids: list):
-    return any(is_same_conquery_id(conquery_id, conquery_id_from_list) for conquery_id_from_list in conquery_ids)
-
-
-def is_same_conquery_id(conquery_id_1: str, conquery_id_2: str):
-    """Splits ids by 'id_separator' and iterates over both reversed list.
-    If 'can_diff_in_depth' is True, comparison between 'age.age_select' and 'age' will be True"""
-
-    return remove_dataset_id_from_conquery_id(conquery_id_1) == remove_dataset_id_from_conquery_id(conquery_id_2)
-
-
-class ConqueryId:
-    def __init__(self, conquery_id: str, id_type: str = None):
-        self.conquery_id_list = conquery_id.split(".")
-        if id_type is not None and \
-                id_type not in ["concept", "concept_select", "connector", "connector_select", "filter", "date"]:
-            raise ValueError(f"Unknown {id_type=}")
-        self.id_type = id_type
-
-    def get_conquery_id(self):
-        return ".".join(self.conquery_id_list)
+class ConqueryId(ABC):
+    def __init__(self, name: str, base: ConqueryId = None):
+        self.base = base
+        self.name = name
 
     def __hash__(self):
-        return hash(self.get_conquery_id())
+        return hash(self.id)
 
-    def __eq__(self, other):
-        if isinstance(other, ConqueryId):
-            return self.get_conquery_id() == other.get_conquery_id()
+    def __eq__(self, other_id):
+        if isinstance(other_id, ConqueryId):
+            return self.id == other_id.id
         return NotImplemented
 
     def __repr__(self):
-        return f"id={self.get_conquery_id()}, type={self.id_type}"
+        return self.id
 
-    @staticmethod
-    def is_dataset(dataset) -> bool:
-        if dataset.startswith("adb_"):
-            return True
-        if dataset.startswith("fdb_"):
-            return True
-        if dataset.startswith("dataset"):
-            return True
-        return False
+    @property
+    def id(self):
+        """
+        Datasets returns its name, all other Ids that build on it add their name to the string.
+        """
+        if self.base:
+            return f"{self.base.id}.{self.name}"
+        else:
+            return self.name
 
-    def contains_dataset(self) -> bool:
-        return self.is_dataset(self.conquery_id_list[0])
+    @property
+    @abstractmethod
+    def base(self) -> ConqueryId:
+        """
+        Getter for base (the conqueryId that the current one builds on
+        """
+        pass
 
-    def get_root_concept_id(self) -> str:
-        if self.contains_dataset():
-            return ".".join(self.conquery_id_list[:2])
-        return ".".join(self.conquery_id_list[:1])
+    @base.setter
+    @abstractmethod
+    def base(self, new_base: ConqueryId):
+        """
+        Setter for base, should check if ConqueryId that is set is a valid entry for the Instance
+        """
+        pass
 
+    def is_dataset(self) -> bool:
+        return isinstance(self, DatasetId)
+
+    def is_same_conquery_id(self, other_id):
+        return self.__eq__(other_id=other_id)
+
+    @abstractmethod
     def get_concept_id(self) -> str:
-        if not self.id_type != "concept":
-            return self.get_root_concept_id()
+        pass
 
-        return ".".join(self.conquery_id_list)
+    @abstractmethod
+    def get_connector_id(self) -> str:
+        pass
 
-    def get_child_concept_id(self) -> Union[str, None]:
-        if not self.id_type != "concept":
-            return None
+    @classmethod
+    @abstractmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
+        """
+        Method is used in from_str and should validate provided string and recursively initiate objects for each
+        inherited class needed for the provided Id
+        """
+        pass
 
-        if len(self.conquery_id_list) > (1 + int(self.contains_dataset())):
-            return self.conquery_id_list[-1]
+    @classmethod
+    def from_str(cls, id_string: str) -> ConqueryId:
+        """
+        Splits the string on the separator and initiates instances of conqueryIds to represent the string
+        """
+        id_list = id_string.split(conquery_id_separator)
+        return cls.create_id_objects_recursively(id_list=id_list)
+
+    @abstractmethod
+    def change_dataset(self, new_dataset: str):
+        pass
+
+    @abstractmethod
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        """
+        Method needed for get_label_dict and adds relevant information about the current class instance to the label
+        dict referencing the labels in the concept object
+        """
+        pass
+
+    @classmethod
+    def _filter_concept_obj(cls, filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
+            -> Union[str, list, dict]:
+        """
+        Method used in add_self_label_to_dict in subclasses.
+        Filters a list of dictionaries (filter_obj) based on if for each element, the value of the dict for filter_key
+        equals the compare_string. If so, return the value of the dict of return_key
+        """
+        return [element[return_key] for element in filter_obj if element[filter_key] == compare_string][0]
+
+    def get_label_dict(self, concepts: dict) -> dict:
+        """
+        Get a specific dictionary of instances of the conqueryId and their labels
+        """
+        concept_id = self.get_concept_id()
+        concept_obj = concepts[concept_id]
+        label_dict = {"concept": concept_obj[Keys.label]}
+        label_dict = self.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
+        return label_dict
+
+
+class DatasetId(ConqueryId):
+    def __init__(self, name: str):
+        super().__init__(name=name, base=None)
+
+    @property
+    def base(self) -> ConqueryId:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: ConqueryId):
+        if new_base:
+            raise ValueError("Dataset cannot have base")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.name = new_dataset
+
+    def get_concept_id(self):
         return None
 
-    def get_connector_id(self) -> str:
-        if self.contains_dataset():
-            return ".".join(self.conquery_id_list[:3])
-        return ".".join(self.conquery_id_list[:2])
+    def get_connector_id(self):
+        return None
 
-    def change_dataset(self, dataset: str) -> None:
-        if not self.is_dataset(dataset):
-            raise ValueError(f"{dataset=} is no valid dataset")
-        if self.contains_dataset():
-            self.conquery_id_list[0] = dataset
-        else:
-            self.conquery_id_list = [dataset, *self.conquery_id_list]
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict):
+        return None
 
-    def get_label_dict(self, concepts: dict):
-        if self.id_type is None:
-            raise ValueError(f"{self} has no id_type")
-        root_concept_id = self.get_root_concept_id()
-        concept_obj = concepts[root_concept_id]
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
+        if len(id_list) != dataset_length:
+            raise ValueError(f"Provided list of ids for Dataset must be of length {dataset_length}. "
+                             f"Provided: {id_list}")
+        return DatasetId(name=id_list[0])
 
-        label_dict = {"concept": concept_obj[Keys.label]}
-        if self.id_type == "concept":
-            child_id = self.get_child_concept_id()
-            if child_id is not None:
-                label_dict["concept"] = " - ".join([label_dict["concept"], child_id])
 
-        elif self.id_type == "concept_select":
-            select_label = [select
-                            for select in concept_obj[Keys.selects]
-                            if select == self.get_conquery_id()][0][Keys.label]
-            label_dict["concept_select"] = select_label
+class ConceptId(ConqueryId):
+    def __init__(self, name: str, base: DatasetId):
+        super().__init__(name=name, base=base)
 
-        else:
-            connector_id = self.get_connector_id()
-            table = [table for table in concept_obj[Keys.tables] if table[Keys.connector_id] == connector_id][0]
-            label_dict["connector"] = table[Keys.label]
+    @property
+    def base(self) -> DatasetId:
+        return self._base
 
-            if self.id_type == "connector":
-                pass
-            elif self.id_type == "connector_select":
-                select_label = [select_obj
-                                for select_obj in table[Keys.selects]
-                                if select_obj[Keys.id] == self.get_conquery_id()][0][Keys.label]
+    @base.setter
+    def base(self, new_base: DatasetId):
+        if not isinstance(new_base, DatasetId):
+            raise ValueError(f"Base of Concept can only be a Dataset. Provided: {new_base.id}")
+        self._base = new_base
 
-                label_dict["connector_select"] = select_label
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
 
-            elif self.id_type == "filter":
-                filter_label = [filter_obj
-                                for filter_obj in table[Keys.filters]
-                                if filter_obj[Keys.id] == self.get_conquery_id()][0][Keys.label]
-                label_dict["filter"] = filter_label
+    def get_concept_id(self) -> str:
+        return self.id
 
-            elif self.id_type == "date":
-                date_label = [date_obj[Keys.value]
-                              for date_obj in table[Keys.date_column][Keys.options]
-                              if date_obj[Keys.value] == self.get_conquery_id()][0][Keys.label]
-                label_dict["date"] = date_label
+    def get_connector_id(self):
+        return None
 
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        dataset_id = self.base.id
+        label_dict["concept"] = " - ".join([label_dict["concept"], dataset_id])
         return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+        if len(id_list) != concept_length:
+            raise ValueError(f"Provided string for Concept must be of length {concept_length} (dataset and concept). "
+                             f"Provided: {id_list}")
+        concept_id = id_list.pop(-1)
+        base = DatasetId.create_id_objects_recursively(id_list=id_list)
+        return ConceptId(name=concept_id, base=base)
+
+
+class ConnectorId(ConqueryId):
+    def __init__(self, name: str, base: ConceptId):
+        super().__init__(name=name, base=base)
+
+    @property
+    def base(self) -> ConceptId:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: ConceptId):
+        if not isinstance(new_base, ConceptId):
+            raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
+
+    def get_concept_id(self) -> str:
+        return self.base.get_concept_id()
+
+    def get_connector_id(self) -> str:
+        return self.id
+
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        connector_id = self.get_connector_id()
+        connector_label = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
+                                                   compare_string=connector_id, return_key=Keys.label)
+        label_dict["connector"] = connector_label
+        return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
+        if len(id_list) != connector_length:
+            raise ValueError(f"Provided string for Connector must be of length {connector_length} "
+                             f"(dataset, concept and connector). "
+                             f"Provided: {id_list}")
+        connector_id = id_list.pop(-1)
+        base = ConceptId.create_id_objects_recursively(id_list=id_list)
+        return ConnectorId(name=connector_id, base=base)
+
+
+class ChildId(ConqueryId):
+    def __init__(self, name: str, base: Union[ChildId, ConceptId]):
+        super().__init__(name=name, base=base)
+
+    @property
+    def base(self) -> Union[ChildId, ConceptId]:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: Union[ConceptId, ChildId]):
+        if not isinstance(new_base, ConceptId) and not isinstance(new_base, ChildId):
+            raise ValueError("Base of Child can only be a Concept or Child")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
+
+    def get_concept_id(self) -> str:
+        return self.base.get_concept_id()
+
+    def get_connector_id(self) -> str:
+        return self.base.get_connector_id()
+
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
+        if len(id_list) > child_length:
+            base = ChildId.create_id_objects_recursively(id_list=id_list)
+        elif len(id_list) == child_length:
+            base = ConceptId.create_id_objects_recursively(id_list=id_list)
+        else:
+            raise ValueError(f"Provided string for Child must be of minimum length {child_length} "
+                             f"(dataset, concept and child/children). "
+                             f"Provided: {id_list}")
+
+        child_id = id_list.pop(-1)
+        return ChildId(name=child_id, base=base)
+
+
+class SelectId(ConqueryId):
+    def __init__(self, name: str, base: Union[ConceptId, ConnectorId]):
+        super().__init__(name=name, base=base)
+
+    @property
+    def base(self) -> Union[ConceptId, ConnectorId]:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: Union[ConceptId, ConnectorId]):
+        if not isinstance(new_base, ConceptId) and not isinstance(new_base, ConnectorId):
+            raise ValueError("Base of Select can only be a Concept or Connector")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
+
+    def get_concept_id(self):
+        return self.base.get_concept_id()
+
+    def get_connector_id(self) -> str:
+        return self.base.get_connector_id()
+
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        if isinstance(self.base, ConnectorId):
+            label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
+
+            table_selects = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
+                                                     compare_string=label_dict['connector'], return_key=Keys.selects)
+
+            select_label = self._filter_concept_obj(filter_obj=table_selects, filter_key=Keys.id,
+                                                    compare_string=self.id, return_key=Keys.label)
+
+            label_dict["connector_select"] = select_label
+            return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
+        select_id = id_list.pop(-1)
+        if len(id_list) == concept_select_length:
+            base = ConceptId.create_id_objects_recursively(id_list=id_list)
+        elif len(id_list) == connector_select_length:
+            base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+        else:
+            raise ValueError(f"Provided string for Select must be of length {concept_select_length} or "
+                             f"{connector_select_length} (dataset, concept, (connector) and select. "
+                             f"Provided: {id_list}")
+
+        return SelectId(name=select_id, base=base)
+
+
+class FilterId(ConqueryId):
+    def __init__(self, name: str, base: ConnectorId):
+        super().__init__(name=name, base=base)
+
+    @property
+    def base(self) -> ConnectorId:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: ConnectorId):
+        if not isinstance(new_base, ConnectorId):
+            raise ValueError("Base of Filter can only be a Connector")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
+
+    def get_concept_id(self):
+        return self.base.get_concept_id()
+
+    def get_connector_id(self) -> str:
+        return self.base.get_connector_id()
+
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
+
+        table_filters = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
+                                                 compare_string=label_dict['connector'], return_key=Keys.filters)
+
+        filter_label = self._filter_concept_obj(filter_obj=table_filters, filter_key=Keys.id,
+                                                compare_string=self.id, return_key=Keys.label)
+
+        label_dict["filter"] = filter_label
+        return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
+        if not len(id_list) == filter_length:
+            raise ValueError(f"Provided string for Filter must be of length {filter_length} "
+                             f"(dataset, concept, connector and filter). "
+                             f"Provided: {id_list}")
+        filter_id = id_list.pop(-1)
+        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+        return FilterId(name=filter_id, base=base)
+
+
+class DateId(ConqueryId):
+    def __init__(self, name: str, base: ConnectorId):
+        super().__init__(name=name, base=base)
+
+    @property
+    def base(self) -> ConnectorId:
+        return self._base
+
+    @base.setter
+    def base(self, new_base: ConnectorId):
+        if not isinstance(new_base, ConnectorId):
+            raise ValueError("Base of Date can only be a Connector")
+        self._base = new_base
+
+    def change_dataset(self, new_dataset: str):
+        self.base.change_dataset(new_dataset=new_dataset)
+
+    def get_concept_id(self):
+        return self.base.get_concept_id()
+
+    def get_connector_id(self) -> str:
+        return self.base.get_connector_id()
+
+    def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
+        label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
+
+        table_dates = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
+                                               compare_string=label_dict['connector'], return_key=Keys.date_column)
+
+        date_label = self._filter_concept_obj(filter_obj=table_dates[Keys.options], filter_key=Keys.value,
+                                              compare_string=self.id, return_key=Keys.label)
+
+        label_dict["date"] = date_label
+        return label_dict
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
+        if not len(id_list) == date_length:
+            raise ValueError(f"Provided string for Date must be of length {date_length} "
+                             f"(dataset, concept, connector and date). "
+                             f"Provided: {id_list}")
+        date_id = id_list.pop(-1)
+        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+        return DateId(name=date_id, base=base)
 
 
 class ConqueryIdCollection:
@@ -266,6 +423,11 @@ class ConqueryIdCollection:
             self.conquery_ids: Set[ConqueryId] = set()
         else:
             self.conquery_ids = conquery_ids
+
+    def __eq__(self, other):
+        if isinstance(other, ConqueryIdCollection):
+            return self.conquery_ids == other.conquery_ids
+        raise NotImplementedError
 
     def is_empty(self):
         return len(self.conquery_ids) == 0
@@ -285,12 +447,6 @@ class ConqueryIdCollection:
         for conquery_id in self.conquery_ids:
             label_dicts.append(conquery_id.get_label_dict(concepts=concepts))
         return label_dicts
-
-    def __eq__(self, other):
-        if isinstance(other, ConqueryIdCollection):
-            return self.conquery_ids == other.conquery_ids
-
-        raise NotImplementedError
 
     def print_id_labels_as_table(self, concepts: dict):
         import pandas as pd
