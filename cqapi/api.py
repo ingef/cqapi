@@ -3,7 +3,7 @@ from io import StringIO
 from time import sleep
 import requests
 import cqapi.datasets
-from cqapi.conquery_ids import get_dataset as get_dataset_from_id
+from cqapi.conquery_ids import get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject

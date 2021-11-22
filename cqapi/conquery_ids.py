@@ -16,6 +16,8 @@ date_index = 4
 
 class ConqueryId(ABC):
     def __init__(self, name: str, base: ConqueryId = None):
+        if type(self) == ConqueryId:
+            raise ValueError("Only subclasses of ConqueryId can be initiated")
         self.base = base
         self.name = name
 
@@ -30,13 +32,20 @@ class ConqueryId(ABC):
     def __repr__(self):
         return self.id
 
+    @abstractmethod
+    def __deepcopy__(self):
+        pass
+
+    def deepcopy(self) -> ConqueryId:
+        return self.__deepcopy__()
+
     @property
     def id(self):
         """
         Datasets returns its name, all other Ids that build on it add their name to the string.
         """
         if self.base:
-            return f"{self.base.id}.{self.name}"
+            return f"{self.base.id}{conquery_id_separator}{self.name}"
         else:
             return self.name
 
@@ -56,11 +65,53 @@ class ConqueryId(ABC):
         """
         pass
 
+    def get_concept_id(self) -> ConceptId:
+        if isinstance(self, DatasetId):
+            raise ValueError("Cannot get concept id for dataset")
+        elif isinstance(self, ConceptId):
+            return self
+        else:
+            return self.base.get_concept_id()
+
+    def get_connector_id(self) -> ConnectorId:
+        if isinstance(self, DatasetId) or isinstance(self, ConceptId):
+            raise ValueError(f"Cannot get connector id for {type(self)}")
+        elif isinstance(self, ConnectorId):
+            return self
+        else:
+            return self.base.get_connector_id()
+
+    def get_id_without_dataset(self) -> str:
+        if isinstance(self, DatasetId):
+            raise ValueError("Cannot get id without dataset for DatasetId")
+        elif isinstance(self, ConceptId):
+            return self.name
+        else:
+            return f"{self.base.get_id_without_dataset()}{conquery_id_separator}{self.name}"
+
+    def get_dataset(self) -> str:
+        if isinstance(self, DatasetId):
+            return self.name
+        else:
+            return self.base.get_dataset()
+
+    def change_dataset(self, new_dataset):
+        if isinstance(self, DatasetId):
+            self.name = new_dataset
+        else:
+            self.base.change_dataset()
+
     def is_dataset(self) -> bool:
         return isinstance(self, DatasetId)
 
-    def is_same_conquery_id(self, other_id):
-        return self.__eq__(other_id=other_id)
+    def is_same_id(self, other_id: ConqueryId, ignore_dataset: bool = True) -> bool:
+        if ignore_dataset:
+            return self.get_id_without_dataset() == other_id.get_id_without_dataset()
+        else:
+            return self == other_id
+
+    def is_in_id_list(self, other_ids: List[ConqueryId], ignore_dataset: bool = True) -> bool:
+        return any(self.is_same_id(other_id=other_id, ignore_dataset=ignore_dataset) for other_id in other_ids)
 
     @abstractmethod
     def get_concept_id(self) -> str:
@@ -80,16 +131,32 @@ class ConqueryId(ABC):
         pass
 
     @classmethod
-    def from_str(cls, id_string: str) -> ConqueryId:
+    def from_str(cls, id_string: str, type_hint: str) -> ConqueryId:
         """
-        Splits the string on the separator and initiates instances of conqueryIds to represent the string
+        Splits the string on the separator and initiates instances of conqueryIds to represent the string.
+        If type hint provided, calls from string method on the corresponding subclass
         """
-        id_list = id_string.split(conquery_id_separator)
-        return cls.create_id_objects_recursively(id_list=id_list)
-
-    @abstractmethod
-    def change_dataset(self, new_dataset: str):
-        pass
+        if not type_hint:
+            if isinstance(cls, ConqueryId):
+                raise ValueError("Without type hint, from_str can only be called on subclasses of ConqueryId")
+            id_list = id_string.split(conquery_id_separator)
+            return cls.create_id_objects_recursively(id_list=id_list)
+        if type_hint == "dataset":
+            return DatasetId.from_str(id_string=id_string)
+        elif type_hint == "concept":
+            return ConceptId.from_str(id_string=id_string)
+        elif type_hint == "connector":
+            return ConnectorId.from_str(id_string=id_string)
+        elif type_hint == "child":
+            return ChildId.from_str(id_string=id_string)
+        elif type_hint == "concept_select" or type_hint == "connector_select":
+            return SelectId.from_str(id_string=id_string)
+        elif type_hint == "filter":
+            return FilterId.from_str(id_string=id_string)
+        elif type_hint == "date":
+            return DateId.from_str(id_string=id_string)
+        else:
+            raise ValueError(f"Invalid type hint, provided: {type_hint}")
 
     @abstractmethod
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
@@ -111,7 +178,7 @@ class ConqueryId(ABC):
 
     def get_label_dict(self, concepts: dict) -> dict:
         """
-        Get a specific dictionary of instances of the conqueryId and their labels
+        Get a specific dictionary of instances of the ConqueryId and their labels
         """
         concept_id = self.get_concept_id()
         concept_obj = concepts[concept_id]
@@ -124,6 +191,9 @@ class DatasetId(ConqueryId):
     def __init__(self, name: str):
         super().__init__(name=name, base=None)
 
+    def __deepcopy__(self):
+        return DatasetId(name=self.name)
+
     @property
     def base(self) -> ConqueryId:
         return self._base
@@ -133,15 +203,6 @@ class DatasetId(ConqueryId):
         if new_base:
             raise ValueError("Dataset cannot have base")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.name = new_dataset
-
-    def get_concept_id(self):
-        return None
-
-    def get_connector_id(self):
-        return None
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict):
         return None
@@ -158,6 +219,9 @@ class ConceptId(ConqueryId):
     def __init__(self, name: str, base: DatasetId):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return ConceptId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> DatasetId:
         return self._base
@@ -167,15 +231,6 @@ class ConceptId(ConqueryId):
         if not isinstance(new_base, DatasetId):
             raise ValueError(f"Base of Concept can only be a Dataset. Provided: {new_base.id}")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self) -> str:
-        return self.id
-
-    def get_connector_id(self):
-        return None
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         dataset_id = self.base.id
@@ -196,6 +251,9 @@ class ConnectorId(ConqueryId):
     def __init__(self, name: str, base: ConceptId):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return ConnectorId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> ConceptId:
         return self._base
@@ -205,15 +263,6 @@ class ConnectorId(ConqueryId):
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self) -> str:
-        return self.base.get_concept_id()
-
-    def get_connector_id(self) -> str:
-        return self.id
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         connector_id = self.get_connector_id()
@@ -237,6 +286,9 @@ class ChildId(ConqueryId):
     def __init__(self, name: str, base: Union[ChildId, ConceptId]):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return ChildId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> Union[ChildId, ConceptId]:
         return self._base
@@ -246,15 +298,6 @@ class ChildId(ConqueryId):
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ChildId):
             raise ValueError("Base of Child can only be a Concept or Child")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self) -> str:
-        return self.base.get_concept_id()
-
-    def get_connector_id(self) -> str:
-        return self.base.get_connector_id()
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         return label_dict
@@ -278,6 +321,9 @@ class SelectId(ConqueryId):
     def __init__(self, name: str, base: Union[ConceptId, ConnectorId]):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return SelectId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> Union[ConceptId, ConnectorId]:
         return self._base
@@ -287,15 +333,6 @@ class SelectId(ConqueryId):
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Select can only be a Concept or Connector")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self):
-        return self.base.get_concept_id()
-
-    def get_connector_id(self) -> str:
-        return self.base.get_connector_id()
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         if isinstance(self.base, ConnectorId):
@@ -329,6 +366,9 @@ class FilterId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return FilterId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> ConnectorId:
         return self._base
@@ -338,15 +378,6 @@ class FilterId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Filter can only be a Connector")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self):
-        return self.base.get_concept_id()
-
-    def get_connector_id(self) -> str:
-        return self.base.get_connector_id()
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
@@ -375,6 +406,9 @@ class DateId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
 
+    def __deepcopy__(self):
+        return DateId(name=self.name, base=self.base.__deepcopy__())
+
     @property
     def base(self) -> ConnectorId:
         return self._base
@@ -384,15 +418,6 @@ class DateId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Date can only be a Connector")
         self._base = new_base
-
-    def change_dataset(self, new_dataset: str):
-        self.base.change_dataset(new_dataset=new_dataset)
-
-    def get_concept_id(self):
-        return self.base.get_concept_id()
-
-    def get_connector_id(self) -> str:
-        return self.base.get_connector_id()
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
@@ -469,3 +494,14 @@ class ConqueryIdCollection:
                 sort_by_cols.append(header)
 
         return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
+
+def change_dataset(new_dataset: str, conquery_id: ConqueryId, copy: bool = True) -> ConqueryId:
+    if copy:
+        new_conquery_id = conquery_id.deepcopy()
+    else:
+        new_conquery_id = conquery_id
+    new_conquery_id.change_dataset(new_dataset=new_dataset)
+    return new_conquery_id
+
+def get_dataset_from_id(id_string: str) -> str:
+    return id_string.split(conquery_id_separator)[0]
