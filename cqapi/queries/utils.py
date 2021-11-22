@@ -1,5 +1,5 @@
 from typing import List, Union
-from cqapi.conquery_ids import get_dataset as get_dataset_from_id
+from cqapi.conquery_ids import get_dataset_from_id
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.validate import validate_date
 

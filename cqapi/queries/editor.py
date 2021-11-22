@@ -134,6 +134,9 @@ class QueryEditor:
     def execute_query(self, conquery_conn: ConqueryConnection, label: str = None) -> str:
         return conquery_conn.execute_query(self.query, label=label)
 
+    # TODO this whole file should use ConqueryId instead, same for queries.py
+    # TODO (by write_query function this will be converted to dict and sent to backend)
+
     def create_query(self, concept_id: str, concepts: dict, concept_query: bool = False,
                      connector_ids: List[str] = None,
                      concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
