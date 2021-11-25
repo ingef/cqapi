@@ -4,7 +4,7 @@ from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuer
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
 from cqapi.queries.translation import translate_query
 from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import ConqueryIdCollection
+from cqapi.conquery_ids import ConqueryIdCollection, SelectId, DateId, ChildId, ConceptId, ConnectorId
 
 
 class QueryEditor:
@@ -84,28 +84,28 @@ class QueryEditor:
     def exclude_from_time_aggregation(self) -> None:
         self.query.exclude_from_time_aggregation()
 
-    def add_concept_select(self, select_id: str) -> None:
+    def add_concept_select(self, select_id: SelectId) -> None:
         self.query.add_concept_select(select_id)
 
-    def add_connector_select(self, select_id: str) -> None:
+    def add_connector_select(self, select_id: SelectId) -> None:
         self.query.add_connector_select(select_id)
 
-    def add_concept_selects(self, select_ids: List[str]) -> None:
+    def add_concept_selects(self, select_ids: List[SelectId]) -> None:
         self.query.add_concept_selects(select_ids)
 
-    def set_validity_date(self, validity_date_id: str) -> None:
+    def set_validity_date(self, validity_date_id: DateId) -> None:
         self.query.set_validity_date(validity_date_id=validity_date_id)
 
-    def remove_concept_selects(self, concept_select_ids: List[str] = None) -> None:
+    def remove_concept_selects(self, concept_select_ids: List[SelectId] = None) -> None:
         self.query.remove_concept_selects(concept_select_ids=concept_select_ids)
 
-    def remove_connector_selects(self, connector_select_ids: List[str] = None) -> None:
+    def remove_connector_selects(self, connector_select_ids: List[SelectId] = None) -> None:
         self.query.remove_connector_selects(connector_select_ids=connector_select_ids)
 
     def remove_all_selects(self):
         self.query.remove_all_selects()
 
-    def add_connector_selects(self, select_ids: List[str]) -> None:
+    def add_connector_selects(self, select_ids: List[SelectId]) -> None:
         self.query.add_connector_selects(select_ids)
 
     def unwrap(self):
@@ -134,12 +134,9 @@ class QueryEditor:
     def execute_query(self, conquery_conn: ConqueryConnection, label: str = None) -> str:
         return conquery_conn.execute_query(self.query, label=label)
 
-    # TODO this whole file should use ConqueryId instead, same for queries.py
-    # TODO (by write_query function this will be converted to dict and sent to backend)
-
-    def create_query(self, concept_id: str, concepts: dict, concept_query: bool = False,
-                     connector_ids: List[str] = None,
-                     concept_select_ids: List[str] = None, connector_select_ids: List[str] = None,
+    def create_query(self, concept_id: Union[ConceptId, ChildId], concepts: dict, concept_query: bool = False,
+                     connector_ids: List[ConnectorId] = None,
+                     concept_select_ids: List[str] = None, connector_select_ids: List[SelectId] = None,
                      filter_objs: List[dict] = None,
                      exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
                      date_aggregation_mode: str = None,
@@ -160,5 +157,5 @@ class QueryEditor:
     def get_concept_elements(self) -> List[ConceptElement]:
         return self.query.get_concept_elements()
 
-    def remove_all_tables_but(self, connector_id: str) -> None:
+    def remove_all_tables_but(self, connector_id: ConnectorId) -> None:
         self.query.remove_all_tables_but(connector_ids=[connector_id])

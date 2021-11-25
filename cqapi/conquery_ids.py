@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import List, Union, Set
 from abc import ABC, abstractmethod
+from cqapi.namespace import Keys
+from copy import deepcopy
 
 # Conquery Id Info
 conquery_id_separator = "."
@@ -27,17 +29,13 @@ class ConqueryId(ABC):
     def __eq__(self, other_id):
         if isinstance(other_id, ConqueryId):
             return self.id == other_id.id
-        return NotImplemented
+        raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
 
     def __repr__(self):
         return self.id
 
-    @abstractmethod
-    def __deepcopy__(self):
-        pass
-
     def deepcopy(self) -> ConqueryId:
-        return self.__deepcopy__()
+        return deepcopy(self)
 
     @property
     def id(self):
@@ -66,6 +64,9 @@ class ConqueryId(ABC):
         pass
 
     def get_concept_id(self) -> ConceptId:
+        """
+        Returns ConceptId instance of ConqueryId
+        """
         if isinstance(self, DatasetId):
             raise ValueError("Cannot get concept id for dataset")
         elif isinstance(self, ConceptId):
@@ -74,6 +75,9 @@ class ConqueryId(ABC):
             return self.base.get_concept_id()
 
     def get_connector_id(self) -> ConnectorId:
+        """
+        Returns ConnectorId instance of ConqueryId
+        """
         if isinstance(self, DatasetId) or isinstance(self, ConceptId):
             raise ValueError(f"Cannot get connector id for {type(self)}")
         elif isinstance(self, ConnectorId):
@@ -82,6 +86,9 @@ class ConqueryId(ABC):
             return self.base.get_connector_id()
 
     def get_id_without_dataset(self) -> str:
+        """
+        Get string of id property but without dataset
+        """
         if isinstance(self, DatasetId):
             raise ValueError("Cannot get id without dataset for DatasetId")
         elif isinstance(self, ConceptId):
@@ -90,21 +97,29 @@ class ConqueryId(ABC):
             return f"{self.base.get_id_without_dataset()}{conquery_id_separator}{self.name}"
 
     def get_dataset(self) -> str:
+        """
+        Get string value of dataset
+        """
         if isinstance(self, DatasetId):
             return self.name
         else:
             return self.base.get_dataset()
 
-    def change_dataset(self, new_dataset):
+    def change_dataset(self, new_dataset: str):
+        """
+        Change the name of the base dataset
+        """
         if isinstance(self, DatasetId):
             self.name = new_dataset
         else:
-            self.base.change_dataset()
-
-    def is_dataset(self) -> bool:
-        return isinstance(self, DatasetId)
+            self.base.change_dataset(new_dataset=new_dataset)
 
     def is_same_id(self, other_id: ConqueryId, ignore_dataset: bool = True) -> bool:
+        """
+        Checks if it is the same ConqueryId. If ignore dataset, the name of the dataset is allowed to be different.
+        """
+        if not isinstance(other_id, ConqueryId):
+            raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
         if ignore_dataset:
             return self.get_id_without_dataset() == other_id.get_id_without_dataset()
         else:
@@ -112,14 +127,6 @@ class ConqueryId(ABC):
 
     def is_in_id_list(self, other_ids: List[ConqueryId], ignore_dataset: bool = True) -> bool:
         return any(self.is_same_id(other_id=other_id, ignore_dataset=ignore_dataset) for other_id in other_ids)
-
-    @abstractmethod
-    def get_concept_id(self) -> str:
-        pass
-
-    @abstractmethod
-    def get_connector_id(self) -> str:
-        pass
 
     @classmethod
     @abstractmethod
@@ -131,7 +138,7 @@ class ConqueryId(ABC):
         pass
 
     @classmethod
-    def from_str(cls, id_string: str, type_hint: str) -> ConqueryId:
+    def from_str(cls, id_string: str, type_hint: str = None) -> ConqueryId:
         """
         Splits the string on the separator and initiates instances of conqueryIds to represent the string.
         If type hint provided, calls from string method on the corresponding subclass
@@ -191,9 +198,6 @@ class DatasetId(ConqueryId):
     def __init__(self, name: str):
         super().__init__(name=name, base=None)
 
-    def __deepcopy__(self):
-        return DatasetId(name=self.name)
-
     @property
     def base(self) -> ConqueryId:
         return self._base
@@ -218,9 +222,6 @@ class DatasetId(ConqueryId):
 class ConceptId(ConqueryId):
     def __init__(self, name: str, base: DatasetId):
         super().__init__(name=name, base=base)
-
-    def __deepcopy__(self):
-        return ConceptId(name=self.name, base=self.base.__deepcopy__())
 
     @property
     def base(self) -> DatasetId:
@@ -251,9 +252,6 @@ class ConnectorId(ConqueryId):
     def __init__(self, name: str, base: ConceptId):
         super().__init__(name=name, base=base)
 
-    def __deepcopy__(self):
-        return ConnectorId(name=self.name, base=self.base.__deepcopy__())
-
     @property
     def base(self) -> ConceptId:
         return self._base
@@ -265,7 +263,7 @@ class ConnectorId(ConqueryId):
         self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
-        connector_id = self.get_connector_id()
+        connector_id = self.get_connector_id().id
         connector_label = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
                                                    compare_string=connector_id, return_key=Keys.label)
         label_dict["connector"] = connector_label
@@ -286,9 +284,6 @@ class ChildId(ConqueryId):
     def __init__(self, name: str, base: Union[ChildId, ConceptId]):
         super().__init__(name=name, base=base)
 
-    def __deepcopy__(self):
-        return ChildId(name=self.name, base=self.base.__deepcopy__())
-
     @property
     def base(self) -> Union[ChildId, ConceptId]:
         return self._base
@@ -304,25 +299,22 @@ class ChildId(ConqueryId):
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
-        if len(id_list) > child_index:
+        child_id = id_list.pop(-1)
+        if len(id_list) >= child_index:
             base = ChildId.create_id_objects_recursively(id_list=id_list)
-        elif len(id_list) == child_index:
+        elif len(id_list) == concept_index:
             base = ConceptId.create_id_objects_recursively(id_list=id_list)
         else:
-            raise ValueError(f"Provided string for Child must be of minimum length {child_index} "
+            raise ValueError(f"Provided string for Child must be of minimum length {child_index + 1} "
                              f"(dataset, concept and child/children). "
                              f"Provided: {id_list}")
 
-        child_id = id_list.pop(-1)
         return ChildId(name=child_id, base=base)
 
 
 class SelectId(ConqueryId):
     def __init__(self, name: str, base: Union[ConceptId, ConnectorId]):
         super().__init__(name=name, base=base)
-
-    def __deepcopy__(self):
-        return SelectId(name=self.name, base=self.base.__deepcopy__())
 
     @property
     def base(self) -> Union[ConceptId, ConnectorId]:
@@ -350,9 +342,9 @@ class SelectId(ConqueryId):
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
         select_id = id_list.pop(-1)
-        if len(id_list) == concept_select_index:
+        if len(id_list) == concept_index:
             base = ConceptId.create_id_objects_recursively(id_list=id_list)
-        elif len(id_list) == connector_select_index:
+        elif len(id_list) == connector_index:
             base = ConnectorId.create_id_objects_recursively(id_list=id_list)
         else:
             raise ValueError(f"Provided string for Select must be of length {concept_select_index} or "
@@ -365,9 +357,6 @@ class SelectId(ConqueryId):
 class FilterId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
-
-    def __deepcopy__(self):
-        return FilterId(name=self.name, base=self.base.__deepcopy__())
 
     @property
     def base(self) -> ConnectorId:
@@ -405,9 +394,6 @@ class FilterId(ConqueryId):
 class DateId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
-
-    def __deepcopy__(self):
-        return DateId(name=self.name, base=self.base.__deepcopy__())
 
     @property
     def base(self) -> ConnectorId:
@@ -495,13 +481,22 @@ class ConqueryIdCollection:
 
         return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
 
-def change_dataset(new_dataset: str, conquery_id: ConqueryId, copy: bool = True) -> ConqueryId:
-    if copy:
-        new_conquery_id = conquery_id.deepcopy()
-    else:
-        new_conquery_id = conquery_id
-    new_conquery_id.change_dataset(new_dataset=new_dataset)
-    return new_conquery_id
 
-def get_dataset_from_id(id_string: str) -> str:
+def get_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryId, deepcopy: bool = True):
+    """
+    Changes the dataset of the conquery id then returns the new ConqueryId.
+    If deepcopy, creates a copy and then changes the dataset and returns the new ConqueryId
+    """
+    if deepcopy:
+        new_conquery_id = conquery_id.deepcopy()
+        new_conquery_id.change_dataset(new_dataset=new_dataset)
+        return new_conquery_id
+    conquery_id.change_dataset(new_dataset=new_dataset)
+    return conquery_id
+
+
+def get_dataset_from_id_string(id_string: str) -> str:
+    """
+    From an id representation of a ConqueryId, retrieve the dataset name.
+    """
     return id_string.split(conquery_id_separator)[0]
