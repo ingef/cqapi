@@ -1,6 +1,5 @@
 from __future__ import annotations
-from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId,\
-    change_dataset
+from cqapi.conquery_ids import ConqueryId, ConceptId, ChildId
 from typing import List, Union
 from typeguard import typechecked
 
@@ -11,10 +10,11 @@ def id_to_label_list(conquery_ids: Union[List[str], str], concepts: dict, conque
         conquery_ids = [conquery_ids]
     return [id_to_label(conquery_id, concepts, conquery_id_type) for conquery_id in conquery_ids]
 
+
 @typechecked()
 def id_to_label(conquery_id: str, concepts: dict, conquery_id_type: str):
     conquery_id_type = conquery_id_type.lower()
-    conquery_conquery_id = ConqueryId.from_str_and_type(id_string=conquery_id, type_hint=conquery_id_type)
+    conquery_conquery_id = ConqueryId.from_str(id_string=conquery_id, type_hint=conquery_id_type)
 
     root_concept_id = conquery_conquery_id.get_concept_id()
     concept_obj = concepts[root_concept_id]
@@ -63,24 +63,26 @@ def id_to_label(conquery_id: str, concepts: dict, conquery_id_type: str):
     # conquery_id_types selects and filter can be added here
     raise ValueError(f"Unknown conquery_id_type {conquery_id_type}")
 
+
 @typechecked()
-def find_concept_id(conquery_id: ConqueryId, concepts: dict, children_ids: List[ChildId]):
+def find_concept_id(concept_id: ConqueryId, concepts: dict, children_ids: List[ChildId]):
     """
     Searches for conquery_id in concepts or concept_obj. If concept_id is found True is returned.
     If eva access data is defined, concept_obj is loaded for concept_id level 3 or higher
+
     :param concept_id: concept_id to search for
     :param concepts: dict with concept_ids
     :param children_ids: List of all children to look for
     """
 
-    root_concept_id = conquery_id.get_concept_id()
+    root_concept_id = concept_id.get_concept_id()
 
-    if isinstance(conquery_id, ConceptId):
+    if isinstance(concept_id, ConceptId):
         if root_concept_id.id in concepts.keys():
             return True
         return False
 
-    if isinstance(conquery_id, ChildId):
+    if isinstance(concept_id, ChildId) and isinstance(concept_id.base, ConceptId):
         # children of root concepts can be looked up in concepts object
         if concept_id.id in concepts[root_concept_id.id].get("children", []):
             return True
