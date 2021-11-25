@@ -1,8 +1,8 @@
 from __future__ import annotations
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.utils import remove_null_values, get_start_end_date
-from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId,\
-    change_dataset
+from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId, \
+    get_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Union, Tuple, Type
 from copy import deepcopy
@@ -43,7 +43,7 @@ class QueryObject:
             Keys.row_prefix: self.row_prefix
         }
 
-    def print(self) -> str:
+    def print(self):
         print(json.dumps(self.to_dict(), indent=4))
 
     @classmethod
@@ -122,7 +122,7 @@ class QueryObject:
     def remove_connector_selects(self, connector_select_ids: List[SelectId] = None):
         pass
 
-    def remove_concept_selects(self, concept_select_ids: List[Select] = None):
+    def remove_concept_selects(self, concept_select_ids: List[SelectId] = None):
         pass
 
     def remove_all_selects(self):
@@ -516,7 +516,7 @@ class AndOrElement(QueryObject):
         for child in self.children:
             child.remove_connector_selects(connector_select_ids=connector_select_ids)
 
-    def remove_all_tables_but(self, connector_ids: List[SelectId]) -> None:
+    def remove_all_tables_but(self, connector_ids: List[ConnectorId]) -> None:
         for child in self.children:
             child.remove_all_tables_but(connector_ids=connector_ids)
 
@@ -671,7 +671,7 @@ class ConceptTable:
     def set_date_column_id(self, date_column_id: DateId):
         if not isinstance(date_column_id, DateId):
             raise ValueError("Provided date column is not of instance DateId(ConqueryId)")
-        if get_connector_id(date_column_id).is_same_id(self.connector_id):
+        if date_column_id.get_connector_id().is_same_id(self.connector_id):
             self.date_column_id = date_column_id
 
     def add_select(self, select_id: SelectId):
@@ -681,7 +681,7 @@ class ConceptTable:
         if select_ids is None:
             self.selects = list()
         else:
-            self.selects = [select for select in self.selects if not is_in_conquery_ids(select, select_ids)]
+            self.selects = [select for select in self.selects if not select.is_in_id_list(select_ids)]
 
     def add_selects(self, select_ids: List[SelectId]):
         for select_id in select_ids:
@@ -700,12 +700,12 @@ class ConceptTable:
 
     def translate(self, concepts: dict,
                   removed_ids: ConqueryIdCollection) -> Tuple[Union[ConceptTable, None], Union[ConceptTable, None]]:
-        new_dataset = get_dataset(next(iter(concepts)))
+        new_dataset = get_dataset_from_id_string(next(iter(concepts)))
 
-        new_root_concept_id = change_dataset(new_dataset=new_dataset,
-                                             conquery_id=get_root_concept_id(self.connector_id))
-        new_connector_id = change_dataset(new_dataset=new_dataset,
-                                          conquery_id=self.connector_id)
+        new_root_concept_id = get_id_with_changed_dataset(new_dataset=new_dataset,
+                                                          conquery_id=self.connector_id.get_concept_id())
+        new_connector_id = get_id_with_changed_dataset(new_dataset=new_dataset,
+                                                       conquery_id=self.connector_id)
 
         # get table from concepts
         table_list = [table for table in concepts[new_root_concept_id.id]["tables"]
@@ -720,11 +720,11 @@ class ConceptTable:
         date_column_id = self.date_column_id
         new_date_column_id = None
         if self.date_column_id is not None:
-            new_date_column_id = change_dataset(new_dataset=new_dataset,
-                                                conquery_id=self.date_column_id)
-            table_date_column_ids = [date_column_obj[Keys.value]
+            new_date_column_id = get_id_with_changed_dataset(new_dataset=new_dataset,
+                                                             conquery_id=self.date_column_id)
+            table_date_column_ids = [DateId.from_str(date_column_obj[Keys.value])
                                      for date_column_obj in table[Keys.date_column][Keys.options]]
-            if is_in_conquery_ids(new_date_column_id, table_date_column_ids):
+            if new_date_column_id.is_in_id_list(table_date_column_ids):
                 date_column_id = self.date_column_id
             else:
                 removed_ids.add(self.date_column_id.deepcopy())
@@ -733,8 +733,9 @@ class ConceptTable:
         selects = list()
         new_selects = list()
         for select_id in self.selects:
-            new_select_id = change_dataset(new_dataset=new_dataset, conquery_id=select_id)
-            if new_select_id.id in [table_select[Keys.id] for table_select in table[Keys.selects]]:
+            new_select_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=select_id)
+            if new_select_id.is_in_id_list([SelectId.from_str(table_select[Keys.id])
+                                            for table_select in table[Keys.selects]]):
                 selects.append(select_id)
                 new_selects.append(new_select_id)
             else:
@@ -745,9 +746,9 @@ class ConceptTable:
 
         # translate filter
         for filter_obj in self.filters:
-            new_filter_id = change_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
-            if is_in_conquery_ids(new_filter_id,
-                                  [table_filter[Keys.id] for table_filter in table[Keys.filters]]):
+            new_filter_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
+            if new_filter_id.is_in_id_list([FilterId.from_str(table_filter[Keys.id])
+                                            for table_filter in table[Keys.filters]]):
                 filter_objs.append(deepcopy(filter_obj))
                 new_filter_obj = deepcopy(filter_obj)
                 new_filter_obj[Keys.filter] = new_filter_id
@@ -771,10 +772,15 @@ class ConceptTable:
     def write_table(self) -> dict:
         date_column = {Keys.value: self.date_column_id.id} if self.date_column_id is not None else None
 
+        filters = list()
+        for filter_element in self.filters:
+            filter_element[Keys.filter] = filter_element[Keys.filter].id
+            filters.append(filter_element)
+
         return {
             Keys.id: self.connector_id.id,
-            Keys.date_column: date_column.id,
-            Keys.filters: [filter_element.id for filter_element in self.filters] if self.filters else None,
+            Keys.date_column: date_column,
+            Keys.filters: filters if filters else None,
             Keys.selects: [select_element.id for select_element in self.selects] if self.selects else None
         }
 
@@ -817,14 +823,14 @@ class ConceptElement(QueryObject):
                    set(self.selects) == set(other.selects)
 
     def copy(self):
-        return ConceptElement(concept_id=self.ids, tables=[table.copy() for table in self.tables],
+        return ConceptElement(ids=self.ids, tables=[table.copy() for table in self.tables],
                               exclude_from_secondary_id=self._exclude_from_secondary_id,
                               exclude_from_time_aggregation=self._exclude_from_time_aggregation,
                               concept_selects=deepcopy(self.selects),
                               label=self.label)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
-                  children_ids: List[str]) -> Tuple[Union[ConceptElement, None], Union[ConceptElement, None]]:
+                  children_ids: List[ChildId]) -> Tuple[Union[ConceptElement, None], Union[ConceptElement, None]]:
         """
         Translates ConceptElement to new Dataset. Ids that can not be translated, are ignored.
         The Object itself won't be changed, a translated and a remaining query are returned.
@@ -833,13 +839,13 @@ class ConceptElement(QueryObject):
         :param children_ids: list of concept_ids of children concepts, since they are not stored in concepts
         :return: Translated concept element and remaining concept element
         """
-        new_dataset = get_dataset(next(iter(concepts)))
+        new_dataset = get_dataset_from_id_string(next(iter(concepts)))
 
         # translate concept ids
         new_concept_ids = list()
         concept_ids = list()
         for concept_id in self.ids:
-            new_concept_id = change_dataset(new_dataset=new_dataset, conquery_id=concept_id)
+            new_concept_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_id)
             if find_concept_id(concept_id=new_concept_id, concepts=concepts, children_ids=children_ids):
                 new_concept_ids.append(new_concept_id)
                 concept_ids.append(concept_id)
@@ -852,10 +858,11 @@ class ConceptElement(QueryObject):
         new_concept_select_ids = list()
         concept_select_ids = list()
         for concept_select_id in self.selects:
-            new_concept_select_id = change_dataset(new_dataset=new_dataset, conquery_id=concept_select_id)
+            new_concept_select_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_select_id)
             new_root_concept_id = new_concept_select_id.get_concept_id()
-            if new_concept_select_id.id in [select[Keys.id] for select in concepts[new_root_concept_id.id].get(Keys.selects,
-                                                                                                         [])]:
+            if new_concept_select_id.is_in_id_list([SelectId.from_str(select[Keys.id])
+                                                    for select in concepts[new_root_concept_id.id].get(
+                    Keys.selects, [])]):
                 new_concept_select_ids.append(new_concept_select_id)
                 concept_select_ids.append(concept_select_id)
             else:
@@ -896,20 +903,32 @@ class ConceptElement(QueryObject):
                 date_column_id = None
             else:
                 date_column_id = query_table[Keys.date_column][Keys.value]
+                if isinstance(date_column_id, str):
+                    date_column_id = DateId.from_str(date_column_id)
 
-            select_ids = [SelectId.from_str(select_id) for select_id in query_table.get(Keys.selects)]
+            select_ids = [SelectId.from_str(select_id) if isinstance(select_id, str) else select_id
+                          for select_id in query_table.get(Keys.selects)] \
+                if query_table.get(Keys.selects) else None
+
             filter_objs = query_table.get(Keys.filters)
-            for i, filter_obj in enumerate(filter_objs):
-                filter_objs[i][Keys.filter] = FilterId.from_str(filter_obj[Keys.filter])
+            if filter_objs:
+                for i, filter_obj in enumerate(filter_objs):
+                    if isinstance(filter_obj[Keys.filter], str):
+                        filter_objs[i][Keys.filter] = FilterId.from_str(filter_obj[Keys.filter])
 
-            tables.append(ConceptTable(connector_id=ConnectorId.from_str(query_table[Keys.id]),
-                                       date_column_id=DateId.from_str(date_column_id),
+            connector_id = ConnectorId.from_str(query_table[Keys.id]) if isinstance(
+                query_table[Keys.id], str) else query_table[Keys.id]
+
+            tables.append(ConceptTable(connector_id=connector_id,
+                                       date_column_id=date_column_id,
                                        select_ids=select_ids,
                                        filter_objs=filter_objs))
 
         ids = [ConceptId.from_str(id_string) if len(id_string.split(conquery_id_separator)) == 2 else
-               ChildId.from_str(id_string) for id_string in query[Keys.ids]]
-        concept_selects = [SelectId.from_str(id_string) for id_string in query.get(Keys.selects, [])]
+               ChildId.from_str(id_string) for id_string in query[Keys.ids]] if isinstance(query[Keys.ids][0], str) \
+            else query[Keys.ids]
+        concept_selects = [SelectId.from_str(id_string) if isinstance(id_string, str) else id_string
+                           for id_string in query.get(Keys.selects, [])]
 
         return cls(ids=ids,
                    label=query.get(Keys.label),
@@ -955,14 +974,14 @@ class ConceptElement(QueryObject):
             table.remove_selects(select_ids=connector_select_ids)
 
     def add_concept_select(self, select_id: SelectId):
-        if self.ids[0].get_concept_id().is_same_id(selectId.get_concept_id()):
+        if self.ids[0].get_concept_id().is_same_id(select_id.get_concept_id()):
             self.selects.append(select_id)
 
     def remove_concept_selects(self, concept_select_ids: List[SelectId] = None):
         if concept_select_ids is None:
             self.selects = list()
         else:
-            self.selects = [select for select in self.selects if not selects.is_in_id_list(concept_select_ids)]
+            self.selects = [select for select in self.selects if not select.is_in_id_list(concept_select_ids)]
 
     def add_filter(self, filter_obj: dict) -> None:
         for table in self.tables:
@@ -1001,7 +1020,6 @@ class ConceptElement(QueryObject):
         self.tables = [table
                        for table in self.tables
                        if table.connector_id.is_in_id_list(connector_ids)]
-
 
 
 class SimpleQuery(QueryObject):
@@ -1055,7 +1073,7 @@ class SavedQuery(SimpleQuery):
         return {
             **super().to_dict(),
             Keys.query: self.query_id,
-            #TODO war typo in conquery(Hotfix)
+            # TODO war typo in conquery(Hotfix)
             # Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
             "excludeFromSecondaryId": self.exclude_from_secondary_id_bool
         }
@@ -1133,9 +1151,12 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
 
 
 @typechecked()
-def create_query(concept_id: Union[ConqueryId, List[ConqueryId], str, List[str]], concepts: dict, concept_query: bool = False,
-                 connector_ids: Union[List[ConqueryId], List[str]] = None,
-                 concept_select_ids: [List[ConqueryId], List[str]] = None, connector_select_ids: [List[ConqueryId], List[str]] = None,
+def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[ChildId], str, List[str]],
+                 concepts: dict,
+                 concept_query: bool = False,
+                 connector_ids: Union[List[ConnectorId], List[str]] = None,
+                 concept_select_ids: Union[List[SelectId], List[str]] = None,
+                 connector_select_ids: Union[List[SelectId], List[str]] = None,
                  filter_objs: List[dict] = None,
                  exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
                  date_aggregation_mode: str = None,
@@ -1145,37 +1166,42 @@ def create_query(concept_id: Union[ConqueryId, List[ConqueryId], str, List[str]]
 
     if isinstance(concept_id, ConqueryId) or isinstance(concept_id, str):
         concept_ids = [concept_id]
-    elif isinstance(concept_id, list):
-        concept_id = concept_id
+    else:
+        concept_ids = concept_id
+    if isinstance(concept_ids, list):
         for index, concept_id_item in enumerate(concept_ids):
-            if isinstance(concept_id, str):
+            if isinstance(concept_id_item, str):
                 if len(concept_id_item.split(conquery_id_separator)) > 2:
                     concept_ids[index] = ChildId.from_str(concept_id_item)
                 elif len(concept_id_item.split(conquery_id_separator)) == 2:
                     concept_ids[index] = ConceptId.from_str(concept_id_item)
                 else:
                     raise ValueError(f"concept_id needs to contain at least one {conquery_id_separator}"
-                                     f"to split on. Provided: {concept_id}")
+                                     f"to split on. Provided: {concept_id_item}")
     else:
-        raise ValueError(f"{concept_id=} must be of type List[str], List[ConqueryId], str or ConqueryId.")
+        raise ValueError(f"{concept_ids=} must be of type List[str], List[ConqueryId], str or ConqueryId.")
 
-    root_concept_id = concept_ids[0].get_concept_id()
+    root_concept_id = concept_ids[0].get_concept_id().id
 
-    for index, connector_element in connector_ids:
-        if isinstance(connector_element, str):
-            connector_ids[index] = ConnectorId(connector_element)
+    if connector_ids:
+        for index, connector_element in enumerate(connector_ids):
+            if isinstance(connector_element, str):
+                connector_ids[index] = ConnectorId.from_str(connector_element)
 
-    for index, concept_select_element in concept_select_ids:
-        if isinstance(concept_select_element, str):
-            concept_select_ids[index] = SelectId(concept_select_element)
+    if concept_select_ids:
+        for index, concept_select_element in enumerate(concept_select_ids):
+            if isinstance(concept_select_element, str):
+                concept_select_ids[index] = SelectId.from_str(concept_select_element)
 
-    for index, connector_select_element in connector_select_ids:
-        if isinstance(connector_select_element, str):
-            connector_select_ids[index] = SelectId(connector_select_element)
+    if connector_select_ids:
+        for index, connector_select_element in enumerate(connector_select_ids):
+            if isinstance(connector_select_element, str):
+                connector_select_ids[index] = SelectId.from_str(connector_select_element)
 
-    for index, filter_obj_element in filter_objs:
-        if isinstance(filter_obj_element["filter_id"], str):
-            filter_objs[index]["filter_id"] = FilterId(connector_select_element)
+    if filter_objs:
+        for index, filter_obj_element in enumerate(filter_objs):
+            if isinstance(filter_obj_element["filter_id"], str):
+                filter_objs[index]["filter_id"] = FilterId.from_str(filter_obj_element["filter_id"])
 
     query = ConceptElement(ids=concept_ids, concept=concepts[root_concept_id],
                            connector_ids=connector_ids,
