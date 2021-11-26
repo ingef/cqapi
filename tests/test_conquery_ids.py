@@ -6,11 +6,9 @@ set_test_datasets()
 
 
 def test_compare_conquery_ids():
-    assert DatasetId("dataset1").is_same_id(DatasetId("dataset1"), ignore_dataset=False)
-    assert not DatasetId("dataset1").is_same_id(DatasetId("dataset2"), ignore_dataset=False)
-    assert ConceptId("icd", DatasetId("dataset1")).is_same_id(ConceptId("icd", DatasetId("dataset2")))
-    assert ConceptId("icd", DatasetId("dataset1")).is_same_id(ConceptId("icd", DatasetId("dataset1")),
-                                                              ignore_dataset=False)
+    assert DatasetId("dataset1").is_same_id(DatasetId("dataset1"))
+    assert not DatasetId("dataset1").is_same_id(DatasetId("dataset2"))
+    assert ConceptId("icd", DatasetId("dataset1")).is_same_id(ConceptId("icd", DatasetId("dataset1")))
 
 
 def test_get_concept_id():
@@ -30,14 +28,8 @@ def test_get_dataset():
     assert ConceptId("concept", DatasetId("dataset2")).get_dataset() != "dataset1"
 
 
-def test_get_id_without_dataset():
-    assert ConceptId("concept", DatasetId("dataset2")).get_id_without_dataset() == "concept"
-
-
 def test_is_in_id_list():
-    assert ConceptId("concept", DatasetId("dataset1")).is_in_id_list([ConceptId("concept", DatasetId("dataset2"))])
-    assert not ConceptId("concept", DatasetId("dataset1")).is_in_id_list([ConceptId("concept", DatasetId("dataset2"))],
-                                                                         ignore_dataset=False)
+    assert ConceptId("concept", DatasetId("dataset1")).is_in_id_list([ConceptId("concept", DatasetId("dataset1"))])
 
 
 def test_change_dataset():
