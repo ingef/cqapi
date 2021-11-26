@@ -2,7 +2,7 @@ from __future__ import annotations
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId, \
-    get_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string
+    get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Union, Tuple, Type
 from copy import deepcopy
@@ -702,10 +702,10 @@ class ConceptTable:
                   removed_ids: ConqueryIdCollection) -> Tuple[Union[ConceptTable, None], Union[ConceptTable, None]]:
         new_dataset = get_dataset_from_id_string(next(iter(concepts)))
 
-        new_root_concept_id = get_id_with_changed_dataset(new_dataset=new_dataset,
-                                                          conquery_id=self.connector_id.get_concept_id())
-        new_connector_id = get_id_with_changed_dataset(new_dataset=new_dataset,
-                                                       conquery_id=self.connector_id)
+        new_root_concept_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                  conquery_id=self.connector_id.get_concept_id())
+        new_connector_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                               conquery_id=self.connector_id)
 
         # get table from concepts
         table_list = [table for table in concepts[new_root_concept_id.id]["tables"]
@@ -720,8 +720,8 @@ class ConceptTable:
         date_column_id = self.date_column_id
         new_date_column_id = None
         if self.date_column_id is not None:
-            new_date_column_id = get_id_with_changed_dataset(new_dataset=new_dataset,
-                                                             conquery_id=self.date_column_id)
+            new_date_column_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                     conquery_id=self.date_column_id)
             table_date_column_ids = [DateId.from_str(date_column_obj[Keys.value])
                                      for date_column_obj in table[Keys.date_column][Keys.options]]
             if new_date_column_id.is_in_id_list(table_date_column_ids):
@@ -733,7 +733,7 @@ class ConceptTable:
         selects = list()
         new_selects = list()
         for select_id in self.selects:
-            new_select_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=select_id)
+            new_select_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=select_id)
             if new_select_id.is_in_id_list([SelectId.from_str(table_select[Keys.id])
                                             for table_select in table[Keys.selects]]):
                 selects.append(select_id)
@@ -746,7 +746,7 @@ class ConceptTable:
 
         # translate filter
         for filter_obj in self.filters:
-            new_filter_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
+            new_filter_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
             if new_filter_id.is_in_id_list([FilterId.from_str(table_filter[Keys.id])
                                             for table_filter in table[Keys.filters]]):
                 filter_objs.append(deepcopy(filter_obj))
@@ -845,7 +845,7 @@ class ConceptElement(QueryObject):
         new_concept_ids = list()
         concept_ids = list()
         for concept_id in self.ids:
-            new_concept_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_id)
+            new_concept_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_id)
             if find_concept_id(concept_id=new_concept_id, concepts=concepts, children_ids=children_ids):
                 new_concept_ids.append(new_concept_id)
                 concept_ids.append(concept_id)
@@ -858,7 +858,7 @@ class ConceptElement(QueryObject):
         new_concept_select_ids = list()
         concept_select_ids = list()
         for concept_select_id in self.selects:
-            new_concept_select_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_select_id)
+            new_concept_select_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_select_id)
             new_root_concept_id = new_concept_select_id.get_concept_id()
             if new_concept_select_id.is_in_id_list([SelectId.from_str(select[Keys.id])
                                                     for select in concepts[new_root_concept_id.id].get(
