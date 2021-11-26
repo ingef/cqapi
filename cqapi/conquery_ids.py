@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Union, Set
+from typing import List, Union, Set, Optional
 from abc import ABC, abstractmethod
 from cqapi.namespace import Keys
 from copy import deepcopy
@@ -17,7 +17,7 @@ date_index = 4
 
 
 class ConqueryId(ABC):
-    def __init__(self, name: str, base: ConqueryId = None):
+    def __init__(self, name: str, base: Optional[ConqueryId] = None):
         if type(self) == ConqueryId:
             raise ValueError("Only subclasses of ConqueryId can be initiated")
         self.base = base
@@ -48,19 +48,24 @@ class ConqueryId(ABC):
             return self.name
 
     @property
-    @abstractmethod
     def base(self) -> ConqueryId:
         """
-        Getter for base (the conqueryId that the current one builds on
+        Getter for base
         """
-        pass
+        if not self._base:
+            raise ValueError(f"ConqueryId of subclass {type(self)} has no base")
+        return self._base
 
     @base.setter
-    @abstractmethod
-    def base(self, new_base: ConqueryId):
+    def base(self, new_base: Optional[ConqueryId]):
         """
         Setter for base, should check if ConqueryId that is set is a valid entry for the Instance
         """
+        self._check_valid_base(new_base=new_base)
+        self._base = new_base
+
+    @abstractmethod
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
         pass
 
     def get_concept_id(self) -> ConceptId:
@@ -198,18 +203,12 @@ class DatasetId(ConqueryId):
     def __init__(self, name: str):
         super().__init__(name=name, base=None)
 
-    @property
-    def base(self) -> ConqueryId:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: ConqueryId):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
         if new_base:
             raise ValueError("Dataset cannot have base")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict):
-        return None
+        return label_dict
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
@@ -223,15 +222,11 @@ class ConceptId(ConqueryId):
     def __init__(self, name: str, base: DatasetId):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> DatasetId:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: DatasetId):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Concept cannot be None")
         if not isinstance(new_base, DatasetId):
             raise ValueError(f"Base of Concept can only be a Dataset. Provided: {new_base.id}")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         dataset_id = self.base.id
@@ -252,15 +247,11 @@ class ConnectorId(ConqueryId):
     def __init__(self, name: str, base: ConceptId):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> ConceptId:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: ConceptId):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Connector cannot be None")
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         connector_id = self.get_connector_id().id
@@ -284,15 +275,11 @@ class ChildId(ConqueryId):
     def __init__(self, name: str, base: Union[ChildId, ConceptId]):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> Union[ChildId, ConceptId]:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: Union[ConceptId, ChildId]):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Child cannot be None")
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ChildId):
             raise ValueError("Base of Child can only be a Concept or Child")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         return label_dict
@@ -301,7 +288,7 @@ class ChildId(ConqueryId):
     def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
         child_id = id_list.pop(-1)
         if len(id_list) >= child_index:
-            base = ChildId.create_id_objects_recursively(id_list=id_list)
+            base = ChildId.create_id_objects_recursively(id_list=id_list) # type: Union[ChildId, ConceptId]
         elif len(id_list) == concept_index:
             base = ConceptId.create_id_objects_recursively(id_list=id_list)
         else:
@@ -316,15 +303,11 @@ class SelectId(ConqueryId):
     def __init__(self, name: str, base: Union[ConceptId, ConnectorId]):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> Union[ConceptId, ConnectorId]:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: Union[ConceptId, ConnectorId]):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Select cannot be None")
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Select can only be a Concept or Connector")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         if isinstance(self.base, ConnectorId):
@@ -337,13 +320,13 @@ class SelectId(ConqueryId):
                                                     compare_string=self.id, return_key=Keys.label)
 
             label_dict["connector_select"] = select_label
-            return label_dict
+        return label_dict
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
         select_id = id_list.pop(-1)
         if len(id_list) == concept_index:
-            base = ConceptId.create_id_objects_recursively(id_list=id_list)
+            base = ConceptId.create_id_objects_recursively(id_list=id_list) # type: Union[ConceptId, ConnectorId]
         elif len(id_list) == connector_index:
             base = ConnectorId.create_id_objects_recursively(id_list=id_list)
         else:
@@ -358,15 +341,11 @@ class FilterId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> ConnectorId:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: ConnectorId):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Filter cannot be None")
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Filter can only be a Connector")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
@@ -395,15 +374,11 @@ class DateId(ConqueryId):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
 
-    @property
-    def base(self) -> ConnectorId:
-        return self._base
-
-    @base.setter
-    def base(self, new_base: ConnectorId):
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Date cannot be None")
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Date can only be a Connector")
-        self._base = new_base
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
