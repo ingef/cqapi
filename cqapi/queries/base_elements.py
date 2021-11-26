@@ -59,7 +59,7 @@ class QueryObject:
     def get_selects(self):
         return [*self.get_concept_selects(), *self.get_connector_selects()]
 
-    def get_concept_selects(self) -> List[str]:
+    def get_concept_selects(self) -> List[SelectId]:
         return [concept_select
                 for concept_element in self.get_concept_elements()
                 for concept_select in concept_element.selects]
