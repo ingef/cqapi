@@ -1,5 +1,5 @@
 from cqapi.conquery_ids import ConqueryIdCollection, DatasetId, ConceptId, ConnectorId, SelectId,\
-    get_dataset_from_id_string, get_id_with_changed_dataset
+    get_dataset_from_id_string, get_copy_of_id_with_changed_dataset
 import pytest
 from cqapi.datasets import set_test_datasets
 set_test_datasets()
@@ -47,7 +47,7 @@ def test_get_dataset_from_id_string():
 
 
 def test_get_id_with_changed_dataset():
-    new_id = get_id_with_changed_dataset(
+    new_id = get_copy_of_id_with_changed_dataset(
         new_dataset="dataset2", conquery_id=ConceptId("concept", DatasetId("dataset1")))
     assert new_id.get_dataset() == "dataset2"
 
