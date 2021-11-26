@@ -160,7 +160,7 @@ class ConqueryId(ABC):
         """
         pass
 
-    @classmethod
+    @staticmethod
     def _filter_concept_obj(cls, filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
             -> Union[str, list, dict]:
         """
@@ -439,10 +439,9 @@ class ConqueryIdCollection:
         return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
 
 
-def get_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryId, deepcopy: bool = True):
+def get_copy_of_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryId):
     """
-    Changes the dataset of the conquery id then returns the new ConqueryId.
-    If deepcopy, creates a copy and then changes the dataset and returns the new ConqueryId
+    Creates a copy and then changes the dataset and returns the new ConqueryId
     """
     if deepcopy:
         new_conquery_id = conquery_id.deepcopy()

@@ -1,7 +1,7 @@
 from typing import Union, Tuple, List
 
 from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import ConqueryIdCollection, ConceptId, ChildId, get_id_with_changed_dataset, \
+from cqapi.conquery_ids import ConqueryIdCollection, ConceptId, ChildId, get_copy_of_id_with_changed_dataset, \
     get_dataset_from_id_string
 from cqapi.exceptions import QueryTranslationError
 from cqapi.namespace import Keys
@@ -23,7 +23,7 @@ def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_co
     concept_ids = list()
     for concept_id in all_concept_ids:
         new_concept_id = concept_id.get_concept_id.deepcopy()
-        new_concept_id.get_id_with_changed_dataset(new_dataset=new_dataset)
+        new_concept_id.get_copy_of_id_with_changed_dataset(new_dataset=new_dataset)
         if new_concept_id.id in concepts.keys():
             concept_ids.append(concept_id)
 
@@ -110,9 +110,9 @@ def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[Union[Concep
     # for each root concept_id get the concept and check if concept_ids are in there
     children_ids = []
     for root_concept_id, child_concept_ids in concept_ids_dict.items():
-        new_root_concept_id = get_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
-        new_child_concept_ids = [get_id_with_changed_dataset(new_dataset=new_dataset,
-                                                             conquery_id=child_concept_id)
+        new_root_concept_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
+        new_child_concept_ids = [get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                     conquery_id=child_concept_id)
                                  for child_concept_id in child_concept_ids]
 
         concept = conquery_conn.get_concept(new_root_concept_id.id)
