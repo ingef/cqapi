@@ -48,12 +48,10 @@ class ConqueryId(ABC):
             return self.name
 
     @property
-    def base(self) -> ConqueryId:
+    def base(self) -> Optional[ConqueryId]:
         """
         Getter for base
         """
-        if not self._base:
-            raise ValueError(f"ConqueryId of subclass {type(self)} has no base")
         return self._base
 
     @base.setter
@@ -90,17 +88,6 @@ class ConqueryId(ABC):
         else:
             return self.base.get_connector_id()
 
-    def get_id_without_dataset(self) -> str:
-        """
-        Get string of id property but without dataset
-        """
-        if isinstance(self, DatasetId):
-            raise ValueError("Cannot get id without dataset for DatasetId")
-        elif isinstance(self, ConceptId):
-            return self.name
-        else:
-            return f"{self.base.get_id_without_dataset()}{conquery_id_separator}{self.name}"
-
     def get_dataset(self) -> str:
         """
         Get string value of dataset
@@ -119,28 +106,25 @@ class ConqueryId(ABC):
         else:
             self.base.change_dataset(new_dataset=new_dataset)
 
-    def is_same_id(self, other_id: ConqueryId, ignore_dataset: bool = True) -> bool:
+    def is_same_id(self, other_id: ConqueryId) -> bool:
         """
-        Checks if it is the same ConqueryId. If ignore dataset, the name of the dataset is allowed to be different.
+        Checks if it is the same ConqueryId
         """
         if not isinstance(other_id, ConqueryId):
             raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
-        if ignore_dataset:
-            return self.get_id_without_dataset() == other_id.get_id_without_dataset()
-        else:
-            return self == other_id
+        return self == other_id
 
-    def is_in_id_list(self, other_ids: List[ConqueryId], ignore_dataset: bool = True) -> bool:
-        return any(self.is_same_id(other_id=other_id, ignore_dataset=ignore_dataset) for other_id in other_ids)
+    def is_in_id_list(self, other_ids: List[ConqueryId]) -> bool:
+        return any(self.is_same_id(other_id=other_id) for other_id in other_ids)
 
     @classmethod
     @abstractmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
         """
         Method is used in from_str and should validate provided string and recursively initiate objects for each
         inherited class needed for the provided Id
         """
-        pass
+        raise ValueError("Without type hint, from_str can only be called on subclasses of ConqueryId")
 
     @classmethod
     def from_str(cls, id_string: str, type_hint: str = None) -> ConqueryId:
@@ -149,10 +133,8 @@ class ConqueryId(ABC):
         If type hint provided, calls from string method on the corresponding subclass
         """
         if not type_hint:
-            if isinstance(cls, ConqueryId):
-                raise ValueError("Without type hint, from_str can only be called on subclasses of ConqueryId")
             id_list = id_string.split(conquery_id_separator)
-            return cls.create_id_objects_recursively(id_list=id_list)
+            return cls._create_id_objects_recursively(id_list=id_list)
         if type_hint == "dataset":
             return DatasetId.from_str(id_string=id_string)
         elif type_hint == "concept":
@@ -211,7 +193,7 @@ class DatasetId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
         if len(id_list) != dataset_index:
             raise ValueError(f"Provided list of ids for Dataset must be of length {dataset_index}. "
                              f"Provided: {id_list}")
@@ -234,12 +216,12 @@ class ConceptId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
         if len(id_list) != concept_index:
             raise ValueError(f"Provided string for Concept must be of length {concept_index} (dataset and concept). "
                              f"Provided: {id_list}")
         concept_id = id_list.pop(-1)
-        base = DatasetId.create_id_objects_recursively(id_list=id_list)
+        base = DatasetId._create_id_objects_recursively(id_list=id_list)
         return ConceptId(name=concept_id, base=base)
 
 
@@ -261,13 +243,13 @@ class ConnectorId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
         if len(id_list) != connector_index:
             raise ValueError(f"Provided string for Connector must be of length {connector_index} "
                              f"(dataset, concept and connector). "
                              f"Provided: {id_list}")
         connector_id = id_list.pop(-1)
-        base = ConceptId.create_id_objects_recursively(id_list=id_list)
+        base = ConceptId._create_id_objects_recursively(id_list=id_list)
         return ConnectorId(name=connector_id, base=base)
 
 
@@ -285,12 +267,12 @@ class ChildId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
         child_id = id_list.pop(-1)
         if len(id_list) >= child_index:
-            base = ChildId.create_id_objects_recursively(id_list=id_list) # type: Union[ChildId, ConceptId]
+            base = ChildId._create_id_objects_recursively(id_list=id_list) # type: Union[ChildId, ConceptId]
         elif len(id_list) == concept_index:
-            base = ConceptId.create_id_objects_recursively(id_list=id_list)
+            base = ConceptId._create_id_objects_recursively(id_list=id_list)
         else:
             raise ValueError(f"Provided string for Child must be of minimum length {child_index + 1} "
                              f"(dataset, concept and child/children). "
@@ -323,12 +305,12 @@ class SelectId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
         select_id = id_list.pop(-1)
         if len(id_list) == concept_index:
-            base = ConceptId.create_id_objects_recursively(id_list=id_list) # type: Union[ConceptId, ConnectorId]
+            base = ConceptId._create_id_objects_recursively(id_list=id_list) # type: Union[ConceptId, ConnectorId]
         elif len(id_list) == connector_index:
-            base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+            base = ConnectorId._create_id_objects_recursively(id_list=id_list)
         else:
             raise ValueError(f"Provided string for Select must be of length {concept_select_index} or "
                              f"{connector_select_index} (dataset, concept, (connector) and select. "
@@ -360,13 +342,13 @@ class FilterId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
         if not len(id_list) == filter_index:
             raise ValueError(f"Provided string for Filter must be of length {filter_index} "
                              f"(dataset, concept, connector and filter). "
                              f"Provided: {id_list}")
         filter_id = id_list.pop(-1)
-        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+        base = ConnectorId._create_id_objects_recursively(id_list=id_list)
         return FilterId(name=filter_id, base=base)
 
 
@@ -393,13 +375,13 @@ class DateId(ConqueryId):
         return label_dict
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
+    def _create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
         if not len(id_list) == date_index:
             raise ValueError(f"Provided string for Date must be of length {date_index} "
                              f"(dataset, concept, connector and date). "
                              f"Provided: {id_list}")
         date_id = id_list.pop(-1)
-        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
+        base = ConnectorId._create_id_objects_recursively(id_list=id_list)
         return DateId(name=date_id, base=base)
 
 
