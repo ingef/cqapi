@@ -161,7 +161,7 @@ class ConqueryId(ABC):
         pass
 
     @staticmethod
-    def _filter_concept_obj(cls, filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
+    def _filter_concept_obj(filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
             -> Union[str, list, dict]:
         """
         Method used in add_self_label_to_dict in subclasses.
@@ -443,12 +443,9 @@ def get_copy_of_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryI
     """
     Creates a copy and then changes the dataset and returns the new ConqueryId
     """
-    if deepcopy:
-        new_conquery_id = conquery_id.deepcopy()
-        new_conquery_id.change_dataset(new_dataset=new_dataset)
-        return new_conquery_id
-    conquery_id.change_dataset(new_dataset=new_dataset)
-    return conquery_id
+    new_conquery_id = conquery_id.deepcopy()
+    new_conquery_id.change_dataset(new_dataset=new_dataset)
+    return new_conquery_id
 
 
 def get_dataset_from_id_string(id_string: str) -> str:
