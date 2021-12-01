@@ -1,7 +1,8 @@
 from typing import Union, Tuple, List
 
 from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import ConqueryIdCollection, get_dataset, change_dataset, get_root_concept_id
+from cqapi.conquery_ids import ConqueryIdCollection, ConceptId, ChildId, get_copy_of_id_with_changed_dataset, \
+    get_dataset_from_id_string
 from cqapi.exceptions import QueryTranslationError
 from cqapi.namespace import Keys
 from cqapi.queries.base_elements import create_query_obj, QueryObject
@@ -11,18 +12,20 @@ def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_co
                     return_removed_ids: bool = False) -> \
         Union[Tuple[Union[QueryObject, dict, None], Union[QueryObject, dict, None], ConqueryIdCollection],
               Tuple[Union[QueryObject, dict, None], Union[QueryObject, dict, None]]]:
-    new_dataset = get_dataset(next(iter(concepts)))
+    new_dataset = get_dataset_from_id_string(next(iter(concepts)))
 
     # translate
     conquery_ids = ConqueryIdCollection()
 
     # get children ids that exist
-    concept_ids = query.get_concept_ids()
+    all_concept_ids = query.get_concept_ids()
     # don't ask for children concepts for concepts that are not available for new dataset
-    concept_ids = [concept_id
-                   for concept_id in concept_ids
-                   if change_dataset(new_dataset=new_dataset,
-                                     conquery_id=get_root_concept_id(concept_id)) in concepts.keys()]
+    concept_ids = list()
+    for concept_id in all_concept_ids:
+        new_concept_id = concept_id.get_concept_id.deepcopy()
+        new_concept_id.get_copy_of_id_with_changed_dataset(new_dataset=new_dataset)
+        if new_concept_id.id in concepts.keys():
+            concept_ids.append(concept_id)
 
     children_ids = check_concept_ids_in_concepts_for_new_dataset(concept_ids=concept_ids,
                                                                  new_dataset=new_dataset,
@@ -87,7 +90,7 @@ def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery
     return new_query_id
 
 
-def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
+def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[Union[ConceptId, ChildId]],
                                                   new_dataset: str, conquery_conn: ConqueryConnection):
     """
     For each concept_id in concept_ids it checks if the concept_id exist in the concept-object of the new dataset.
@@ -101,21 +104,21 @@ def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[str],
     # group concept_ids by root_concept_id
     concept_ids_dict = dict()
     for concept_id in concept_ids:
-        root_concept_id = get_root_concept_id(concept_id)
+        root_concept_id = concept_id.get_concept_id()
         concept_ids_dict[root_concept_id] = [concept_id, *concept_ids_dict.get(root_concept_id, [])]
 
     # for each root concept_id get the concept and check if concept_ids are in there
     children_ids = []
     for root_concept_id, child_concept_ids in concept_ids_dict.items():
-        new_root_concept_id = change_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
-        new_child_concept_ids = [change_dataset(new_dataset=new_dataset,
-                                                conquery_id=child_concept_id)
+        new_root_concept_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=root_concept_id)
+        new_child_concept_ids = [get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                     conquery_id=child_concept_id)
                                  for child_concept_id in child_concept_ids]
 
-        concept = conquery_conn.get_concept(new_root_concept_id)
+        concept = conquery_conn.get_concept(new_root_concept_id.id)
         concept_ids_in_concept = [child_id for child in concept for child_id in child[Keys.ids]]
 
         children_ids.extend([child_concept_id for child_concept_id in new_child_concept_ids
-                             if child_concept_id in concept_ids_in_concept])
+                             if child_concept_id.id in concept_ids_in_concept])
 
     return children_ids
