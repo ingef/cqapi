@@ -77,6 +77,17 @@ class ConqueryId(ABC):
         else:
             return self.base.get_concept_id()
 
+    def rename_concept_id(self, new_concept: str):
+        """
+        Renames the concept_id base of a ConqueryId
+        """
+        if isinstance(self, DatasetId):
+            raise ValueError("Cannot rename concept for dataset")
+        elif isinstance(self, ConceptId):
+            self.name = new_concept
+        else:
+            self.base.rename_concept_id(new_concept=new_concept)
+
     def get_connector_id(self) -> ConnectorId:
         """
         Returns ConnectorId instance of ConqueryId
