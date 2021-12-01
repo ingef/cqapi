@@ -1,12 +1,11 @@
 from typing import List, Union, Dict, Type
 
-from cqapi.conquery_ids import ConqueryId
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.base_elements import QueryObject, ConceptElement
 from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.queries.base_elements import QueryDescription, SingleRootQueryDescription, SingleChildQueryObject
 from cqapi.queries.validate import validate_resolutions, validate_time_unit, validate_time_count, \
-    validate_index_selector, validate_index_placement
+    validate_index_selector, validate_index_plament
 
 
 class ExportForm(QueryDescription):
@@ -123,7 +122,7 @@ class RelativeExportForm(ExportForm):
         self.time_count_after = time_count_after
         validate_index_selector(index_selector)
         self.index_selector = index_selector
-        validate_index_placement(index_placement)
+        validate_index_plament(index_placement)
         self.index_placement = index_placement
 
         # extract concept from "CONCEPT_QUERY"-Objects
@@ -161,7 +160,7 @@ class RelativeExportForm(ExportForm):
 
 class FullExportForm(QueryDescription):
     def __init__(self, query_id: str,
-                 concept_id: ConqueryId, concept: dict, start_date: str = None, end_date: str = None,
+                 concept_id: str, concept: dict, start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], Dict[str, str]] = None):
         super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
         self.query_id = query_id
