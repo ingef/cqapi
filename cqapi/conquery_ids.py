@@ -45,7 +45,7 @@ class ConqueryId(ABC):
         """
         Datasets returns its name, all other Ids that build on it add their name to the string.
         """
-        if self.base:
+        if not isinstance(self, DatasetId):
             return f"{self.base.id}{conquery_id_separator}{self.name}"
         else:
             return self.name
