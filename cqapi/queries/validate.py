@@ -51,10 +51,8 @@ def validate_index_selector(index_selector: str):
         raise ValueError(f"{index_selector=} not in {valid_index_selectors}.")
 
 
-def validate_index_plament(index_placement: str):
+def validate_index_placement(index_placement: str):
     valid_index_placements = ['BEFORE', 'NEUTRAL', 'AFTER']
 
     if index_placement not in valid_index_placements:
         raise ValueError(f"{index_placement=} not in {valid_index_placements}.")
-
-
