@@ -3,7 +3,7 @@ from io import StringIO
 from time import sleep
 import requests
 import cqapi.datasets
-from cqapi.auth import TokenHandler
+from cqapi.auth.auth import TokenHandler
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
@@ -12,6 +12,8 @@ from typing import Union, List, Dict, NoReturn
 from requests import Response
 from requests.exceptions import HTTPError
 from IPython.display import HTML, Javascript
+from IPython.display import Javascript, display
+from importlib.resources import open_text, path
 
 
 def raise_for_status(response: Response) -> Union[None, NoReturn]:
@@ -101,8 +103,9 @@ class ConqueryConnection(object):
         self._datasets_with_permission: List[str] = []
         self._user_login: bool = user_login
 
-        self._token_handler: TokenHandler = TokenHandler(auth_url=auth_url, client_name=client_name,
-                                                         token=token, is_simple_token_handler=not user_login)
+        self._token = token
+        # self._token_handler: TokenHandler = TokenHandler(auth_url=auth_url, client_name=client_name,
+        #                                                 token=token, is_simple_token_handler=not user_login)
 
         if not user_login:
             self._set_up_session_and_datasets(dataset=dataset)
@@ -123,18 +126,27 @@ class ConqueryConnection(object):
                 'Accept-Language': 'de-DE,de;q=0.9',
                 'pretty': 'false'}
 
-    @property
-    def _token(self):
-        return self._token_handler.get_token()
+    def update_token(self, new_token: str):
+        self._token = new_token
+        self._update_token_in_header()
 
-    def update_token_handler(self, token: str, refresh_token: str):
+    """
+    def update_token_handler(self, token: str):
         self._token_handler.token = token
         self._token_handler.refresh_token = refresh_token
 
-        self._set_up_session_and_datasets()
+        self._update_token_in_header()
+    """
 
     def login(self):
-        return self._token_handler.login()
+        if not self._user_login:
+            return
+
+        self.open_session()
+
+        run_keycloak_script: str = open_text("cqapi.auth", "run_keycloak.js").read()
+
+        return Javascript(run_keycloak_script)
 
     def change_dataset(self, dataset: str):
         self._dataset = self._get_dataset(dataset)
@@ -159,6 +171,9 @@ class ConqueryConnection(object):
         self.close_session()
         # open session and set header
         self._session = requests.Session()
+        self._update_token_in_header()
+
+    def _update_token_in_header(self):
         self._session.headers.update(self._header)
 
     def close_session(self):
@@ -223,7 +238,6 @@ class ConqueryConnection(object):
         return response_list
 
     def get_query_id(self, label: str, dataset: str = None) -> str:
-        dataset = self._get_dataset(dataset=dataset)
         queries = self.get_stored_queries()
         queries_with_label = [query["id"] for query in queries if query["label"] == label]
         if not queries_with_label:
@@ -297,7 +311,6 @@ class ConqueryConnection(object):
 
         while response['status'] == 'RUNNING':
             response = self.get_query_info(query_id)
-            self._token_handler.check_token()
             if requests_per_sec is None:
                 continue
             sleep(1 / requests_per_sec)
