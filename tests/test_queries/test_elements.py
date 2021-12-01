@@ -1,6 +1,4 @@
 from unittest.case import TestCase
-
-from cqapi.conquery_ids import ConceptId, DatasetId, ConnectorId, SelectId, ChildId, DateId
 from cqapi.queries.editor import QueryEditor
 from cqapi.queries.base_elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, \
     ConceptQuery, ConceptTable
@@ -27,7 +25,6 @@ def test_from_write_query():
                         "value": {
                             "min": 10,
                             "max": 20}}]}]}
-
     TestCase().assertDictEqual(concept_element, ConceptElement.from_dict(concept_element).to_dict())
 
     or_element = {
@@ -68,33 +65,12 @@ def test_from_write_query():
 def test_and_query():
     query_1 = {'type': 'DATE_RESTRICTION',
                'child': {'type': 'CONCEPT',
-                         'ids': [ChildId.from_str('dataset1.atc.a.a10.a10a')],
-                         'selects': [SelectId.from_str('atc.atc.liste_rezepte'),
-                                     SelectId.from_str('atc.atc.liste_pzn')],
-                         'tables': [{'id': ConnectorId.from_str('dataset1.atc.atc'),
-                                     'dateColumn': {'value': DateId.from_str('dataset1.atc.atc.abgabedatum')}}]},
-               'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
-
-    query_1_out = {'type': 'DATE_RESTRICTION',
-               'child': {'type': 'CONCEPT',
                          'ids': ['dataset1.atc.a.a10.a10a'],
-                         'selects': ['atc.atc.liste_rezepte',
-                                     'atc.atc.liste_pzn'],
+                         'selects': ['atc.atc.liste_rezepte', 'atc.atc.liste_pzn'],
                          'tables': [{'id': 'dataset1.atc.atc',
                                      'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'}}]},
                'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
-
     query_2 = {'type': 'AND',
-               'children': [{'type': 'OR',
-                             'children': [{'type': 'CONCEPT',
-                                           'ids': [ConceptId.from_str('dataset1.alter')],
-                                           'excludeFromSecondaryIdQuery': True,
-                                           'excludeFromTimeAggregation': False,
-                                           'tables': [{'id': ConnectorId.from_str('dataset1.alter.alter'),
-                                                       'dateColumn': {
-                                                           'value': DateId.from_str(
-                                                               'dataset1.alter.alter.versichertenzeit')}}]}]}]}
-    query_2_out = {'type': 'AND',
                'children': [{'type': 'OR',
                              'children': [{'type': 'CONCEPT',
                                            'ids': ['dataset1.alter'],
@@ -102,27 +78,22 @@ def test_and_query():
                                            'excludeFromTimeAggregation': False,
                                            'tables': [{'id': 'dataset1.alter.alter',
                                                        'dateColumn': {
-                                                           'value':
-                                                               'dataset1.alter.alter.versichertenzeit'}}]}]}]}
+                                                           'value': 'dataset1.alter.alter.versichertenzeit'}}]}]}]}
 
     query_editor = QueryEditor(query_1)
     query_editor.and_query(QueryEditor(query_2))
     and_query_out = query_editor.write_query()
-    and_query_val = {"type": "AND", "children": [query_1_out, query_2_out]}
+    and_query_val = {"type": "AND", "children": [query_1, query_2]}
 
     TestCase().assertDictEqual(and_query_val, and_query_out)
 
 
 def test_remove_selects():
-    concept1 = ConceptId("concept1", DatasetId("dataset1"))
-    table1 = ConnectorId("table1", concept1)
-    select1 = SelectId("select1", table1)
-    select2 = SelectId("select2", table1)
-    concept_select1 = SelectId("select1", concept1)
-    query_object_1 = ConceptElement(ids=[concept1],
-                                    tables=[ConceptTable(connector_id=table1,
-                                                         select_ids=[select1, select2])],
-                                    concept_selects=[concept_select1])
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"],
+                                    tables=[ConceptTable(connector_id="dataset1.concept1.table1",
+                                                         select_ids=["dataset1.concept1.table1.select1",
+                                                                     "dataset1.concept1.table1.select2"])],
+                                    concept_selects=["dataset1.concept1.select1"])
     or_query = OrElement(children=[query_object_1.copy()])
     concept_query = ConceptQuery(root=or_query)
     query_editor = QueryEditor(query=concept_query)
@@ -132,8 +103,8 @@ def test_remove_selects():
 
 
 def test_relativ_export_form():
-    query_object_1 = ConceptElement(ids=[ConceptId("concept1", DatasetId("dataset1"))])
-    query_object_2 = ConceptQuery(root=ConceptElement(ids=[ConceptId("concept2", DatasetId("dataset1"))]))
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"])
+    query_object_2 = ConceptQuery(root=ConceptElement(ids=["dataset1.concept2"]))
 
     export_form = RelativeExportForm(
         query_id="dataset1.query_id",
@@ -165,8 +136,8 @@ def test_relativ_export_form():
 
 
 def test_entity_date_export_form():
-    query_object_1 = ConceptElement(ids=[ConceptId("concept1", DatasetId("dataset1"))])
-    query_object_2 = ConceptQuery(root=ConceptElement(ids=[ConceptId("concept2", DatasetId("dataset1"))]))
+    query_object_1 = ConceptElement(ids=["dataset1.concept1"])
+    query_object_2 = ConceptQuery(root=ConceptElement(ids=["dataset1.concept2"]))
 
     export_form = EntityDateExportForm(
         query_id="dataset1.query_id",
@@ -202,7 +173,7 @@ def test_full_export_form():
     }]}
 
     full_export_form = FullExportForm(query_id="dataset1.query_id",
-                                      concept_id=ConceptId("alter", DatasetId("dataset1")),
+                                      concept_id="dataset1.alter",
                                       concept=concept,
                                       start_date="2020-01-01",
                                       end_date="2020-12-31")
