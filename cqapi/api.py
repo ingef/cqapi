@@ -3,6 +3,7 @@ from io import StringIO
 from time import sleep
 import requests
 import cqapi.datasets
+from cqapi.auth import TokenHandler
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
@@ -10,6 +11,7 @@ from cqapi.queries.base_elements import QueryObject
 from typing import Union, List, Dict, NoReturn
 from requests import Response
 from requests.exceptions import HTTPError
+from IPython.display import HTML, Javascript
 
 
 def raise_for_status(response: Response) -> Union[None, NoReturn]:
@@ -75,43 +77,66 @@ class ConqueryConnection(object):
         self._session.headers.update(self._header)
 
         # try to fail early if conquery is not available at self._url
-        if self._check_connection:
-            try:
-                get_json(self._session, f"{self._url}/api/datasets")
-            except ConnectionError:
-                error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
-                raise ConqueryClientConnectionError(error_msg)
+        try:
+            get_json(self._session, f"{self._url}/api/datasets")
+        except ConnectionError:
+            error_msg = f"Could not connect to Conquery, are you sure {self._url} is the right address?"
+            raise ConqueryClientConnectionError(error_msg)
 
         # Check if token is known to conquery and if it has access to any dataset
-        if self._check_permission:
-            with self._session.get(f"{self._url}/api/datasets") as response:
-                if response.status_code == 401 or not response.json():
-                    error_msg = f"There is no permission for accessing any dataset."
-                    raise ConqueryClientConnectionError(error_msg)
+        with self._session.get(f"{self._url}/api/datasets") as response:
+            if response.status_code == 401 or not response.json():
+                error_msg = f"There is no permission for accessing any dataset."
+                raise ConqueryClientConnectionError(error_msg)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._session.close()
 
-    def __init__(self, url: str, token: str = "", requests_timout: int = 5,
-                 check_connection: bool = True, check_permission: bool = True, dataset: str = None):
-        self._url = url.strip('/')
-        self._token = token
-        self._check_connection = check_connection
-        self._check_permission = check_permission
-        self._timeout = requests_timout
-        self._header = {'Authorization': f'Bearer {self._token}',
-                        'Accept-Language': 'de-DE,de;q=0.9',
-                        'pretty': 'false'}
+    def __init__(self, url: str, auth_url: str = "http://auth.lyo-peva02/auth", client_name: str = "eva-release",
+                 token: str = "", requests_timout: int = 5, dataset: str = None, user_login: bool = True):
+        self._url: str = url.strip('/')
+        self._timeout: int = requests_timout
+        self._datasets_with_permission: List[str] = []
+        self._user_login: bool = user_login
+
+        self._token_handler: TokenHandler = TokenHandler(auth_url=auth_url, client_name=client_name,
+                                                         token=token, is_simple_token_handler=not user_login)
+
+        if not user_login:
+            self._set_up_session_and_datasets(dataset=dataset)
+
+    def _set_up_session_and_datasets(self, dataset: str = None):
+        """Create new session and set datasets with permission globally"""
         self.open_session()
+
         self._datasets_with_permission = self.get_datasets()
         self.store_dataset_list_globally()
 
         if dataset is not None:
-            self.set_dataset(dataset)
+            self._dataset = self._get_dataset(dataset)
 
-    def set_dataset(self, dataset: str = None):
+    @property
+    def _header(self):
+        return {'Authorization': f'Bearer {self._token}',
+                'Accept-Language': 'de-DE,de;q=0.9',
+                'pretty': 'false'}
+
+    @property
+    def _token(self):
+        return self._token_handler.get_token()
+
+    def update_token_handler(self, token: str, refresh_token: str):
+        self._token_handler.token = token
+        self._token_handler.refresh_token = refresh_token
+
+        self._set_up_session_and_datasets()
+
+    def login(self):
+        return self._token_handler.login()
+
+    def change_dataset(self, dataset: str):
         self._dataset = self._get_dataset(dataset)
 
     def store_dataset_list_globally(self):
@@ -272,6 +297,7 @@ class ConqueryConnection(object):
 
         while response['status'] == 'RUNNING':
             response = self.get_query_info(query_id)
+            self._token_handler.check_token()
             if requests_per_sec is None:
                 continue
             sleep(1 / requests_per_sec)
