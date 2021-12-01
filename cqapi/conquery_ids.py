@@ -21,8 +21,6 @@ class ConqueryId(ABC):
         if type(self) == ConqueryId:
             raise ValueError("Only subclasses of ConqueryId can be initiated")
 
-        self._check_valid_base(new_base=base)
-
         self._base: Optional[ConqueryId] = base
         self.name = name
 
@@ -59,6 +57,11 @@ class ConqueryId(ABC):
             return self._base
 
         raise ValueError(f"Can not retrieve base")
+
+    @base.setter
+    def base(self, new_base: Optional[ConqueryId]):
+        self._check_valid_base(new_base=new_base)
+        self._base = new_base
 
     @abstractmethod
     def _check_valid_base(self, new_base: Optional[ConqueryId]):
@@ -128,7 +131,7 @@ class ConqueryId(ABC):
 
     @classmethod
     @abstractmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
         """
         Method is used in from_str and should validate provided string and recursively initiate objects for each
         inherited class needed for the provided Id
@@ -143,7 +146,7 @@ class ConqueryId(ABC):
         """
         if not type_hint:
             id_list = id_string.split(conquery_id_separator)
-            return cls._create_id_objects_recursively(id_list=id_list)
+            return cls.create_id_objects_recursively(id_list=id_list)
         if type_hint == "dataset":
             return DatasetId.from_str(id_string=id_string)
         elif type_hint == "concept":
@@ -170,8 +173,8 @@ class ConqueryId(ABC):
         pass
 
     @staticmethod
-    def _filter_concept_obj(filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
-            -> Union[str, list, dict]:
+    def filter_concept_obj(filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
+            -> Union[str, list]:
         """
         Method used in add_self_label_to_dict in subclasses.
         Filters a list of dictionaries (filter_obj) based on if for each element, the value of the dict for filter_key
@@ -202,7 +205,7 @@ class DatasetId(ConqueryId):
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
         if len(id_list) != dataset_index:
             raise ValueError(f"Provided list of ids for Dataset must be of length {dataset_index}. "
                              f"Provided: {id_list}")
@@ -225,12 +228,12 @@ class ConceptId(ConqueryId):
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
         if len(id_list) != concept_index:
             raise ValueError(f"Provided string for Concept must be of length {concept_index} (dataset and concept). "
                              f"Provided: {id_list}")
         concept_id = id_list.pop(-1)
-        base = DatasetId._create_id_objects_recursively(id_list=id_list)
+        base = DatasetId.create_id_objects_recursively(id_list=id_list)
         return ConceptId(name=concept_id, base=base)
 
 
@@ -246,19 +249,19 @@ class ConnectorId(ConqueryId):
 
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         connector_id = self.get_connector_id().id
-        connector_label = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
-                                                   compare_string=connector_id, return_key=Keys.label)
+        connector_label = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
+                                                  compare_string=connector_id, return_key=Keys.label)
         label_dict["connector"] = connector_label
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
         if len(id_list) != connector_index:
             raise ValueError(f"Provided string for Connector must be of length {connector_index} "
                              f"(dataset, concept and connector). "
                              f"Provided: {id_list}")
         connector_id = id_list.pop(-1)
-        base = ConceptId._create_id_objects_recursively(id_list=id_list)
+        base = ConceptId.create_id_objects_recursively(id_list=id_list)
         return ConnectorId(name=connector_id, base=base)
 
 
@@ -276,12 +279,12 @@ class ChildId(ConqueryId):
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
         child_id = id_list.pop(-1)
         if len(id_list) >= child_index:
-            base = ChildId._create_id_objects_recursively(id_list=id_list) # type: Union[ChildId, ConceptId]
+            base = ChildId.create_id_objects_recursively(id_list=id_list)  # type: ignore
         elif len(id_list) == concept_index:
-            base = ConceptId._create_id_objects_recursively(id_list=id_list)
+            base = ConceptId.create_id_objects_recursively(id_list=id_list)  # type: ignore
         else:
             raise ValueError(f"Provided string for Child must be of minimum length {child_index + 1} "
                              f"(dataset, concept and child/children). "
@@ -304,22 +307,23 @@ class SelectId(ConqueryId):
         if isinstance(self.base, ConnectorId):
             label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
 
-            table_selects = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
-                                                     compare_string=label_dict['connector'], return_key=Keys.selects)
+            table_selects = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
+                                                    compare_string=label_dict['connector'], return_key=Keys.selects)\
+                # type: ignore
 
-            select_label = self._filter_concept_obj(filter_obj=table_selects, filter_key=Keys.id,
-                                                    compare_string=self.id, return_key=Keys.label)
+            select_label = self.filter_concept_obj(filter_obj=table_selects, filter_key=Keys.id,
+                                                   compare_string=self.id, return_key=Keys.label)  # type: ignore
 
             label_dict["connector_select"] = select_label
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
         select_id = id_list.pop(-1)
         if len(id_list) == concept_index:
-            base = ConceptId._create_id_objects_recursively(id_list=id_list) # type: Union[ConceptId, ConnectorId]
+            base = ConceptId.create_id_objects_recursively(id_list=id_list)  # type: ignore
         elif len(id_list) == connector_index:
-            base = ConnectorId._create_id_objects_recursively(id_list=id_list)
+            base = ConnectorId.create_id_objects_recursively(id_list=id_list)  # type: ignore
         else:
             raise ValueError(f"Provided string for Select must be of length {concept_select_index} or "
                              f"{connector_select_index} (dataset, concept, (connector) and select. "
@@ -341,23 +345,24 @@ class FilterId(ConqueryId):
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
 
-        table_filters = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
-                                                 compare_string=label_dict['connector'], return_key=Keys.filters)
+        table_filters = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
+                                                compare_string=label_dict['connector'], return_key=Keys.filters)\
+            # type: ignore
 
-        filter_label = self._filter_concept_obj(filter_obj=table_filters, filter_key=Keys.id,
-                                                compare_string=self.id, return_key=Keys.label)
+        filter_label = self.filter_concept_obj(filter_obj=table_filters, filter_key=Keys.id,
+                                               compare_string=self.id, return_key=Keys.label)  # type: ignore
 
         label_dict["filter"] = filter_label
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
         if not len(id_list) == filter_index:
             raise ValueError(f"Provided string for Filter must be of length {filter_index} "
                              f"(dataset, concept, connector and filter). "
                              f"Provided: {id_list}")
         filter_id = id_list.pop(-1)
-        base = ConnectorId._create_id_objects_recursively(id_list=id_list)
+        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
         return FilterId(name=filter_id, base=base)
 
 
@@ -374,23 +379,24 @@ class DateId(ConqueryId):
     def add_self_label_to_dict(self, label_dict: dict, concept_obj: dict) -> dict:
         label_dict = self.base.add_self_label_to_dict(label_dict=label_dict, concept_obj=concept_obj)
 
-        table_dates = self._filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.label,
-                                               compare_string=label_dict['connector'], return_key=Keys.date_column)
+        table_dates = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
+                                              compare_string=label_dict['connector'], return_key=Keys.date_column)\
+            # type: ignore
 
-        date_label = self._filter_concept_obj(filter_obj=table_dates[Keys.options], filter_key=Keys.value,
-                                              compare_string=self.id, return_key=Keys.label)
+        date_label = self.filter_concept_obj(filter_obj=table_dates[Keys.options], filter_key=Keys.value,
+                                             compare_string=self.id, return_key=Keys.label)  # type: ignore
 
         label_dict["date"] = date_label
         return label_dict
 
     @classmethod
-    def _create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
         if not len(id_list) == date_index:
             raise ValueError(f"Provided string for Date must be of length {date_index} "
                              f"(dataset, concept, connector and date). "
                              f"Provided: {id_list}")
         date_id = id_list.pop(-1)
-        base = ConnectorId._create_id_objects_recursively(id_list=id_list)
+        base = ConnectorId.create_id_objects_recursively(id_list=id_list)
         return DateId(name=date_id, base=base)
 
 
