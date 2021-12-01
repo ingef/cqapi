@@ -20,7 +20,10 @@ class ConqueryId(ABC):
     def __init__(self, name: str, base: Optional[ConqueryId] = None):
         if type(self) == ConqueryId:
             raise ValueError("Only subclasses of ConqueryId can be initiated")
-        self.base = base
+
+        self._check_valid_base(new_base=base)
+
+        self._base: Optional[ConqueryId] = base
         self.name = name
 
     def __hash__(self):
@@ -48,19 +51,14 @@ class ConqueryId(ABC):
             return self.name
 
     @property
-    def base(self) -> Optional[ConqueryId]:
+    def base(self) -> ConqueryId:
         """
         Getter for base
         """
-        return self._base
+        if isinstance(self._base, ConqueryId):
+            return self._base
 
-    @base.setter
-    def base(self, new_base: Optional[ConqueryId]):
-        """
-        Setter for base, should check if ConqueryId that is set is a valid entry for the Instance
-        """
-        self._check_valid_base(new_base=new_base)
-        self._base = new_base
+        raise ValueError(f"Can not retrieve base")
 
     @abstractmethod
     def _check_valid_base(self, new_base: Optional[ConqueryId]):
