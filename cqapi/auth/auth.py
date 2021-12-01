@@ -2,11 +2,11 @@ import attr
 import datetime
 import requests
 from IPython.display import Javascript, display
-
+from importlib.resources import open_text, path
 import logging
 
 
-def keycloak_cmd(auth_url: str, client_name: str):
+def keycloak_cmd2(auth_url: str, client_name: str):
     return f"""
     // get keycloak module from auth server
     require(["{auth_url}/js/keycloak.js"], function(){{
@@ -57,6 +57,7 @@ class TokenHandler:
     last_refresh_time: datetime.datetime = attr.ib(default=datetime.datetime.now(), init=False)
     refresh_time_seconds: int = attr.ib(default=300, init=False)
 
+    """
     def refresh_access_token(self):
         if self.is_simple_token_handler:
             return
@@ -82,18 +83,22 @@ class TokenHandler:
         if time_difference.seconds > self.refresh_time_seconds:
             self.refresh_access_token()
             self.last_refresh_time = datetime.datetime.now()
-
+    
+    """
     def get_token(self):
-        self.check_token()
-
+        #self.check_token()
         return self.token
 
     def login(self):
         if self.is_simple_token_handler:
             return
 
-        return display(Javascript(keycloak_cmd(auth_url=self.auth_url,
-                                               client_name=self.client_name)))
+        #with path("cqapi.auth", "run_keycloak.js") as template_file_path:
+        run_keycloak_script: str = open_text("cqapi.auth", "run_keycloak.js").read()
+        return Javascript(run_keycloak_script)
+
+        #return display(Javascript(keycloak_cmd(auth_url=self.auth_url,
+        #                                       client_name=self.client_name)))
 
 
 """
