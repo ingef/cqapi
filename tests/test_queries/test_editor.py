@@ -3,7 +3,7 @@ from cqapi.queries.translation import check_concept_ids_in_concepts_for_new_data
 import pytest
 
 
-@pytest.skip("requires conquery connection")
+@pytest.mark.skip(reason="requires conquery connection")
 def test_check_concept_ids_in_concepts_for_new_dataset():
     eva_token = "conqueryToken"
 
