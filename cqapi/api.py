@@ -36,6 +36,7 @@ class ConqueryConnectionSession:
     def __init__(self, token: str):
         self.token: str = token
         self._session = requests.session()
+        self._session.headers.update(self.header)
 
     def open(self):
         self.close()
@@ -88,7 +89,7 @@ class ConqueryConnection(object):
 
     def __init__(self, url: str, auth_url: str = "http://auth.localhost/auth", client_name: str = "conquery-release",
                  token: str = "", requests_timout: int = 5, dataset: str = None, user_login: bool = True,
-                 token_refresh_rate: int = 60000):
+                 token_refresh_rate: int = 300000):
         self._url: str = url.strip('/')
         self._token = token
         self._session: ConqueryConnectionSession = ConqueryConnectionSession(token=token)
