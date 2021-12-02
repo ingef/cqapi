@@ -170,6 +170,12 @@ class ConqueryConnection(object):
                              f"Datasets with permission: {self._datasets_with_permission}")
         return dataset
 
+    def get_daraset(self) -> str:
+        if isinstance(self._dataset, str):
+            return self._dataset
+
+        raise ValueError(f"Connection has no dataset attribute")
+
     def get_datasets(self) -> list:
         response_list = self._session.get_json(f"{self._url}/api/datasets")
         return [d['id'] for d in response_list]
