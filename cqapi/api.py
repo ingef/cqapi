@@ -5,16 +5,13 @@ from time import sleep
 import requests
 import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
-from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
+from cqapi.exceptions import QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject
-from typing import Union, List, Dict, NoReturn, Optional
+from typing import Union, List, Dict, NoReturn
 from requests import Response
 from requests.exceptions import HTTPError
-from IPython.display import Javascript
 from importlib.resources import open_text
-import pandas as pd
-import pyarrow as pa
 
 
 def raise_for_status(response: Response) -> Union[None, NoReturn]:
@@ -126,7 +123,7 @@ class ConqueryConnection(object):
         if not self._datasets_with_permission:
             self._set_up_datasets()
 
-    def login(self) -> Optional[Javascript]:
+    def login(self):
         """
         When _user_login is set, this function returns JavaScript-Code that will be executed in the output cell when
         code is run in a jupyter notebook. The Code will initialize a KeyCloak-Object that connects
@@ -134,6 +131,9 @@ class ConqueryConnection(object):
         Notebook-Scope are updated and a second JavaScript-Process will refresh that token in self._token_refresh_rate
         seconds.
         """
+        # the import is only done here because login is only used in specific use cases
+        from IPython.display import Javascript  # type: ignore
+
         if not self._user_login:
             return None
 
@@ -390,7 +390,9 @@ class ConqueryConnection(object):
             data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
             if return_pandas:
+                import pandas as pd  # type: ignore
                 if download_with_arrow:
+                    import pyarrow as pa  # type: ignore
                     result_url_arrow = self._get_result_url(response=response, file_type="arrf")
                     # if date_as_object=False, date columns will be in numpy Int64 / pd.Timestamp format
                     data = \

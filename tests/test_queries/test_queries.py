@@ -1,9 +1,11 @@
 import cqapi.queries.queries as queries
+from cqapi.datasets import set_test_datasets
 from copy import deepcopy
 import json
 from pathlib import Path
 import os
 
+set_test_datasets()
 test_queries_path = Path(os.path.dirname(os.path.realpath(__file__))) / "test_queries"
 
 
