@@ -23,15 +23,15 @@ const update_and_assign_token = function (refresh_rate) {
 }
 
 // load keycloak module from eva keycloak server
-require(["http://auth.localhost/auth/js/keycloak.js"], function () {
+require(["auth_url_placeholder/js/keycloak.js"], function () {
 
     // initiate keycloak object with server url and client id
     window.keycloak = new Keycloak({
         "realm": "Ingef",
-        "auth-server-url": "http://auth.localhost/auth/",
+        "auth-server-url": "auth_url_placeholder",
         "ssl-required": "external",
-        "resource": "conquery-release",
-        "clientId": "conquery-release",
+        "resource": "client_id_placeholder",
+        "clientId": "client_id_placeholder",
         "public-client": true,
         "confidential-port": 0
     })
@@ -41,10 +41,9 @@ require(["http://auth.localhost/auth/js/keycloak.js"], function () {
     window.keycloak.init({onLoad: 'login-required'}).then(function (authenticated) {
 
         // when login was successful we let the user know and set the token in all ConqueryConnections objects
-        console.log(authenticated)
         if (authenticated){
             alert("Authentifizierung war erfolgreich!")
-            update_and_assign_token(60000)
+            update_and_assign_token(refresh_rate_placeholder)
         } else {
             alert("Authentifizierung war nicht erfolgreich, bitte wenden Sie sich an das EVA-Team")
         }
