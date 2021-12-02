@@ -52,13 +52,4 @@ require(["http://auth.lyo-peva02/auth/js/keycloak.js"], function () {
     }).catch(function () {
         alert("Initialisierung der Authentifizierung war nicht erfolgreich, bitte wenden Sie sich an das EVA-Team");
     });
-
-    // when login was successful we let the user know and set the token in all ConqueryConnections objects
-    console.log(authenticated)
-    if (authenticated){
-        alert("Authentifizierung war erfolgreich!")
-        update_and_assign_token(60000)
-    } else {
-        alert("Authentifizierung war nicht erfolgreich, bitte wenden Sie sich an das EVA-Team")
-    }
 })
