@@ -1,8 +1,80 @@
-from cqapi.conquery_ids import ConqueryIdCollection, DatasetId, ConceptId, ConnectorId, SelectId,\
-    get_dataset_from_id_string, get_copy_of_id_with_changed_dataset
+from cqapi.conquery_ids import ConqueryIdCollection, DatasetId, ConceptId, ConnectorId, SelectId, DateId, \
+    ChildId, DateId, get_dataset_from_id_string, get_copy_of_id_with_changed_dataset, FilterId, ChildId
 import pytest
 from cqapi.datasets import set_test_datasets
 set_test_datasets()
+
+concepts = dict({
+    "dataset1.khfalle": {
+        "parent": "dataset1.infonet_leistungsmengen_struc",
+        "label": "Krankenhausfälle",
+        "description": None,
+        "active": True,
+        "children": [],
+        "additionalInfos": [
+            {
+                "key": "Leistungsfälle TP4a",
+                "value": "Alle Krankenhausfälle (unabhängig, ob vollstationärer, teilstationärer, vorstationärer Fall oder ambulante Behandlung)"
+            }
+        ],
+        "matchingEntries": 100,
+        "dateRange": None,
+        "tables": [
+            {
+                "id": "dataset1.kh_fall",
+                "connectorId": "dataset1.khfalle.krankenhausf$c3$a4lle",
+                "label": "Krankenhausfälle",
+                "dateColumn": {
+                    "defaultValue": "dataset1.khfalle.krankenhausf$c3$a4lle.entlassungsdatum",
+                    "options": [
+                        {
+                            "label": "Entlassungsdatum",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.entlassungsdatum",
+                            "templateValues": None,
+                            "optionValue": None
+                        },
+                        {
+                            "label": "Aufnahmedatum",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.aufnahmedatum",
+                            "templateValues": None,
+                            "optionValue": None
+                        },
+                        {
+                            "label": "Aufenthaltsdauer",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.aufenthaltsdauer",
+                            "templateValues": None,
+                            "optionValue": None
+                        }
+                    ]
+                },
+                "filters": [
+                    {
+                        "id": "dataset1.khfalle.krankenhausf$c3$a4lle.anzahl_krankenhausf$c3$a4lle",
+                        "label": "Anzahl Krankenhausfälle",
+                        "type": "INTEGER_RANGE",
+                        "unit": "Fälle",
+                        "description": "Anzahl Krankenhausfälle",
+                        "options": None,
+                        "min": 1,
+                        "max": None,
+                        "template": None,
+                        "pattern": None,
+                        "allowDropFile": None
+                    }
+                ],
+                "selects": [
+                    {
+                        "id": "dataset1.khfalle.krankenhausf$c3$a4lle.anzahl_krankenhausfaelle_select",
+                        "label": "Anzahl Krankenhausfälle",
+                        "description": "Automatisch erzeugter Zusatzwert."
+                    }
+                ]
+            }
+        ],
+        "detailsAvailable": True,
+        "codeListResolvable": False,
+        "selects": []
+    }})
 
 
 def test_compare_conquery_ids():
@@ -52,6 +124,19 @@ def test_get_id_with_changed_dataset():
     assert new_id.get_dataset() == "dataset2"
 
 
+def test_get_label():
+    assert DateId("entlassungsdatum", ConnectorId("krankenhausf$c3$a4lle",
+                                                  ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+        "Krankenhausfälle - Krankenhausfälle - Entlassungsdatum"
+
+    assert FilterId("anzahl_krankenhausf$c3$a4lle", ConnectorId(
+        "krankenhausf$c3$a4lle", ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+        "Krankenhausfälle - Krankenhausfälle - Anzahl Krankenhausfälle"
+
+    assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+           "Krankenhausfälle - E14"
+
+
 @pytest.mark.skip("Needs conquery connection")
 def test_label():
     concepts = dict()
@@ -64,4 +149,5 @@ def test_label():
     ids.create_label_dicts(concepts=concepts)
 
     ids.print_id_labels_as_table(concepts=concepts)
+
 
