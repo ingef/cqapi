@@ -76,6 +76,11 @@ def contains_dataset_id(conquery_id: str):
     return is_dataset_id(get_conquery_id_element(conquery_id, dataset_loc))
 
 
+def is_concept_select(select_id: str) -> bool:
+    required_len = 3 if contains_dataset_id(select_id) else 2
+    return len(select_id.split(conquery_id_separator)) == required_len
+
+
 @typechecked()
 def add_dataset_id_to_conquery_id(conquery_id: str, dataset_id: str):
     if not is_dataset_id(dataset_id):

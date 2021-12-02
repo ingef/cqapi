@@ -43,7 +43,7 @@ class QueryObject:
             Keys.row_prefix: self.row_prefix
         }
 
-    def print(self) -> str:
+    def print(self):
         print(json.dumps(self.to_dict(), indent=4))
 
     @classmethod
