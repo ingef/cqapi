@@ -1,16 +1,18 @@
 from __future__ import annotations
-from typing import Union, List, Tuple, Optional, Dict
+import pandas as pd
+import datetime
+from importlib.resources import open_text
+from typing import Union, List, Tuple, Optional
+
+from IPython.display import Markdown, Javascript
+
+from cqapi.api import ConqueryConnection
+from cqapi.namespace import Keys
+from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
+    is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
 from cqapi.queries.translation import translate_query
-from cqapi.api import ConqueryConnection
-from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
-    is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
-import datetime
-from importlib.resources import open_text
-from cqapi.namespace import Keys
-import pandas as pd
-from IPython.display import Markdown, Javascript
 
 
 def convert_date(date: Optional[str]) -> Optional[str]:
@@ -156,7 +158,7 @@ class Query:
         if query_id_to_check is None:
             raise ValueError(f"Nothing executed and no query_id given. Can not check any results")
 
-        query_status = self.conn.get_query_info(query_id)["status"]
+        query_status = self.conn.get_query_info(query_id_to_check)["status"]  # type: ignore
 
         if query_status == "RUNNING":
             return Markdown("Query is still running")
@@ -367,19 +369,8 @@ class Concepts:
 
         for child_concept_id in concept[Keys.children]:
             self.search_concept_recursively(concept_id=child_concept_id,
-                                            concept=self.last_concept[child_concept_id],
+                                            concept=self.last_concept[child_concept_id],  # type: ignore
                                             value=value, matches=matches)
-
-
-"""eva_url = "http://lyo-peva01.spectrumk.ads:8080"
-# eva_url = "http://develop.lyo-peva02"
-eva_token = "conqueryToken"
-conn = ConqueryConnection(eva_url, eva_token, dataset="adb_bosch")
-concepts = Concepts(conn.get_concepts(remove_structure_elements=False), conn=conn)
-print(concepts.search_concept(concept_id="icd", value="Diabetes"))
-print(concepts.search_concept(concept_id="atc", value="Diabetes"))
-
-exit(0)"""
 
 
 class Editor:
