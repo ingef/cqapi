@@ -2,16 +2,19 @@ from __future__ import annotations
 import csv
 from io import StringIO
 from time import sleep
+from typing import Union, List, Dict, NoReturn
+
 import requests
+from requests import Response
+from requests.exceptions import HTTPError
+import pandas as pd
+import pyarrow as pa
+
 import cqapi.datasets
 from cqapi.conquery_ids import get_dataset as get_dataset_from_id
 from cqapi.exceptions import QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject
-from typing import Union, List, Dict, NoReturn
-from requests import Response
-from requests.exceptions import HTTPError
-from importlib.resources import open_text
 
 
 def raise_for_status(response: Response) -> Union[None, NoReturn]:
@@ -368,9 +371,7 @@ class ConqueryConnection(object):
             data = self.get_query_result(query_id, already_reexecuted=True)
         elif response_status == "DONE":
             if return_pandas:
-                import pandas as pd  # type: ignore
                 if download_with_arrow:
-                    import pyarrow as pa  # type: ignore
                     result_url_arrow = self._get_result_url(response=response, file_type="arrf")
                     # if date_as_object=False, date columns will be in numpy Int64 / pd.Timestamp format
                     data = \

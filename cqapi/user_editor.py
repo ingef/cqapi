@@ -378,11 +378,11 @@ class Editor:
     concepts: Concepts = Concepts(concepts=dict(), conn=conn)  # this is only a dummy and has to be overridden
 
     def login(self,
-              url: str = "http://release.lyo-peva02",
+              url: str = "http://eva.ingef.de",
               token: Optional[str] = None,
               dataset: Optional[str] = None,
-              auth_url: str = "http://auth.lyo-peva02/auth",
-              client_id: str = "eva-release",
+              auth_url: str = "https://auth.ingef.de/auth",
+              client_id: str = "eva",
               token_refresh_rate: int = 300):
         """
         When _user_login is set, this function returns JavaScript-Code that will be executed in the output cell when
