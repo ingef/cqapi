@@ -46,6 +46,8 @@ class Keys:
     resolutions = "resolution"
     create_resolution_subdivisions = "alsoCreateCoarserSubdivisions"
     query_group = "queryGroup"
+    default = "default"
+    description = "description"
 
 
 @unique

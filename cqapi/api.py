@@ -87,23 +87,16 @@ class ConqueryConnectionSession:
 class ConqueryConnection(object):
     _dataset = None
 
-    def __init__(self, url: str, auth_url: str = "http://auth.lyo-peva02/auth", client_name: str = "eva-release",
-                 token: str = "", requests_timout: int = 5, dataset: str = None, user_login: bool = True,
-                 token_refresh_rate: int = 300000):
+    def __init__(self, url: str, token: str = "",
+                 requests_timout: int = 5, dataset: str = None):
         self._url: str = url.strip('/')
         self._token = token
         self._session: ConqueryConnectionSession = ConqueryConnectionSession(token=token)
 
-        self._user_login: bool = user_login
-        # settings when user login is enabled:
-        self._auth_url: str = auth_url
-        self._client_id: str = client_name
-        self._token_refresh_rate = token_refresh_rate
-
         self._timeout: int = requests_timout
         self._datasets_with_permission: List[str] = []
 
-        if not user_login:
+        if token:
             self._set_up_datasets(dataset=dataset)
 
     def _set_up_datasets(self, dataset: str = None):
@@ -122,33 +115,6 @@ class ConqueryConnection(object):
         # with user login this is the first time we have a token, so we set up the datasets
         if not self._datasets_with_permission:
             self._set_up_datasets()
-
-    def login(self):
-        """
-        When _user_login is set, this function returns JavaScript-Code that will be executed in the output cell when
-        code is run in a jupyter notebook. The Code will initialize a KeyCloak-Object that connects
-        to the eva-auth server. After successful login the token of all ConqueryConnection-Instanzes in the
-        Notebook-Scope are updated and a second JavaScript-Process will refresh that token in self._token_refresh_rate
-        seconds.
-        """
-        # the import is only done here because login is only used in specific use cases
-        from IPython.display import Javascript  # type: ignore
-
-        if not self._user_login:
-            return None
-
-        placeholder_dict = {
-            "auth_url_placeholder": self._auth_url,
-            "client_id_placeholder": self._client_id,
-            "refresh_rate_placeholder": str(self._token_refresh_rate)
-        }
-
-        run_keycloak_script: str = open_text("cqapi.auth", "run_keycloak.js").read()
-
-        for ph_name, ph_value in placeholder_dict.items():
-            run_keycloak_script = run_keycloak_script.replace(ph_name, ph_value)
-
-        return Javascript(run_keycloak_script)
 
     def change_dataset(self, dataset: str):
         self._dataset = self._get_dataset(dataset)
