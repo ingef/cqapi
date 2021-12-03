@@ -112,8 +112,7 @@ class ConqueryConnection(object):
         self._datasets_with_permission = self.get_datasets()
         self.store_dataset_list_globally()
 
-        if dataset is not None:
-            self._dataset = self._get_dataset(dataset)
+        self._dataset = self._get_dataset(dataset)
 
     def update_token(self, new_token: str):
         """Updates session token and own token (in case we make a new session)"""
@@ -163,18 +162,24 @@ class ConqueryConnection(object):
             if self._dataset is not None:
                 return self._dataset
 
-            return self._datasets_with_permission[0]
+            try:
+                return self._datasets_with_permission[0]
+            except IndexError:
+                raise PermissionError("No Permission on any dataset")
 
         if dataset not in self._datasets_with_permission:
             raise ValueError(f"No permission on {dataset=}. \n"
                              f"Datasets with permission: {self._datasets_with_permission}")
         return dataset
 
-    def get_daraset(self) -> str:
-        if isinstance(self._dataset, str):
-            return self._dataset
+    def get_dataset(self) -> str:
+        if not self._dataset:
+            self._set_up_datasets()
 
-        raise ValueError(f"Connection has no dataset attribute")
+        if self._dataset is None:
+            raise ValueError(f"No permission on any dataset")
+
+        return self._dataset
 
     def get_datasets(self) -> list:
         response_list = self._session.get_json(f"{self._url}/api/datasets")
