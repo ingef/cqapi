@@ -1,6 +1,6 @@
 // this functions injects the new token in all ConqueryConnection-Objects in the notebook Python scope
 const set_token = function () {
-    const assign_cmd = `[value.update_token(new_token = "token") for name, value in dict(globals()).items() if isinstance(value, ConqueryConnection)]`;
+    const assign_cmd = `[value.conn.update_token(new_token = "token") for name, value in dict(globals()).items() if isinstance(value, Editor)]`;
     const kernel = IPython.notebook.kernel;
     kernel.execute(assign_cmd);
     console.log("Token of all ConqueryConnection objects have been updated.")

@@ -1,12 +1,16 @@
 from __future__ import annotations
-from typing import Union, List, Tuple, Optional
+from typing import Union, List, Tuple, Optional, Dict
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
 from cqapi.queries.translation import translate_query
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
-    is_concept_select, add_dataset_id_to_conquery_id
+    is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
 import datetime
+from importlib.resources import open_text
+from cqapi.namespace import Keys
+import pandas as pd
+from IPython.display import Markdown, Javascript
 
 
 def convert_date(date: Optional[str]) -> Optional[str]:
@@ -28,8 +32,9 @@ def convert_date(date: Optional[str]) -> Optional[str]:
 class Query:
 
     def __init__(self, eva: ConqueryConnection):
-        self.query: Optional[QueryObject] = None
         self.conn = eva
+        self.query: Optional[QueryObject] = None
+
         self.concepts: Optional[dict] = None
         self.secondary_id: Optional[str] = None
         self.query_id: Optional[str] = None
@@ -47,8 +52,8 @@ class Query:
 
     def from_existing_query(self, label: str):
         """Load an already existing query via label"""
-        query_id = self.conn.get_query_id(label=label)
-        self.query = SavedQuery(query_id=query_id)
+        self.query_id = self.conn.get_query_id(label=label)
+        self.query = SavedQuery(query_id=self.query_id)
 
     @staticmethod
     def _to_query(value: Union[dict, QueryObject, Query, str]) -> QueryObject:
@@ -145,27 +150,297 @@ class Query:
 
         return "Query was executed. Use the download-Method to download the result"
 
+    def check_execution(self, query_id: str = None):
+        query_id_to_check = query_id if query_id is not None else self.query_id
+
+        if query_id_to_check is None:
+            raise ValueError(f"Nothing executed and no query_id given. Can not check any results")
+
+        query_status = self.conn.get_query_info(query_id)["status"]
+
+        if query_status == "RUNNING":
+            return Markdown("Query is still running")
+
+        if query_status in ["NEW", "FAILED"]:
+            return Markdown("Something went wrong, the query can not be downloaded")
+
+        if query_status == "SUCCESS":
+            return Markdown("Query is ready and can be downloaded")
+
+        raise ValueError(f"Unknown query status")
+
     def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True):
         query_id_for_download = query_id if query_id is not None else self.query_id
 
         if query_id_for_download is None:
             raise ValueError(f"Nothing executed and no query_id given. Can not download any results")
 
-        self.conn.get_query_result(query_id=query_id_for_download,
-                                   return_pandas=use_pandas,
-                                   download_with_arrow=use_arrow)
+        return self.conn.get_query_result(query_id=query_id_for_download,
+                                          return_pandas=use_pandas,
+                                          download_with_arrow=use_arrow)
+
+    def get_data(self):
+        self.execute()
+        return self.download()
+
+
+class Concepts:
+    last_concept: Optional[dict] = None
+
+    def __init__(self, concepts: dict, conn: ConqueryConnection):
+        self.struc_elements = {key: value for key, value in concepts.items() if not value.get("active")}
+        self.concepts = {key: value for key, value in concepts.items() if value.get("active")}
+        self.dataset = next(iter(concepts)).split(".")[0] if concepts else ""
+        self.conn = conn
+
+    def get_default_connectors(self, concept_id: str) -> List[str]:
+        concept_id = get_root_concept_id(concept_id)
+
+        return [table[Keys.connector_id]
+                for table in self.concepts[concept_id][Keys.tables]
+                if table.get(Keys.default, False)]
+
+    def get_default_concept_selects(self, concept_id: str) -> List[str]:
+        concept_id = get_root_concept_id(concept_id)
+
+        return [select[Keys.id]
+                for select in self.concepts[concept_id][Keys.selects]
+                if select.get(Keys.default, False)]
+
+    def get_default_connector_selects(self, concept_id: str, connector_ids: List[str] = None) -> List[str]:
+        concept_id = get_root_concept_id(concept_id)
+
+        if not connector_ids:
+            connector_ids = self.get_default_connectors(concept_id=concept_id)
+
+        return [table_select[Keys.id]
+                for table in self.concepts[concept_id][Keys.tables]
+                for table_select in table[Keys.selects]
+                if table_select.get(Keys.default, False) and table[Keys.connector_id] in connector_ids]
+
+    def is_empty(self):
+        return not bool(self.concepts)
+
+    def show_concepts(self):
+        concept_labels: List[str] = []
+        concept_ids: List[str] = []
+
+        for struc_element in self.struc_elements.values():
+            concept_labels.append(struc_element.get("label", ""))
+            concept_ids.append("")
+
+            concept_ids.extend(remove_dataset_id_from_conquery_id(concept_id)
+                               for concept_id in struc_element["children"])
+            concept_labels.extend([self.concepts[concept_id].get("label", "")
+                                   for concept_id in struc_element["children"]])
+
+            concept_ids.append("")
+            concept_labels.append("")
+
+        return Markdown(pd.DataFrame({"Konzept": concept_labels,
+                                      "Konzept-ID": concept_ids}).to_markdown(index=False))
+
+    def _add_dataset_id(self, conquery_id: str):
+        if conquery_id.startswith(self.dataset):
+            return conquery_id
+
+        return f"{self.dataset}.{conquery_id}"
+
+    def show_connector(self, connector_id: str, show_filters: bool = False, show_selects: bool = True,
+                       show_date_columns: bool = True, return_df: bool = True):
+
+        connector_id = self._add_dataset_id(connector_id)
+        concept: dict = self.concepts[self._add_dataset_id(get_root_concept_id(connector_id))]
+
+        try:
+            connector_obj = next(connector_obj
+                                 for connector_obj in concept[Keys.tables]
+                                 if connector_obj[Keys.connector_id] == connector_id)
+        except StopIteration:
+            raise ValueError(f"Could not find any connector with id {remove_dataset_id_from_conquery_id(connector_id)}")
+
+        types: List[str] = []
+        labels: List[str] = []
+        ids: List[str] = []
+
+        types.append("Quelle (connector_id)")
+        labels.append(connector_obj.get("label", ""))
+        ids.append(connector_id)
+
+        if connector_obj[Keys.date_column] and show_date_columns:
+            for validity_date_obj in connector_obj[Keys.date_column].get(Keys.options, []):
+                types.append("Relevanter Zeitraum (date_column_id)")
+                labels.append(validity_date_obj[Keys.label])
+                ids.append(validity_date_obj[Keys.value])
+
+        if show_selects:
+            for select_obj in connector_obj[Keys.selects]:
+                types.append("Ausgabewert (select_id)")
+                labels.append(select_obj[Keys.label])
+                ids.append(select_obj[Keys.id])
+
+        if show_filters:
+            for filter_obj in connector_obj[Keys.filters]:
+                types.append("Filter (filter_obj)")
+                labels.append(filter_obj[Keys.label])
+                ids.append(filter_obj[Keys.id])
+
+        ids = [remove_dataset_id_from_conquery_id(conquery_id) for conquery_id in ids]
+
+        if return_df:
+            return Markdown(pd.DataFrame({
+                "Typ": types,
+                "Objekt": labels,
+                "EVA-ID": ids
+            }).to_markdown(index=False))
+
+        return types, labels, ids
+
+    def show_concept(self, concept_id: str, show_all: bool = True, show_filters: bool = False):
+
+        concept_id = self._add_dataset_id(concept_id)
+        concept: dict = self.concepts[concept_id]
+
+        types: List[str] = []
+        labels: List[str] = []
+        ids: List[str] = []
+
+        types.append("Konzept (concept_id)")
+        labels.append(concept["label"])
+        ids.append(concept_id)
+
+        # concept selects
+        types.append("")
+        labels.append("")
+        ids.append("")
+        for select_obj in concept[Keys.selects]:
+            types.append("Ausgabewert (select_id)")
+            labels.append(select_obj[Keys.label])
+            ids.append(select_obj[Keys.id])
+
+        for connector_obj in concept[Keys.tables]:
+            connector_types, connector_labels, connector_ids = \
+                self.show_connector(connector_id=connector_obj[Keys.connector_id],
+                                    show_selects=show_all, show_date_columns=show_all,
+                                    show_filters=show_filters, return_df=False)
+            types.extend(["", *connector_types])
+            labels.extend(["", *connector_labels])
+            ids.extend(["", *connector_ids])
+
+        ids = [remove_dataset_id_from_conquery_id(conquery_id) for conquery_id in ids]
+
+        return Markdown(pd.DataFrame({
+            "Typ": types,
+            "Objekt": labels,
+            "EVA-ID": ids
+        }).to_markdown(index=False))
+
+    def search_concept(self, concept_id: str, value: str):
+        concept_id = self._add_dataset_id(concept_id)
+
+        # do not request again if same concept
+        if not self.last_concept or concept_id != next(iter(self.last_concept)):
+            self.last_concept = self.conn.get_concept(concept_id, return_raw_format=True)  # type: ignore
+
+        matches: List[Tuple[str, str, str]] = []
+        self.search_concept_recursively(concept_id=concept_id,
+                                        concept=next(iter(self.last_concept.values())),  # type: ignore
+                                        value=value, matches=matches)
+
+        if not matches:
+            Markdown("Es konnten keine Konzepte gefunden werden.")
+
+        labels, ids, descriptions = list(map(list, zip(*matches)))
+
+        return Markdown(pd.DataFrame(
+            {"Konzept": labels,
+             "Konzept-ID": ids,
+             "Beschreibung": descriptions}).to_markdown(index=False))
+
+    def search_concept_recursively(self, concept_id: str, concept: dict, value: str,
+                                   matches: List[Tuple[str, str, str]]):
+
+        if value in concept[Keys.label] or (concept.get(Keys.description) and value in concept[Keys.description]):
+            matches.append((concept[Keys.label],
+                            remove_dataset_id_from_conquery_id(concept_id),
+                            concept[Keys.description]))
+
+        for child_concept_id in concept[Keys.children]:
+            self.search_concept_recursively(concept_id=child_concept_id,
+                                            concept=self.last_concept[child_concept_id],
+                                            value=value, matches=matches)
+
+
+"""conquery_url = "http://localhost.:8080"
+# conquery_url = "http://develop.localhost"
+conquery_token = "token"
+conn = ConqueryConnection(conquery_url, conquery_token, dataset="dataset1")
+concepts = Concepts(conn.get_concepts(remove_structure_elements=False), conn=conn)
+print(concepts.search_concept(concept_id="icd", value="Diabetes"))
+print(concepts.search_concept(concept_id="atc", value="Diabetes"))
+
+exit(0)"""
 
 
 class Editor:
-    def __init__(self, eva: ConqueryConnection):
-        self.conn = eva
-        self.concepts = eva.get_concepts()
+    conn: ConqueryConnection = ConqueryConnection(url="dummy_connection")
+    concepts: Concepts = Concepts(concepts=dict(), conn=conn)  # this is only a dummy and has to be overridden
+
+    def login(self,
+              url: str = "http://release.localhost",
+              token: Optional[str] = None,
+              dataset: Optional[str] = None,
+              auth_url: str = "http://auth.localhost/auth",
+              client_id: str = "conquery-release",
+              token_refresh_rate: int = 300):
+        """
+        When _user_login is set, this function returns JavaScript-Code that will be executed in the output cell when
+        code is run in a jupyter notebook. The Code will initialize a KeyCloak-Object that connects
+        to the conquery-auth server. After successful login the token of Editor.conn for all Editor in the
+        Notebook-Scope are updated and a second JavaScript-Process will refresh that token in self._token_refresh_rate
+        seconds.
+        """
+
+        self.conn = ConqueryConnection(url=url, dataset=dataset)
+
+        if token:
+            self.conn = ConqueryConnection(url=url, token=token, dataset=dataset)
+            return None
+
+        placeholder_dict = {
+            "auth_url_placeholder": auth_url,
+            "client_id_placeholder": client_id,
+            "refresh_rate_placeholder": str(token_refresh_rate * 1000)
+        }
+
+        run_keycloak_script: str = open_text("cqapi.auth", "run_keycloak.js").read()
+
+        for ph_name, ph_value in placeholder_dict.items():
+            run_keycloak_script = run_keycloak_script.replace(ph_name, ph_value)
+
+        return Javascript(run_keycloak_script)
+
+    def _check_conn_and_concepts(self):
+        if not self.conn:
+            raise ValueError(f"No connection established, please log in first")
+        if self.concepts.is_empty():
+            self.concepts = Concepts(concepts=self.conn.get_concepts(remove_structure_elements=False),
+                                     conn=self.conn)
+
+    def change_dataset(self, new_dataset: str):
+        self.conn.change_dataset(dataset=new_dataset)
 
     def _add_dataset(self, conquery_id: str) -> str:
         if contains_dataset_id(conquery_id):
             return conquery_id
 
         return add_dataset_id_to_conquery_id(conquery_id=conquery_id, dataset_id=self.conn.get_dataset())
+
+    def from_existing_query(self, label: str):
+        self._check_conn_and_concepts()
+
+        query = Query(eva=self.conn)
+        return query.from_existing_query(label=label)
 
     def new_query(self, concept_id: str,
                   connector_ids: List[str] = None,
@@ -174,19 +449,32 @@ class Editor:
         """
         Create query from a eva ids.
         :param concept_id: E.g. "alter", "geschlecht", "icd", "atc"
-        :param connector_ids: Optional: E.g. "alter.alter", "geschlecht.geschlecht", "icd.arzt_diagnose_icd_code"
+        :param connector_ids: Optional: E.g. "alter.alter", "geschlecht.geschlecht", "icd.arzt_diagnose_icd_code".
+                              When none is given, defaults are selected
         :param select_ids: Optional: E.g. "alter.alter.alter_select", "geschlecht.geschlecht.geschlecht_text",
                            icd.arzt_diagnose_icd_code.anzahl_arztfaelle"
+                           When none is given, defaults are selected
         :param start_date: Optional: E.g. "01.01.2020"
         :param end_date: Optional: E.g. "31.12.2020"
         """
 
-        connector_ids = connector_ids or []
+        self._check_conn_and_concepts()
+
+        concept_id = self._add_dataset(concept_id)
+
+        # get default values from concepts
+        if not connector_ids:
+            connector_ids = self.concepts.get_default_connectors(concept_id=concept_id)
+
+        if not select_ids:
+            select_ids = self.concepts.get_default_concept_selects(concept_id=concept_id)
+            select_ids.extend(self.concepts.get_default_connector_selects(concept_id=concept_id,
+                                                                          connector_ids=connector_ids))
 
         query = Query(eva=self.conn)
 
         query.query = create_query(concept_id=self._add_dataset(concept_id),
-                                   concepts=self.concepts,
+                                   concepts=self.concepts.concepts,
                                    connector_ids=[self._add_dataset(con_id) for con_id in connector_ids],
                                    start_date=convert_date(start_date),
                                    end_date=convert_date(end_date))
@@ -196,3 +484,21 @@ class Editor:
                 query.add_select(self._add_dataset(select_id))
 
         return query
+
+    def show_concepts(self):
+        self._check_conn_and_concepts()
+        return self.concepts.show_concepts()
+
+    def show_connector(self, connector_id: str, show_selects: bool = True,
+                       show_filters: bool = True, show_date_column: bool = True):
+        self._check_conn_and_concepts()
+        return self.concepts.show_connector(connector_id=connector_id, show_selects=show_selects,
+                                            show_date_columns=show_date_column, show_filters=show_filters)
+
+    def show_concept(self, concept_id: str, show_all: bool = True, show_filters: bool = False):
+        self._check_conn_and_concepts()
+        return self.concepts.show_concept(concept_id=concept_id, show_all=show_all, show_filters=show_filters)
+
+    def search_concept(self, concept_id: str, value: str):
+        self._check_conn_and_concepts()
+        return self.concepts.search_concept(concept_id=concept_id, value=value)
