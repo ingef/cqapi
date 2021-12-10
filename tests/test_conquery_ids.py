@@ -124,16 +124,16 @@ def test_get_id_with_changed_dataset():
     assert new_id.get_dataset() == "dataset2"
 
 
-def test_get_label():
+def test_get_id_label():
     assert DateId("entlassungsdatum", ConnectorId("krankenhausf$c3$a4lle",
-                                                  ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+                                                  ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
         "Krankenhausfälle - Krankenhausfälle - Entlassungsdatum"
 
     assert FilterId("anzahl_krankenhausf$c3$a4lle", ConnectorId(
-        "krankenhausf$c3$a4lle", ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+        "krankenhausf$c3$a4lle", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
         "Krankenhausfälle - Krankenhausfälle - Anzahl Krankenhausfälle"
 
-    assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_label(concepts) == \
+    assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
            "Krankenhausfälle - E14"
 
 
