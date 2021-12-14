@@ -378,11 +378,11 @@ class Editor:
     concepts: Concepts = Concepts(concepts=dict(), conn=conn)  # this is only a dummy and has to be overridden
 
     def login(self,
-              url: str = "http://eva.ingef.de",
+              url: str = "https://eva.ingef.de",
               token: Optional[str] = None,
               dataset: Optional[str] = None,
               auth_url: str = "https://auth.ingef.de/auth",
-              client_id: str = "eva",
+              client_id: str = "eva-prod",
               token_refresh_rate: int = 300):
         """
         When _user_login is set, this function returns JavaScript-Code that will be executed in the output cell when
@@ -431,7 +431,9 @@ class Editor:
         self._check_conn_and_concepts()
 
         query = Query(eva=self.conn)
-        return query.from_existing_query(label=label)
+        query.from_existing_query(label=label)
+
+        return query
 
     def new_query(self, concept_id: str,
                   connector_ids: List[str] = None,
