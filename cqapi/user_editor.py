@@ -156,30 +156,41 @@ class Query:
         query_id_to_check = query_id if query_id is not None else self.query_id
 
         if query_id_to_check is None:
-            raise ValueError(f"Nothing executed and no query_id given. Can not check any results")
+            return Markdown(f"Es wurde keine Anfrage ausgeführt.")
 
         query_status = self.conn.get_query_info(query_id_to_check)["status"]  # type: ignore
 
         if query_status == "RUNNING":
-            return Markdown("Query is still running")
+            return Markdown("Anfrage ist noch nicht fertig.")
 
         if query_status in ["NEW", "FAILED"]:
-            return Markdown("Something went wrong, the query can not be downloaded")
+            return Markdown("Die Anfrage ist fehlgeschlagen.")
 
-        if query_status == "SUCCESS":
-            return Markdown("Query is ready and can be downloaded")
+        if query_status == "DONE":
+            return Markdown("Die Anfrage ist fertig und das Ergebnis kann heruntergeladen werden.")
 
-        raise ValueError(f"Unknown query status")
+        raise ValueError(f"Unknown {query_status=}")
 
-    def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True):
+    def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True,
+                 preprocess_money_columns: bool = True):
+
         query_id_for_download = query_id if query_id is not None else self.query_id
 
         if query_id_for_download is None:
             raise ValueError(f"Nothing executed and no query_id given. Can not download any results")
 
-        return self.conn.get_query_result(query_id=query_id_for_download,
-                                          return_pandas=use_pandas,
-                                          download_with_arrow=use_arrow)
+        data: pd.DataFrame = self.conn.get_query_result(query_id=query_id_for_download,
+                                                        return_pandas=use_pandas,
+                                                        download_with_arrow=use_arrow)
+
+        # preprocess money columns
+        if preprocess_money_columns:
+            column_descriptions = self.conn.get_column_descriptions(query_id=query_id_for_download)
+            money_columns = [col[Keys.label] for col in column_descriptions if col[Keys.type] == Keys.money_type]
+            for money_column in money_columns:
+                data[money_column] = data[money_column] / 100
+
+        return data
 
     def get_data(self):
         self.execute()
@@ -347,10 +358,10 @@ class Concepts:
         matches: List[Tuple[str, str, str]] = []
         self.search_concept_recursively(concept_id=concept_id,
                                         concept=next(iter(self.last_concept.values())),  # type: ignore
-                                        value=value, matches=matches)
+                                        value=value.lower(), matches=matches)
 
         if not matches:
-            Markdown("Es konnten keine Konzepte gefunden werden.")
+            return Markdown("Es konnten keine Konzepte gefunden werden.")
 
         labels, ids, descriptions = list(map(list, zip(*matches)))
 
@@ -362,7 +373,8 @@ class Concepts:
     def search_concept_recursively(self, concept_id: str, concept: dict, value: str,
                                    matches: List[Tuple[str, str, str]]):
 
-        if value in concept[Keys.label] or (concept.get(Keys.description) and value in concept[Keys.description]):
+        if value in concept[Keys.label].lower() or \
+                (concept.get(Keys.description) and value in concept[Keys.description].lower()):
             matches.append((concept[Keys.label],
                             remove_dataset_id_from_conquery_id(concept_id),
                             concept[Keys.description]))

@@ -48,6 +48,7 @@ class Keys:
     query_group = "queryGroup"
     default = "default"
     description = "description"
+    money_type = "MONEY"
 
 
 @unique
