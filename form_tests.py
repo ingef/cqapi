@@ -6,11 +6,11 @@ import time
 from typing import List
 from cqapi.queries.base_elements import QueryObject, create_query
 
-eva_url = "http://lyo-peva02:8070"
+eva_url = "http://lyo-peva01:8080"
 eva_token = "dKRILd5JEKwBSuxJ0DhK/ONzy60wPkY7FzpaQQ+WGXOSsR0JB5gl/IPohUmbcC3R/3MLhg6zxDZiD0KjqdnJfF4o0zW7gBBvsd7ZZ/vR22aHyzOrY4813xtfdxMZFnVJUTllPiM4CeU2JFJdK6pznfehc4refCQO1onpR7QJW5d/8LqJrtThPTizZFCCSoFEK94zpWbTRtLgdKhPBQvSgaz6WzPM7+9lpqHRCTESwdUrjSJLj0zDtXeh9V482gSMdT6DiCIxonI0+YlCYLNref1dhMdG2ok2xw/FUK7Cp7hMKDyHwVm72CB+CN9a3vba"
 conquery_connection = ConqueryConnection(eva_url, eva_token)
 
-dataset = "adb_novitas"
+dataset = "adb_bosch"
 
 test_psm = True
 test_desc_rel = True
@@ -167,7 +167,8 @@ def create_absolute_descriptive_form(query_group: str, date_range: list, feature
             },
             "features": features
         },
-        "ignoreZeros": ignore_zeros
+        "ignoreZeros": ignore_zeros,
+        "ageGenderStrat": True
     }
 
 
@@ -192,7 +193,8 @@ def create_relative_descriptive_form(query_group: str, features: list,
             "variableStratTime": index_placement,
             "features": features
         },
-        "ignoreZeros": ignore_zeros
+        "ignoreZeros": ignore_zeros,
+        "ageGenderStrat": True
     }
 
 
