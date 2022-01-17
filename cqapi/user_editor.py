@@ -11,7 +11,7 @@ from cqapi.namespace import Keys
 from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
     is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
+    SecondaryIdQuery, Negation, AndElement, OrElement, create_query, QueryDescription
 from cqapi.queries.translation import translate_query
 
 
@@ -52,10 +52,13 @@ class Query:
         """Negate the query to get all people that do not fulfill this characteristic"""
         self.query = Negation(child=self.query, label=label)
 
-    def from_existing_query(self, label: str):
+    def from_existing_query(self, label: str, get_original: bool = False):
         """Load an already existing query via label"""
         self.query_id = self.conn.get_query_id(label=label)
-        self.query = SavedQuery(query_id=self.query_id)
+        if get_original:
+            self.query = create_query_obj(self.conn.get_query(query_id=self.query_id))
+        else:
+            self.query = SavedQuery(query_id=self.query_id)
 
     @staticmethod
     def _to_query(value: Union[dict, QueryObject, Query, str]) -> QueryObject:
@@ -143,10 +146,13 @@ class Query:
         if not self.query:
             raise ValueError(f"Can not execute empty query")
 
-        if self.secondary_id:
-            query_to_execute = SecondaryIdQuery(root=self.query, secondary_id=self.secondary_id)
+        if not isinstance(self.query, QueryDescription):
+            if self.secondary_id:
+                query_to_execute = SecondaryIdQuery(root=self.query, secondary_id=self.secondary_id)
+            else:
+                query_to_execute = ConceptQuery(root=self.query)
         else:
-            query_to_execute = ConceptQuery(root=self.query)
+            query_to_execute = self.query
 
         self.query_id = self.conn.execute_query(query=query_to_execute, label=label)
 
@@ -439,11 +445,11 @@ class Editor:
 
         return add_dataset_id_to_conquery_id(conquery_id=conquery_id, dataset_id=self.conn.get_dataset())
 
-    def from_existing_query(self, label: str):
+    def from_existing_query(self, label: str, get_original: bool = False):
         self._check_conn_and_concepts()
 
         query = Query(eva=self.conn)
-        query.from_existing_query(label=label)
+        query.from_existing_query(label=label, get_original=get_original)
 
         return query
 
