@@ -129,6 +129,10 @@ class ConqueryId(ABC):
     def is_in_id_list(self, other_ids: List[ConqueryId]) -> bool:
         return any(self.is_same_id(other_id=other_id) for other_id in other_ids)
 
+    @abstractmethod
+    def get_id_label(self, concepts: dict) -> str:
+        pass
+
     @classmethod
     @abstractmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ConqueryId:
@@ -186,7 +190,7 @@ class DatasetId(ConqueryId):
     def get_self_label(self):
         return self.name.upper()
 
-    def get_id_label(self):
+    def get_id_label(self, concepts: dict):
         return self.get_self_label()
 
     @classmethod
