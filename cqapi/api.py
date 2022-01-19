@@ -3,7 +3,7 @@ from io import StringIO
 from time import sleep
 import requests
 import cqapi.datasets
-from cqapi.conquery_ids import get_dataset_from_id_string
+from cqapi.conquery_ids import get_dataset_from_id_string, ConqueryId
 from cqapi.exceptions import ConqueryClientConnectionError, QueryNotFoundError
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject
@@ -182,7 +182,10 @@ class ConqueryConnection(object):
         secondary_ids = self.get_secondary_ids(dataset)
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
-    def get_concept(self, concept_id: str, return_raw_format: bool = False) -> Union[List[dict], dict]:
+    def get_concept(self, concept_id: Union[str, ConqueryId], return_raw_format: bool = False) -> Union[List[dict], dict]:
+        if isinstance(concept_id, ConqueryId):
+            concept_id = concept_id.id
+
         dataset = get_dataset_from_id_string(concept_id)
         response_dict = get_json(self._session, f"{self._url}/api/datasets/{dataset}/concepts/{concept_id}")
 
