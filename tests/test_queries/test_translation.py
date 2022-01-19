@@ -1,4 +1,5 @@
 from copy import deepcopy
+import pytest
 from cqapi.queries.base_elements import ConceptQuery, ConceptElement
 from cqapi.queries.translation import translate_query
 import json
@@ -65,6 +66,7 @@ icd_object = {'children': ['dataset3.icd.a00-b99', 'dataset3.icd.c00-d48'],
                    'dateColumn': None}]}
 
 
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_translate_query():
     eva_url = "http://localhost:9292"
     eva_token = "eva_token"
