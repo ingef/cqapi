@@ -470,3 +470,10 @@ def get_dataset_from_id_string(id_string: str) -> str:
     From an id representation of a ConqueryId, retrieve the dataset name.
     """
     return id_string.split(conquery_id_separator)[0]
+
+def get_concept_id_from_id_string(id_string: str) -> str:
+    """
+    From an id representation of a ConqueryId, retrieve the dataset name.
+    """
+    return conquery_id_separator.join([id_string.split(conquery_id_separator)[0],
+                                      id_string.split(conquery_id_separator)[1]])
