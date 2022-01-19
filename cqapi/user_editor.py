@@ -3,7 +3,7 @@ import pandas as pd
 import datetime
 from importlib.resources import open_text
 from typing import Union, List, Tuple, Optional
-
+import attr
 from IPython.display import Markdown, Javascript
 
 from cqapi.api import ConqueryConnection
@@ -11,8 +11,15 @@ from cqapi.namespace import Keys
 from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
     is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndElement, OrElement, create_query, QueryDescription
+    SecondaryIdQuery, Negation, AndElement, OrElement, create_query, QueryDescription, ConceptElement
+from cqapi.queries.form_elements import AbsoluteExportForm, RelativeExportForm
 from cqapi.queries.translation import translate_query
+
+
+def show_error(text: str):
+    wrapper = f"Es ist Fehler aufgetreten: \n{text}"
+
+    return Markdown(wrapper)
 
 
 def convert_date(date: Optional[str]) -> Optional[str]:
@@ -31,34 +38,28 @@ def convert_date(date: Optional[str]) -> Optional[str]:
                              f"or %d.%m.%Y (e.g. 30.05.2020)")
 
 
+def convert_resolution(resolution: str):
+    mapping = {
+        "Gesamt": "COMPLETE",
+        "Jahre": "YEARS",
+        "Quartale": "QUARTERS",
+        "Tage": "DAYS"
+    }
+
+    if resolution in mapping.values():
+        return resolution
+    if resolution.title() in mapping.keys():
+        return mapping[resolution.title()]
+
+    raise ValueError(f"Unknown {resolution=}. Must be in {mapping.keys()}")
+
+
+@attr.s(kw_only=True, auto_attribs=True)
 class Query:
-
-    def __init__(self, eva: ConqueryConnection):
-        self.conn = eva
-        self.query: Optional[QueryObject] = None
-
-        self.concepts: Optional[dict] = None
-        self.secondary_id: Optional[str] = None
-        self.query_id: Optional[str] = None
-
-    def date_restriction(self, start_date: str, end_date: str,
-                         label: str = None):
-        """Restrict query with a start and end date.
-        E.g. query.date_restriction(start_date="01.01.2020", end_date="31.12.2020)"""
-        self.query = DateRestriction(child=self.query, start_date=convert_date(start_date),
-                                     end_date=convert_date(end_date), label=label)
-
-    def negate(self, label: str = None):
-        """Negate the query to get all people that do not fulfill this characteristic"""
-        self.query = Negation(child=self.query, label=label)
-
-    def from_existing_query(self, label: str, get_original: bool = False):
-        """Load an already existing query via label"""
-        self.query_id = self.conn.get_query_id(label=label)
-        if get_original:
-            self.query = create_query_obj(self.conn.get_query(query_id=self.query_id))
-        else:
-            self.query = SavedQuery(query_id=self.query_id)
+    dataset: str
+    query: QueryObject
+    concepts: Optional[dict] = attr.ib(default=None, init=False)
+    query_id: Optional[str] = attr.ib(default=None, init=False)
 
     @staticmethod
     def _to_query(value: Union[dict, QueryObject, Query, str]) -> QueryObject:
@@ -73,17 +74,63 @@ class Query:
 
         raise ValueError(f"Query must be of type Union[dict, str, QueryObject, Editor], not {type(value)}")
 
+    def _add_dataset(self, conquery_id: str) -> str:
+        if contains_dataset_id(conquery_id):
+            return conquery_id
+
+        return add_dataset_id_to_conquery_id(conquery_id=conquery_id, dataset_id=self.dataset)
+
+    def show_json(self):
+        self.query.print()
+
+    def translate(self, concepts: dict, conquery_conn: ConqueryConnection, return_removed_ids: bool = False) -> \
+            Union[Tuple[Union[QueryObject, None], Union[QueryObject, None], ConqueryIdCollection],
+                  Tuple[Union[QueryObject, None], Union[QueryObject, None]]]:
+        return translate_query(query=self.query,
+                               concepts=concepts,
+                               conquery_conn=conquery_conn,
+                               return_removed_ids=return_removed_ids)
+
+    def finalize(self):
+        raise NotImplementedError
+
+
+@attr.s(kw_only=True, auto_attribs=True)
+class AbsoluteExportFormQuery(Query):
+    query: AbsoluteExportForm
+
+    def finalize(self):
+        return self.query
+
+
+@attr.s(kw_only=True, auto_attribs=True)
+class RelativeExportFormQuery(Query):
+    query: RelativeExportForm
+
+    def finalize(self):
+        return self.query
+
+
+@attr.s(kw_only=True, auto_attribs=True)
+class EditorQuery(Query):
+    secondary_id: Optional[str] = attr.ib(default=None, init=False)
+
+    def date_restriction(self, start_date: str, end_date: str,
+                         label: str = None):
+        """Restrict query with a start and end date.
+        E.g. query.date_restriction(start_date="01.01.2020", end_date="31.12.2020)"""
+        self.query = DateRestriction(child=self.query, start_date=convert_date(start_date),
+                                     end_date=convert_date(end_date), label=label)
+
+    def negate(self, label: str = None):
+        """Negate the query to get all people that do not fulfill this characteristic"""
+        self.query = Negation(child=self.query, label=label)
+
     def exclude_from_secondary_id(self) -> None:
         self.query and self.query.exclude_from_secondary_id()
 
     def exclude_from_time_aggregation(self) -> None:
         self.query and self.query.exclude_from_time_aggregation()
-
-    def _add_dataset(self, conquery_id: str) -> str:
-        if contains_dataset_id(conquery_id):
-            return conquery_id
-
-        return add_dataset_id_to_conquery_id(conquery_id=conquery_id, dataset_id=self.conn.get_dataset())
 
     def add_select(self, *select_ids: str):
         """Add any select to the query. All query components that can not have this select are ignored"""
@@ -110,21 +157,6 @@ class Query:
     def add_filter(self, *filter_objects: dict) -> None:
         self.query and self.query.add_filters(filter_objs=list(filter_objects))
 
-    def show_json(self):
-        self.query and self.query.print()
-
-    def translate(self, concepts: dict, conquery_conn: ConqueryConnection, return_removed_ids: bool = False) -> \
-            Union[Tuple[Union[QueryObject, None], Union[QueryObject, None], ConqueryIdCollection],
-                  Tuple[Union[QueryObject, None], Union[QueryObject, None]]]:
-        return translate_query(query=self.query,
-                               concepts=concepts,
-                               conquery_conn=conquery_conn,
-                               return_removed_ids=return_removed_ids)
-
-    def clear(self):
-        """Clears Query"""
-        self.query = None
-
     def join_and(self, *queries_to_join: Union[dict, QueryObject, Query, str]):
         """current query AND all given objects. Given objects can be query_ids, queries as dicts or Query
         E.g.
@@ -142,75 +174,22 @@ class Query:
     def set_secondary_id(self, secondary_id: str):
         self.secondary_id = secondary_id
 
-    def execute(self, label: str = None) -> str:
-        if not self.query:
-            raise ValueError(f"Can not execute empty query")
-
+    def finalize(self) -> QueryObject:
         if not isinstance(self.query, QueryDescription):
             if self.secondary_id:
-                query_to_execute = SecondaryIdQuery(root=self.query, secondary_id=self.secondary_id)
+                return SecondaryIdQuery(root=self.query, secondary_id=self.secondary_id)
             else:
-                query_to_execute = ConceptQuery(root=self.query)
-        else:
-            query_to_execute = self.query
-
-        self.query_id = self.conn.execute_query(query=query_to_execute, label=label)
-
-        return "Query was executed. Use the download-Method to download the result"
-
-    def check_execution(self, query_id: str = None):
-        query_id_to_check = query_id if query_id is not None else self.query_id
-
-        if query_id_to_check is None:
-            return Markdown(f"Es wurde keine Anfrage ausgeführt.")
-
-        query_status = self.conn.get_query_info(query_id_to_check)["status"]  # type: ignore
-
-        if query_status == "RUNNING":
-            return Markdown("Anfrage ist noch nicht fertig.")
-
-        if query_status in ["NEW", "FAILED"]:
-            return Markdown("Die Anfrage ist fehlgeschlagen.")
-
-        if query_status == "DONE":
-            return Markdown("Die Anfrage ist fertig und das Ergebnis kann heruntergeladen werden.")
-
-        raise ValueError(f"Unknown {query_status=}")
-
-    def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True,
-                 preprocess_money_columns: bool = True):
-
-        query_id_for_download = query_id if query_id is not None else self.query_id
-
-        if query_id_for_download is None:
-            raise ValueError(f"Nothing executed and no query_id given. Can not download any results")
-
-        data: pd.DataFrame = self.conn.get_query_result(query_id=query_id_for_download,
-                                                        return_pandas=use_pandas,
-                                                        download_with_arrow=use_arrow)
-
-        # preprocess money columns
-        if preprocess_money_columns:
-            column_descriptions = self.conn.get_column_descriptions(query_id=query_id_for_download)
-            money_columns = [col[Keys.label] for col in column_descriptions if col[Keys.type] == Keys.money_type]
-            for money_column in money_columns:
-                data[money_column] = data[money_column] / 100
-
-        return data
-
-    def get_data(self):
-        self.execute()
-        return self.download()
+                return ConceptQuery(root=self.query)
+        return self.query
 
 
 class Concepts:
     last_concept: Optional[dict] = None
 
-    def __init__(self, concepts: dict, conn: ConqueryConnection):
+    def __init__(self, concepts: dict):
         self.struc_elements = {key: value for key, value in concepts.items() if not value.get("active")}
         self.concepts = {key: value for key, value in concepts.items() if value.get("active")}
         self.dataset = next(iter(concepts)).split(".")[0] if concepts else ""
-        self.conn = conn
 
     def get_default_connectors(self, concept_id: str) -> List[str]:
         concept_id = get_root_concept_id(concept_id)
@@ -354,12 +333,12 @@ class Concepts:
             "EVA-ID": ids
         }).to_markdown(index=False))
 
-    def search_concept(self, concept_id: str, value: str):
+    def search_concept(self, concept_id: str, value: str, conn: ConqueryConnection):
         concept_id = self._add_dataset_id(concept_id)
 
         # do not request again if same concept
         if not self.last_concept or concept_id != next(iter(self.last_concept)):
-            self.last_concept = self.conn.get_concept(concept_id, return_raw_format=True)  # type: ignore
+            self.last_concept = conn.get_concept(concept_id, return_raw_format=True)  # type: ignore
 
         matches: List[Tuple[str, str, str]] = []
         self.search_concept_recursively(concept_id=concept_id,
@@ -391,9 +370,10 @@ class Concepts:
                                             value=value, matches=matches)
 
 
-class Editor:
+class Conquery:
     conn: ConqueryConnection = ConqueryConnection(url="dummy_connection")
-    concepts: Concepts = Concepts(concepts=dict(), conn=conn)  # this is only a dummy and has to be overridden
+    concepts: Concepts = Concepts(concepts=dict())  # this is only a dummy and has to be overridden
+    executed_query_id: Optional[str] = None
 
     def login(self,
               url: str = "https://eva.ingef.de",
@@ -433,8 +413,7 @@ class Editor:
         if not self.conn:
             raise ValueError(f"No connection established, please log in first")
         if self.concepts.is_empty():
-            self.concepts = Concepts(concepts=self.conn.get_concepts(remove_structure_elements=False),
-                                     conn=self.conn)
+            self.concepts = Concepts(concepts=self.conn.get_concepts(remove_structure_elements=False))
 
     def change_dataset(self, new_dataset: str):
         self.conn.change_dataset(dataset=new_dataset)
@@ -448,15 +427,21 @@ class Editor:
     def from_existing_query(self, label: str, get_original: bool = False):
         self._check_conn_and_concepts()
 
-        query = Query(eva=self.conn)
-        query.from_existing_query(label=label, get_original=get_original)
+        query_id = self.conn.get_query_id(label=label)
+        if get_original:
+            query = create_query_obj(self.conn.get_query(query_id=query_id))
+        else:
+            query = SavedQuery(query_id=query_id)
 
-        return query
+        query_wrapper = Query(query=query, dataset=self.conn.get_dataset())
+        query_wrapper.query = query
+
+        return query_wrapper
 
     def new_query(self, concept_id: str,
                   connector_ids: List[str] = None,
                   select_ids: List[str] = None,
-                  start_date: str = None, end_date: str = None) -> Query:
+                  start_date: str = None, end_date: str = None) -> EditorQuery:
         """
         Create query from a eva ids.
         :param concept_id: E.g. "alter", "geschlecht", "icd", "atc"
@@ -482,19 +467,59 @@ class Editor:
             select_ids.extend(self.concepts.get_default_connector_selects(concept_id=concept_id,
                                                                           connector_ids=connector_ids))
 
-        query = Query(eva=self.conn)
+        query = create_query(concept_id=self._add_dataset(concept_id),
+                             concepts=self.concepts.concepts,
+                             connector_ids=[self._add_dataset(con_id) for con_id in connector_ids],
+                             start_date=convert_date(start_date),
+                             end_date=convert_date(end_date))
 
-        query.query = create_query(concept_id=self._add_dataset(concept_id),
-                                   concepts=self.concepts.concepts,
-                                   connector_ids=[self._add_dataset(con_id) for con_id in connector_ids],
-                                   start_date=convert_date(start_date),
-                                   end_date=convert_date(end_date))
-
+        query_wrapper = EditorQuery(query=query, dataset=self.conn.get_dataset())
         if select_ids:
             for select_id in select_ids:
-                query.add_select(self._add_dataset(select_id))
+                query_wrapper.add_select(self._add_dataset(select_id))
 
-        return query
+        return query_wrapper
+
+    def new_absolute_export_query(self, editor_query: Union[EditorQuery, str],
+                                  start_date: str, end_date: str,
+                                  resolution: str = "Gesamt",
+                                  features: Optional[List[str]] = None):
+        if isinstance(editor_query, EditorQuery):
+            editor_query_id = self.conn.execute_query(query=editor_query.finalize())
+        else:
+            editor_query_id = editor_query
+
+        query = AbsoluteExportForm(query_id=editor_query_id, features=features or [],
+                                   resolutions=[convert_resolution(resolution)],
+                                   start_date=convert_date(start_date), end_date=convert_date(end_date))
+
+        return AbsoluteExportFormQuery(query=query, dataset=self.conn.get_dataset())
+
+    def add_feature_to_absolute_export_form_query(self, query: AbsoluteExportFormQuery,
+                                                  concept_id: str, connector_id: str = None,
+                                                  select_ids: Union[List[str]] = None):
+
+        concept_id = self._add_dataset(concept_id)
+        if not connector_id:
+            connector_ids = self.concepts.get_default_connectors(concept_id=concept_id)
+        else:
+            connector_ids = [self._add_dataset(connector_id)]
+
+        if not select_ids:
+            select_ids = self.concepts.get_default_concept_selects(concept_id=concept_id)
+            select_ids.extend(self.concepts.get_default_connector_selects(concept_id=concept_id,
+                                                                          connector_ids=connector_ids))
+
+        else:
+            select_ids = [self._add_dataset(select_id) for select_id in select_ids]
+
+        concept_select_ids = [select_id for select_id in select_ids if is_concept_select(select_id)]
+        connector_select_ids = [select_id for select_id in select_ids if not is_concept_select(select_id)]
+        concept = create_query(concept_id=concept_id, connector_ids=connector_ids,
+                               concept_select_ids=concept_select_ids, connector_select_ids=connector_select_ids,
+                               concepts=self.concepts.concepts)
+
+        query.query.features.append(concept)
 
     def show_concepts(self):
         self._check_conn_and_concepts()
@@ -512,4 +537,54 @@ class Editor:
 
     def search_concept(self, concept_id: str, value: str):
         self._check_conn_and_concepts()
-        return self.concepts.search_concept(concept_id=concept_id, value=value)
+        return self.concepts.search_concept(concept_id=concept_id, value=value, conn=self.conn)
+
+    def execute(self, query: Query, label: str = None):
+        self.executed_query_id = self.conn.execute_query(query=query.finalize(), label=label)
+
+        return Markdown("Anfrage wurde ausgeführt. Mit der Methode `download()` "
+                        "kann das Anfrageergebnis heruntergeladen werden.")
+
+    def check_execution(self, query_id: str = None):
+        query_id_to_check = query_id if query_id is not None else self.executed_query_id
+
+        if query_id_to_check is None:
+            return Markdown(f"Es wurde keine Anfrage ausgeführt.")
+
+        query_status = self.conn.get_query_info(query_id_to_check)["status"]  # type: ignore
+
+        if query_status == "RUNNING":
+            return Markdown("Anfrage ist noch nicht fertig.")
+
+        if query_status in ["NEW", "FAILED"]:
+            return Markdown("Die Anfrage ist fehlgeschlagen.")
+
+        if query_status == "DONE":
+            return Markdown("Die Anfrage ist fertig und das Ergebnis kann heruntergeladen werden.")
+
+        return show_error(f"Anfrage hat unbekannten Status: {query_status}.")
+
+    def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True,
+                 preprocess_money_columns: bool = True):
+
+        query_id_for_download = query_id if query_id is not None else self.executed_query_id
+
+        if query_id_for_download is None:
+            return show_error("Es wurde weder eine Anfrage ausgeführt, noch eine query_id übergeben.")
+
+        data: pd.DataFrame = self.conn.get_query_result(query_id=query_id_for_download,
+                                                        return_pandas=use_pandas,
+                                                        download_with_arrow=use_arrow)
+
+        # preprocess money columns
+        if preprocess_money_columns:
+            column_descriptions = self.conn.get_column_descriptions(query_id=query_id_for_download)
+            money_columns = [col[Keys.label] for col in column_descriptions if col[Keys.type] == Keys.money_type]
+            for money_column in money_columns:
+                data[money_column] = data[money_column] / 100
+
+        return data
+
+    def get_data(self, query: Query, label: str = None):
+        self.execute(query=query, label=label)
+        return self.download()
