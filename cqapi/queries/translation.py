@@ -22,8 +22,8 @@ def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_co
     # don't ask for children concepts for concepts that are not available for new dataset
     concept_ids = list()
     for concept_id in all_concept_ids:
-        new_concept_id = concept_id.get_concept_id.deepcopy()
-        new_concept_id.get_copy_of_id_with_changed_dataset(new_dataset=new_dataset)
+        new_concept_id = concept_id.get_concept_id()
+        get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=new_concept_id)
         if new_concept_id.id in concepts.keys():
             concept_ids.append(concept_id)
 
