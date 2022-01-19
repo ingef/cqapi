@@ -1006,7 +1006,7 @@ class ConceptElement(QueryObject):
         }
 
     def get_concept_ids(self):
-        return set([conquery_id.id for conquery_id in self.ids])
+        return set([conquery_id for conquery_id in self.ids])
 
     def get_concept_elements(self):
         return [self]
