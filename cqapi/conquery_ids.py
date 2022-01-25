@@ -56,7 +56,7 @@ class ConqueryId(ABC):
         if isinstance(self._base, ConqueryId):
             return self._base
 
-        raise ValueError(f"Can not retrieve base")
+        raise ValueError(f"Cannot retrieve base")
 
     @base.setter
     def base(self, new_base: Optional[ConqueryId]):

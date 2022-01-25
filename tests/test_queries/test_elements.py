@@ -1,9 +1,9 @@
 from unittest.case import TestCase
 
-from cqapi.conquery_ids import ConceptId, DatasetId, ConnectorId, SelectId, ChildId, DateId
+from cqapi.conquery_ids import ConceptId, DatasetId, ConnectorId, SelectId, ChildId, DateId, FilterId
 from cqapi.queries.editor import QueryEditor
 from cqapi.queries.base_elements import ConceptElement, OrElement, DateRestriction, SecondaryIdQuery, \
-    ConceptQuery, ConceptTable
+    ConceptQuery, ConceptTable, create_query
 from cqapi.queries.form_elements import EntityDateExportForm, FullExportForm, RelativeExportForm
 from cqapi.namespace import Keys, QueryType
 
@@ -162,6 +162,77 @@ def test_relativ_export_form():
     }
 
     TestCase().assertDictEqual(export_form_val, export_form_out)
+
+
+def test_concept_element():
+    icd_kh_table = {
+        "id": "dataset1.kh_diagnose",
+        "connectorId": "dataset1.icd.kh_diagnose_icd_code",
+        "label": "KH-Diagnose",
+        "dateColumn": {
+            "defaultValue": "dataset1.icd.kh_diagnose_icd_code.entlassungsdatum",
+            "options": [
+                {
+                    "label": "Entlassungsdatum",
+                    "value": "dataset1.icd.kh_diagnose_icd_code.entlassungsdatum"
+                }
+            ]
+        },
+        "filters": [
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.fallzahl",
+                "label": "Fallzahl",
+                "type": "INTEGER_RANGE",
+                "unit": "Fälle",
+                "description": "Anzahl der Fälle"
+            },
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.anzahl_quartale",
+                "label": "Anzahl Quartale",
+                "type": "INTEGER_RANGE",
+                "unit": "Quartale",
+                "description": "Anzahl der Quartale mit Diagnose"
+            }
+        ],
+        "selects": [
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.liste_erster_entlassungstag",
+                "label": "Ausgabe erster Entlassungstag"
+            },
+            {
+                "id": "dataset1.icd.kh_diagnose_icd_code.liste_letzter_entlassungstag",
+                "label": "Ausgabe letzter Entlassungstag"
+            }
+        ]
+    }
+    concepts = {"dataset1.icd": {"tables": [icd_kh_table],
+                                 "children": ["dataset1.icd.a", "dataset1.icd.b"],
+                                 "selects": [{
+                                     "id": "dataset1.icd.icd_exists",
+                                     "label": "ICD liegt vor"
+                                 }]
+                                 }}
+    dataset_id = DatasetId("dataset1")
+    concept_id = ConceptId("icd", dataset_id)
+    connector_id = ConnectorId("kh_diagnose_icd_code", concept_id)
+    filter_id = FilterId("fallzahl", connector_id)
+    connector_select_id = SelectId("liste_erster_entlassungstag", connector_id)
+
+    query = create_query(concept_id=concept_id, concepts=concepts,
+                         connector_ids=[connector_id])
+
+    query.add_filter({"type": "MULTI_SELECT",
+                      "value": "test",
+                      "filter": filter_id})
+
+    query.add_connector_select(connector_select_id)
+
+    assert query.to_dict() == {'type': 'CONCEPT',
+                                               'ids': ['dataset1.icd'],
+                                               'tables': [{'id': 'dataset1.icd.kh_diagnose_icd_code',
+                                                           'filters': [{'type': 'MULTI_SELECT', 'value': 'test',
+                                                                        'filter': 'dataset1.icd.kh_diagnose_icd_code.fallzahl'}],
+                                                           'selects': ['dataset1.icd.kh_diagnose_icd_code.liste_erster_entlassungstag']}]}
 
 
 def test_entity_date_export_form():

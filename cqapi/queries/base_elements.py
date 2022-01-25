@@ -774,8 +774,9 @@ class ConceptTable:
 
         filters = list()
         for filter_element in self.filters:
-            filter_element[Keys.filter] = filter_element[Keys.filter].id
-            filters.append(filter_element)
+            new_filter_element = deepcopy(filter_element)
+            new_filter_element[Keys.filter] = new_filter_element[Keys.filter].id
+            filters.append(new_filter_element)
 
         return {
             Keys.id: self.connector_id.id,
@@ -1149,8 +1150,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
     """Converts list of dicts to list of QueryObjects"""
     return [create_query_obj(query) for query in queries]
 
-
-@typechecked()
+@typechecked
 def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[ChildId], str, List[str]],
                  concepts: dict,
                  concept_query: bool = False,
@@ -1162,7 +1162,7 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
                  date_aggregation_mode: str = None,
                  start_date: str = None, end_date: str = None,
                  label: str = None,
-                 negate: bool = False) -> QueryObject:
+                 negate: bool = False):
 
     if isinstance(concept_id, ConqueryId) or isinstance(concept_id, str):
         concept_ids = [concept_id]
