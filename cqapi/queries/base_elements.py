@@ -1023,6 +1023,8 @@ class ConceptElement(QueryObject):
                        for table in self.tables
                        if table.connector_id.is_in_id_list(connector_ids)]
 
+    def get_root_concept_id(self):
+        return self.ids[0].get_concept_id()
 
 class SimpleQuery(QueryObject):
 
