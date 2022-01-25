@@ -1201,8 +1201,8 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
 
     if filter_objs:
         for index, filter_obj_element in enumerate(filter_objs):
-            if isinstance(filter_obj_element["filter_id"], str):
-                filter_objs[index]["filter_id"] = FilterId.from_str(filter_obj_element["filter_id"])
+            if isinstance(filter_obj_element[keys.filter], str):
+                filter_objs[index][keys.filter] = FilterId.from_str(filter_obj_element[keys.filter])
 
     query = ConceptElement(ids=concept_ids, concept=concepts[root_concept_id],
                            connector_ids=connector_ids,
