@@ -912,8 +912,8 @@ class ConceptElement(QueryObject):
                 if query_table.get(Keys.selects) else None
 
             filter_objs = query_table.get(Keys.filters)
+            new_filter_objs = deepcopy(filter_objs)
             if filter_objs:
-                new_filter_objs = deepcopy(filter_objs)
                 for i, filter_obj in enumerate(new_filter_objs):
                     if isinstance(filter_obj[Keys.filter], str):
                         new_filter_objs[i][Keys.filter] = FilterId.from_str(filter_obj[Keys.filter])
