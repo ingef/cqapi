@@ -913,9 +913,10 @@ class ConceptElement(QueryObject):
 
             filter_objs = query_table.get(Keys.filters)
             if filter_objs:
-                for i, filter_obj in enumerate(filter_objs):
+                new_filter_objs = deepcopy(filter_objs)
+                for i, filter_obj in enumerate(new_filter_objs):
                     if isinstance(filter_obj[Keys.filter], str):
-                        filter_objs[i][Keys.filter] = FilterId.from_str(filter_obj[Keys.filter])
+                        new_filter_objs[i][Keys.filter] = FilterId.from_str(filter_obj[Keys.filter])
 
             connector_id = ConnectorId.from_str(query_table[Keys.id]) if isinstance(
                 query_table[Keys.id], str) else query_table[Keys.id]
@@ -923,7 +924,7 @@ class ConceptElement(QueryObject):
             tables.append(ConceptTable(connector_id=connector_id,
                                        date_column_id=date_column_id,
                                        select_ids=select_ids,
-                                       filter_objs=filter_objs))
+                                       filter_objs=new_filter_objs))
 
         ids = [ConceptId.from_str(id_string) if len(id_string.split(conquery_id_separator)) == 2 else
                ChildId.from_str(id_string) for id_string in query[Keys.ids]] if isinstance(query[Keys.ids][0], str) \
