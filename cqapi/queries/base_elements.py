@@ -1235,3 +1235,23 @@ def validate_query_type(query_object_type: Type[QueryObject], query: dict):
     if valid_query_type != class_type:
         raise ValueError(f"Can not create class {class_type} from query with type {query_type}, "
                          f"only from {valid_query_type}")
+
+
+def get_label_from_query(query: QueryObject):
+    """Returns label from query. If there is more than one child, only the label of the first child is returned"""
+    cq_element_description = {
+        "base_cq_elements": ["CONCEPT", "PERIOD_CONCEPT", "SAVED_QUERY"],
+        "cq_element_collections": ["AND", "OR"],
+        "cq_element_wrap": ["DATE_RESTRICTION", "NEGATION", "CONCEPT_QUERY"]
+    }
+
+    query = query.to_dict()
+
+    if query["type"] in cq_element_description["base_cq_elements"]:
+        return query.get('label', '')
+    if 'root' in query.keys():
+        return query.get('root').get('label')
+    elif 'children' in query.keys():
+        return query.get('children')[0].get('label')
+    else:
+        raise ValueError(f"Could not find 'root' or 'children' objects in query")
