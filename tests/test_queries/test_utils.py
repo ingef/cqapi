@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cqapi.queries.base_elements import create_query, ConceptTable, ConceptElement, AndElement, Negation, ConceptQuery
-from cqapi.conquery_ids import ConceptId, ConnectorId, SelectId, ChildId, DateId, ConqueryIdCollection, FilterId
+from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
 from cqapi.datasets import set_dataset_list
 
 set_dataset_list(["dataset1", "dataset2"])
@@ -68,9 +68,8 @@ def test_create_query():
     query_val = {"type": "CONCEPT", "ids": ["dataset1.alter"],
                  "tables": [
                      {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter.alter.ausgabe_alter"]}]}
-
-    query_out = create_query(concept_id=ConceptId.from_str("dataset1.alter"), concepts=concepts,
-                             connector_select_ids=[SelectId.from_str("dataset1.alter.alter.ausgabe_alter")]).to_dict()
+    query_out = create_query(concept_id="dataset1.alter", concepts=concepts,
+                             connector_select_ids=["dataset1.alter.alter.ausgabe_alter"]).to_dict()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
 
@@ -151,124 +150,113 @@ def test_translate_query():
                                      "label": "ICD liegt vor"
                                  }]
                                  }}
-    table = ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"),
-                         date_column_id=DateId.from_str("dataset2.icd.au_fall.au-beginn"),
-                         select_ids=[SelectId.from_str("dataset2.icd.au_fall.liste_fall_id"),
-                                     SelectId.from_str("dataset2.icd.au_fall.select_to_drop")],
-                         filter_objs=[{"filter": FilterId.from_str("dataset2.icd.au_fall.fall_id")},
-                                      {"filter": FilterId.from_str("dataset2.icd.au_fall.filter_to_drop")}])
+    table = ConceptTable(connector_id="dataset2.icd.au_fall",
+                         date_column_id="dataset2.icd.au_fall.au-beginn",
+                         select_ids=["dataset2.icd.au_fall.liste_fall_id",
+                                     "dataset2.icd.au_fall.select_to_drop"],
+                         filter_objs=[{"filter": "dataset2.icd.au_fall.fall_id"},
+                                      {"filter": "dataset2.icd.au_fall.filter_to_drop"}])
 
     removed_ids = ConqueryIdCollection()
     new_table, remaining_table = table.translate(concepts=concepts, removed_ids=removed_ids)
 
     # check old table
-    table_val = ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"),
-                             date_column_id=DateId.from_str("dataset2.icd.au_fall.au-beginn"),
-                             select_ids=[SelectId.from_str("dataset2.icd.au_fall.liste_fall_id")],
-                             filter_objs=[{"filter": FilterId.from_str("dataset2.icd.au_fall.fall_id")}])
+    table_val = ConceptTable(connector_id="dataset2.icd.au_fall",
+                             date_column_id="dataset2.icd.au_fall.au-beginn",
+                             select_ids=["dataset2.icd.au_fall.liste_fall_id"],
+                             filter_objs=[{"filter": "dataset2.icd.au_fall.fall_id"}])
     assert remaining_table == table_val
 
     # check removed ids
     removed_ids_val = ConqueryIdCollection()
-    removed_ids_val.add(SelectId.from_str("dataset2.icd.au_fall.select_to_drop"))
-    removed_ids_val.add(FilterId.from_str("dataset2.icd.au_fall.filter_to_drop"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.au_fall.select_to_drop", "connector_select"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.au_fall.filter_to_drop", "filter"))
     assert removed_ids == removed_ids_val
 
     # check new table
-    new_table_val = ConceptTable(connector_id=ConnectorId.from_str("dataset1.icd.au_fall"),
-                                 date_column_id=DateId.from_str("dataset1.icd.au_fall.au-beginn"),
-                                 select_ids=[SelectId.from_str("dataset1.icd.au_fall.liste_fall_id")],
-                                 filter_objs=[{"filter": FilterId.from_str("dataset1.icd.au_fall.fall_id")}])
+    new_table_val = ConceptTable(connector_id="dataset1.icd.au_fall",
+                                 date_column_id="dataset1.icd.au_fall.au-beginn",
+                                 select_ids=["dataset1.icd.au_fall.liste_fall_id"],
+                                 filter_objs=[{"filter": "dataset1.icd.au_fall.fall_id"}])
 
     assert new_table == new_table_val
 
     # test concept element
     removed_ids = ConqueryIdCollection()
-    table_1 = ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))
-    table_2 = ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.table_to_drop"))
-    concept_element = ConceptElement(ids=[ChildId.from_str("dataset2.icd.a"), ChildId.from_str("dataset2.icd.a.a"),
-                                          ChildId.from_str("dataset2.icd.a.to_drop"),
-                                          ChildId.from_str("dataset2.icd.concept_id_to_drop")],
+    table_1 = ConceptTable(connector_id="dataset2.icd.au_fall")
+    table_2 = ConceptTable(connector_id="dataset2.icd.table_to_drop")
+    concept_element = ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a",
+                                          "dataset2.icd.a.to_drop", "dataset2.icd.concept_id_to_drop"],
                                      tables=[table_1, table_2],
                                      exclude_from_time_aggregation=True,
                                      exclude_from_secondary_id=True,
                                      label="test",
-                                     concept_selects=[SelectId.from_str("dataset2.icd.icd_exists"),
-                                                      SelectId.from_str("dataset2.icd.select_to_drop")])
+                                     concept_selects=["dataset2.icd.icd_exists", "dataset2.icd.select_to_drop"])
     new_concept_element, remaining_concept_element = \
-        concept_element.translate(concepts=concepts, children_ids=[ChildId.from_str("dataset1.icd.a.a"),
-                                                                   ChildId.from_str("dataset1.icd.a.b")],
+        concept_element.translate(concepts=concepts, children_ids=["dataset1.icd.a.a",
+                                                                   "dataset1.icd.a.b"],
                                   removed_ids=removed_ids)
 
-    assert remaining_concept_element == ConceptElement(ids=[ChildId.from_str("dataset2.icd.a"),
-                                                            ChildId.from_str("dataset2.icd.a.a")],
-                                                       tables=[ConceptTable(
-                                                           connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))],
+    assert remaining_concept_element == ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.a.a"],
+                                                       tables=[ConceptTable(connector_id="dataset2.icd.au_fall")],
                                                        exclude_from_secondary_id=True,
                                                        exclude_from_time_aggregation=True,
                                                        label="test",
-                                                       concept_selects=[SelectId.from_str("dataset2.icd.icd_exists")])
+                                                       concept_selects=["dataset2.icd.icd_exists"])
 
     removed_ids_val = ConqueryIdCollection()
-    removed_ids_val.add(ChildId.from_str("dataset2.icd.a.to_drop"))
-    removed_ids_val.add(ChildId.from_str("dataset2.icd.concept_id_to_drop"))
-    removed_ids_val.add(ConnectorId.from_str("dataset2.icd.table_to_drop"))
-    removed_ids_val.add(SelectId.from_str("dataset2.icd.select_to_drop"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.a.to_drop", id_type="concept"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.concept_id_to_drop", id_type="concept"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.table_to_drop", id_type="connector"))
+    removed_ids_val.add(ConqueryId("dataset2.icd.select_to_drop", id_type="concept_select"))
 
     assert removed_ids == removed_ids_val
 
-    assert new_concept_element == ConceptElement(ids=[ChildId.from_str("dataset1.icd.a"),
-                                                      ChildId.from_str("dataset1.icd.a.a")],
-                                                 tables=[ConceptTable(
-                                                     connector_id=ConnectorId.from_str("dataset1.icd.au_fall"))],
+    assert new_concept_element == ConceptElement(ids=["dataset1.icd.a", "dataset1.icd.a.a"],
+                                                 tables=[ConceptTable(connector_id="dataset1.icd.au_fall")],
                                                  exclude_from_secondary_id=True,
                                                  exclude_from_time_aggregation=True,
                                                  label="test",
-                                                 concept_selects=[SelectId.from_str("dataset1.icd.icd_exists")])
+                                                 concept_selects=["dataset1.icd.icd_exists"])
 
     # negation
-    negation = Negation(child=ConceptElement(ids=[ChildId.from_str("dataset2.icd.a"),
-                                                  ChildId.from_str("dataset2.icd.to_drop")],
-                                             tables=[ConceptTable(
-                                                 connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))]))
-    negation_val = Negation(child=ConceptElement(ids=[ChildId.from_str("dataset2.icd.a")],
-                                                 tables=[ConceptTable(
-                                                     connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))]))
+    negation = Negation(child=ConceptElement(ids=["dataset2.icd.a", "dataset2.icd.to_drop"],
+                                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
+    negation_val = Negation(child=ConceptElement(ids=["dataset2.icd.a"],
+                                                 tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
     new_negation, remaining_negation = negation.translate(concepts=concepts, removed_ids=ConqueryIdCollection(),
                                                           children_ids=[])
-    new_negation_val = Negation(child=ConceptElement(ids=[ChildId.from_str("dataset1.icd.a")],
-                                                     tables=[ConceptTable(
-                                                         connector_id=ConnectorId.from_str("dataset1.icd.au_fall"))]))
+    new_negation_val = Negation(child=ConceptElement(ids=["dataset1.icd.a"],
+                                                     tables=[ConceptTable(connector_id="dataset1.icd.au_fall")]))
 
     assert remaining_negation.to_dict() == negation_val.to_dict()
     assert new_negation.to_dict() == new_negation_val.to_dict()
 
     # test no survivors
-    concept_element = ConceptElement(ids=[ChildId.from_str("dataset2.icd.to_drop")],
-                                     tables=[ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))])
+    concept_element = ConceptElement(ids=["dataset2.icd.to_drop"],
+                                     tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
 
     assert concept_element.translate(concepts=concepts, removed_ids=removed_ids, children_ids=[]) == (None, None)
 
-    concept_query = ConceptQuery(root=ConceptElement(ids=[ChildId.from_str("dataset2.icd.to_drop")],
-                                                     tables=[ConceptTable(
-                                                         connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))]))
+    concept_query = ConceptQuery(root=ConceptElement(ids=["dataset2.icd.to_drop"],
+                                                     tables=[ConceptTable(connector_id="dataset2.icd.au_fall")]))
     assert concept_query.translate(concepts=concepts, removed_ids=removed_ids, children_ids=[]) == (None, None)
 
     # test only one survivor
-    child_1 = ConceptElement(ids=[ChildId.from_str("dataset2.icd.to_drop")],
-                             tables=[ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))])
-    child_2 = ConceptElement(ids=[ChildId.from_str("dataset2.icd.a")],
-                             tables=[ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))])
+    child_1 = ConceptElement(ids=["dataset2.icd.to_drop"],
+                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
+    child_2 = ConceptElement(ids=["dataset2.icd.a"],
+                             tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
     and_element = AndElement(children=[child_1, child_2])
     new_and_element, remaining_and_element = and_element.translate(concepts=concepts,
                                                                    removed_ids=ConqueryIdCollection(),
                                                                    children_ids=[])
 
-    child_2_val = ConceptElement(ids=[ChildId.from_str("dataset2.icd.a")],
-                                 tables=[ConceptTable(connector_id=ConnectorId.from_str("dataset2.icd.au_fall"))])
+    child_2_val = ConceptElement(ids=["dataset2.icd.a"],
+                                 tables=[ConceptTable(connector_id="dataset2.icd.au_fall")])
     and_element_val = AndElement(children=[child_2_val])
-    new_child_2_val = ConceptElement(ids=[ChildId.from_str("dataset1.icd.a")],
-                                     tables=[ConceptTable(connector_id=ConnectorId.from_str("dataset1.icd.au_fall"))])
+    new_child_2_val = ConceptElement(ids=["dataset1.icd.a"],
+                                     tables=[ConceptTable(connector_id="dataset1.icd.au_fall")])
     new_and_element_val = AndElement(children=[new_child_2_val])
 
     assert remaining_and_element.to_dict() == and_element_val.to_dict()
