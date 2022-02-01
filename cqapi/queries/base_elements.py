@@ -671,7 +671,7 @@ class ConceptTable:
     def set_date_column_id(self, date_column_id: DateId):
         if not isinstance(date_column_id, DateId):
             raise ValueError("Provided date column is not of instance DateId(ConqueryId)")
-        if date_column_id.get_connector_id().is_same_id(self.connector_id):
+        if date_column_id.get_connector_id() == self.connector_id:
             self.date_column_id = date_column_id
 
     def add_select(self, select_id: SelectId):
@@ -709,7 +709,7 @@ class ConceptTable:
 
         # get table from concepts
         table_list = [table for table in concepts[new_root_concept_id.id]["tables"]
-                      if ConnectorId.from_str(table["connectorId"]).is_same_id(new_connector_id)]
+                      if ConnectorId.from_str(table["connectorId"]) == new_connector_id]
         if len(table_list) == 0:
             removed_ids.add(self.connector_id.deepcopy())
             return None, None
@@ -950,10 +950,10 @@ class ConceptElement(QueryObject):
                 continue
             selects = selects or list()
             connector_selects = [select for select in selects
-                                 if table_connector_id.is_same_id(select.get_connector_id())]
+                                 if table_connector_id == select.get_connector_id()]
             filter_objs = filter_objs or list()
             connector_filters = [filter_obj for filter_obj in filter_objs
-                                 if table_connector_id.is_same_id(filter_obj[Keys.filter].get_connector_id())]
+                                 if table_connector_id == filter_obj[Keys.filter].get_connector_id()]
 
             self.tables.append(ConceptTable(table_connector_id,
                                             select_ids=connector_selects,
@@ -968,7 +968,7 @@ class ConceptElement(QueryObject):
 
     def add_connector_select(self, select_id: SelectId):
         for table in self.tables:
-            if select_id.get_connector_id().is_same_id(table.connector_id):
+            if select_id.get_connector_id() == table.connector_id:
                 table.add_select(select_id)
 
     def remove_connector_selects(self, connector_select_ids: List[SelectId] = None):
@@ -976,7 +976,7 @@ class ConceptElement(QueryObject):
             table.remove_selects(select_ids=connector_select_ids)
 
     def add_concept_select(self, select_id: SelectId):
-        if self.ids[0].get_concept_id().is_same_id(select_id.get_concept_id()):
+        if self.ids[0].get_concept_id() == select_id.get_concept_id():
             self.selects.append(select_id)
 
     def remove_concept_selects(self, concept_select_ids: List[SelectId] = None):
@@ -987,7 +987,7 @@ class ConceptElement(QueryObject):
 
     def add_filter(self, filter_obj: dict) -> None:
         for table in self.tables:
-            if filter_obj[Keys.filter].get_connector_id().is_same_id(table.connector_id):
+            if filter_obj[Keys.filter].get_connector_id() == table.connector_id:
                 table.add_filter(filter_obj)
 
     def exclude_from_secondary_id(self) -> None:
@@ -1016,7 +1016,7 @@ class ConceptElement(QueryObject):
     def remove_table(self, connector_id: ConnectorId):
         self.tables = [table
                        for table in self.tables
-                       if not table.connector_id.is_same_id(connector_id)]
+                       if not table.connector_id == connector_id]
 
     def remove_all_tables_but(self, connector_ids: List[ConnectorId]):
         self.tables = [table
