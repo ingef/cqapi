@@ -118,16 +118,8 @@ class ConqueryId(ABC):
         else:
             self.base.change_dataset(new_dataset=new_dataset)
 
-    def is_same_id(self, other_id: ConqueryId) -> bool:
-        """
-        Checks if it is the same ConqueryId
-        """
-        if not isinstance(other_id, ConqueryId):
-            raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
-        return self == other_id
-
     def is_in_id_list(self, other_ids: List[ConqueryId]) -> bool:
-        return any(self.is_same_id(other_id=other_id) for other_id in other_ids)
+        return any(self == other_id for other_id in other_ids)
 
     @abstractmethod
     def get_id_label(self, concepts: dict) -> str:
@@ -187,11 +179,8 @@ class DatasetId(ConqueryId):
         if new_base:
             raise ValueError("Dataset cannot have base")
 
-    def get_self_label(self):
-        return self.name.upper()
-
     def get_id_label(self, concepts: dict):
-        return self.get_self_label()
+        return self.name.upper()
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
@@ -211,14 +200,11 @@ class ConceptId(ConqueryId):
         if not isinstance(new_base, DatasetId):
             raise ValueError(f"Base of Concept can only be a Dataset. Provided: {new_base.id}")
 
-    def get_self_label(self, concepts: dict):
+    def get_id_label(self, concepts: dict):
         concept_id = self.id
         concept_obj = concepts[concept_id]
         concept_label = concept_obj[Keys.label]
         return concept_label
-
-    def get_id_label(self, concepts: dict):
-        return self.get_self_label(concepts=concepts)
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
@@ -240,18 +226,14 @@ class ConnectorId(ConqueryId):
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
 
-    def get_self_label(self, concepts: dict):
+    def get_id_label(self, concepts: dict):
+        base_label = self.base.get_id_label(concepts=concepts)
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.id
         connector_label = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
                                                   compare_string=connector_id, return_key=Keys.label)
-        return connector_label
-
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
-        self_label = self.get_self_label(concepts=concepts)
-        return " - ".join([base_label, self_label])
+        return " - ".join([base_label, connector_label])
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
@@ -274,13 +256,10 @@ class ChildId(ConqueryId):
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ChildId):
             raise ValueError("Base of Child can only be a Concept or Child")
 
-    def get_self_label(self):
-        return self.name.upper()
-
     def get_id_label(self, concepts: dict):
         base_label = self.get_concept_id().get_id_label(concepts=concepts)
-        self_label = self.get_self_label()
-        return " - ".join([base_label, self_label])
+        child_label = self.name.upper()
+        return " - ".join([base_label, child_label])
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
@@ -306,8 +285,9 @@ class SelectId(ConqueryId):
             raise ValueError("Base of Select cannot be None")
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Select can only be a Concept or Connector")
-        
-    def get_self_label(self, concepts: dict):
+
+    def get_id_label(self, concepts: dict):
+        base_label = self.base.get_id_label(concepts=concepts)
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
 
@@ -323,12 +303,7 @@ class SelectId(ConqueryId):
         else:
             select_label = self.filter_concept_obj(filter_obj=concept_obj[Keys.selects], filter_key=Keys.id,
                                                    compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return select_label
-
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
-        self_label = self.get_self_label(concepts=concepts)
-        return " - ".join([base_label, self_label])
+        return " - ".join([base_label, select_label])
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
@@ -355,7 +330,8 @@ class FilterId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Filter can only be a Connector")
 
-    def get_self_label(self, concepts: dict):
+    def get_id_label(self, concepts: dict):
+        base_label = self.base.get_id_label(concepts=concepts)
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.get_connector_id().id
@@ -365,12 +341,7 @@ class FilterId(ConqueryId):
             # type: ignore
         filter_label = self.filter_concept_obj(filter_obj=table_filters, filter_key=Keys.id,
                                                compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return filter_label
-
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
-        self_label = self.get_self_label(concepts=concepts)
-        return " - ".join([base_label, self_label])
+        return " - ".join([base_label, filter_label])
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
@@ -393,23 +364,19 @@ class DateId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Date can only be a Connector")
 
-    def get_self_label(self, concepts: dict):
+    def get_id_label(self, concepts: dict):
+        base_label = self.base.get_id_label(concepts=concepts)
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.get_connector_id().id
 
         table_dates = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
-                                              compare_string=connector_id, return_key=Keys.date_column)\
+                                              compare_string=connector_id, return_key=Keys.date_column) \
             # type: ignore
 
         date_label = self.filter_concept_obj(filter_obj=table_dates[Keys.options], filter_key=Keys.value,
                                              compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return date_label
-
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
-        self_label = self.get_self_label(concepts=concepts)
-        return " - ".join([base_label, self_label])
+        return " - ".join([base_label, date_label])
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
