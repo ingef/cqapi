@@ -1167,22 +1167,12 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
                  label: str = None,
                  negate: bool = False):
 
-    if isinstance(concept_id, ConqueryId) or isinstance(concept_id, str):
+    if isinstance(concept_id, ConqueryId):
         concept_ids = [concept_id]
     else:
         concept_ids = concept_id
-    if isinstance(concept_ids, list):
-        for index, concept_id_item in enumerate(concept_ids):
-            if isinstance(concept_id_item, str):
-                if len(concept_id_item.split(conquery_id_separator)) > 2:
-                    concept_ids[index] = ChildId.from_str(concept_id_item)
-                elif len(concept_id_item.split(conquery_id_separator)) == 2:
-                    concept_ids[index] = ConceptId.from_str(concept_id_item)
-                else:
-                    raise ValueError(f"concept_id needs to contain at least one {conquery_id_separator}"
-                                     f"to split on. Provided: {concept_id_item}")
-    else:
-        raise ValueError(f"{concept_ids=} must be of type List[str], List[ConqueryId], str or ConqueryId.")
+    if not isinstance(concept_ids, List[ConqueryId]):
+        raise ValueError(f"{concept_ids=} must be of type List[ConqueryId], str or ConqueryId.")
 
     root_concept_id = concept_ids[0].get_concept_id().id
 
