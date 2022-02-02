@@ -1167,12 +1167,13 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
                  label: str = None,
                  negate: bool = False):
 
-    if isinstance(concept_id, ConqueryId):
+    if not isinstance(concept_id, list):
         concept_ids = [concept_id]
     else:
         concept_ids = concept_id
-    if not isinstance(concept_ids, List[ConqueryId]):
-        raise ValueError(f"{concept_ids=} must be of type List[ConqueryId], str or ConqueryId.")
+    for concept_id in concept_ids:
+        if not isinstance(concept_id, ConqueryId):
+            raise ValueError(f"{concept_ids=} must be of type List[ConqueryId], str or ConqueryId.")
 
     root_concept_id = concept_ids[0].get_concept_id().id
 
