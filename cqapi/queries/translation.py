@@ -23,7 +23,7 @@ def translate_query(query: Union[QueryObject, dict], concepts: dict, conquery_co
     concept_ids = list()
     for concept_id in all_concept_ids:
         new_concept_id = concept_id.get_concept_id()
-        get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=new_concept_id)
+        new_concept_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=new_concept_id)
         if new_concept_id.id in concepts.keys():
             concept_ids.append(concept_id)
 
