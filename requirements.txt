@@ -7,3 +7,4 @@ setuptools~=56.0.0
 typeguard==2.12.1
 attrs~=21.2.0
 numpy~=1.20.2
+tabulate
