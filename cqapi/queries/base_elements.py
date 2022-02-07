@@ -1154,7 +1154,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
     return [create_query_obj(query) for query in queries]
 
 @typechecked
-def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[ChildId], str, List[str]],
+def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[ChildId]],
                  concepts: dict,
                  concept_query: bool = False,
                  connector_ids: Union[List[ConnectorId], List[str]] = None,
