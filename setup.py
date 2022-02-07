@@ -18,8 +18,6 @@ setup(
     description='A Conquery REST API library.',
     long_description=readme,
     packages=['cqapi'],
-    install_requires=[
-        'aiohttp'
-    ],
+    install_requires=requirements,
 )
 
