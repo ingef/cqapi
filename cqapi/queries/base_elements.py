@@ -1161,11 +1161,12 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
                  concept_select_ids: Union[List[SelectId], List[str]] = None,
                  connector_select_ids: Union[List[SelectId], List[str]] = None,
                  filter_objs: List[dict] = None,
-                 exclude_from_secondary_id: bool = None, exclude_from_time_aggregation: bool = None,
+                 exclude_from_secondary_id: bool = None,
+                 exclude_from_time_aggregation: bool = None,
                  date_aggregation_mode: str = None,
                  start_date: str = None, end_date: str = None,
                  label: str = None,
-                 negate: bool = False):
+                 negate: bool = False) -> QueryObject:
 
     if not isinstance(concept_id, list):
         concept_ids = [concept_id]
