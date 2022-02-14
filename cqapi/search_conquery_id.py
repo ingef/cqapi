@@ -65,7 +65,7 @@ def id_to_label(conquery_id: str, concepts: dict, conquery_id_type: str):
 
 
 @typechecked()
-def find_concept_id(concept_id: ConqueryId, concepts: dict, children_ids: List[ChildId, ConceptId]):
+def find_concept_id(concept_id: ConqueryId, concepts: dict, children_ids: List[Union[ChildId, ConceptId]]):
     """
     Searches for conquery_id in concepts or concept_obj. If concept_id is found True is returned.
     If eva access data is defined, concept_obj is loaded for concept_id level 3 or higher
