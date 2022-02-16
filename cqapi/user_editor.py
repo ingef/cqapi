@@ -91,24 +91,21 @@ class Query:
                                conquery_conn=conquery_conn,
                                return_removed_ids=return_removed_ids)
 
-    def finalize(self):
-        raise NotImplementedError
+    def finalize(self) -> QueryObject:
+        if not isinstance(self.query, QueryDescription):
+            return ConceptQuery(root=self.query)
+
+        return self.query
 
 
 @attr.s(kw_only=True, auto_attribs=True)
 class AbsoluteExportFormQuery(Query):
     query: AbsoluteExportForm
 
-    def finalize(self):
-        return self.query
-
 
 @attr.s(kw_only=True, auto_attribs=True)
 class RelativeExportFormQuery(Query):
     query: RelativeExportForm
-
-    def finalize(self):
-        return self.query
 
 
 @attr.s(kw_only=True, auto_attribs=True)
