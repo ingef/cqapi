@@ -161,7 +161,7 @@ class RelativeExportForm(ExportForm):
 
 class FullExportForm(QueryDescription):
     def __init__(self, query_id: str,
-                 concept_id: ConqueryId, concept: dict, validity_date_ids: List[DateId],
+                 concept_id: ConqueryId, concept: dict, validity_date_ids: List[DateId] = None,
                  start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], Dict[str, str]] = None):
         super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
