@@ -812,7 +812,7 @@ class ConceptElement(QueryObject):
     def __init__(self, ids: List[ConqueryId], concept: dict = None, tables: List[ConceptTable] = None,
                  connector_ids: List[ConnectorId] = None, concept_selects: List[SelectId] = None,
                  connector_selects: List[SelectId] = None, filter_objs: List[dict] = None,
-                 exclude_from_secondary_id: bool = None,
+                 validity_date_ids: List[DateId] = None, exclude_from_secondary_id: bool = None,
                  exclude_from_time_aggregation: bool = None, label: str = None,
                  row_prefix: str = None):
 
@@ -827,7 +827,8 @@ class ConceptElement(QueryObject):
         self.tables: List[ConceptTable] = tables or list()
         if concept is not None:
             self.create_tables(concept=concept, connector_ids=connector_ids,
-                               selects=connector_selects, filter_objs=filter_objs)
+                               selects=connector_selects, filter_objs=filter_objs,
+                               validity_date_ids=validity_date_ids)
 
     def __eq__(self, other):
         if isinstance(other, ConceptElement):
@@ -956,7 +957,8 @@ class ConceptElement(QueryObject):
                    )
 
     def create_tables(self, concept: dict, connector_ids: List[ConnectorId] = None,
-                      selects: List[SelectId] = None, filter_objs: List[dict] = None):
+                      selects: List[SelectId] = None, filter_objs: List[dict] = None,
+                      validity_date_ids: List[DateId] = None):
 
         for table in concept[Keys.tables]:
             table_connector_id = ConnectorId.from_str(table[Keys.connector_id])
@@ -968,6 +970,10 @@ class ConceptElement(QueryObject):
             filter_objs = filter_objs or list()
             connector_filters = [filter_obj for filter_obj in filter_objs
                                  if table_connector_id == filter_obj[Keys.filter].get_connector_id()]
+
+            if validity_date_ids is not None:
+                validity_date_ids = [validity_date_id for validity_date_id in validity_date_ids
+                                     if table_connector_id == validity_date_id.get_connector_id()]
 
             self.tables.append(ConceptTable(table_connector_id,
                                             select_ids=connector_selects,
