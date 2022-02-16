@@ -112,7 +112,8 @@ class QueryObject:
     def unwrap(self):
         pass
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]) -> \
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         raise NotImplementedError
 
@@ -173,7 +174,8 @@ class SingleRootQueryDescription(QueryDescription):
     root: QueryObject = attr.ib(validator=validate_root_child_query)
     date_aggregation_mode: str = None
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         raise NotImplementedError
 
     def copy(self):
@@ -239,7 +241,8 @@ class SingleChildQueryObject(QueryObject):
     """
     child: QueryObject = attr.ib(validator=validate_root_child_query)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         raise NotImplementedError
 
     def copy(self):
@@ -294,7 +297,8 @@ class SingleChildQueryObject(QueryObject):
 class ConceptQuery(SingleRootQueryDescription):
     query_type: QueryType = attr.ib(QueryType.CONCEPT_QUERY, init=False)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]) -> \
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         new_root, root = self.root.translate(concepts=concepts,
                                              removed_ids=removed_ids,
@@ -327,7 +331,8 @@ class SecondaryIdQuery(SingleRootQueryDescription):
     query_type: QueryType = attr.ib(QueryType.SECONDARY_ID_QUERY, init=False)
     secondary_id: str = None
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]) -> \
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         new_root, root = self.root.translate(concepts=concepts, removed_ids=removed_ids,
                                              children_ids=children_ids)
@@ -376,7 +381,8 @@ class DateRestriction(SingleChildQueryObject):
         self.start_date = start_date
         self.end_date = end_date
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         new_child, child = self.child.translate(concepts=concepts,
                                                 removed_ids=removed_ids, children_ids=children_ids)
         if new_child is None:
@@ -428,7 +434,8 @@ class Negation(SingleChildQueryObject):
         return Negation(child=self.child.copy(),
                         label=self.label)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         new_child, child = self.child.translate(concepts=concepts, removed_ids=removed_ids,
                                                 children_ids=children_ids)
         if new_child is None:
@@ -475,14 +482,16 @@ class AndOrElement(QueryObject):
         if value not in [QueryType.AND, QueryType.OR]:
             raise ValueError(f"{value} as {attribute.name} must be in {[QueryType.AND, QueryType.OR]}")
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]) -> \
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         raise NotImplementedError
 
     def copy(self):
         raise NotImplementedError
 
-    def translate_children(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate_children(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                           children_ids: List[Union[ChildId, ConceptId]]):
         children = list()
         new_children = list()
 
@@ -574,7 +583,8 @@ class AndElement(AndOrElement):
                           create_exist=self.create_exist, label=self.label,
                           date_action=self.date_action)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
 
         new_children, children = self.translate_children(concepts=concepts,
                                                          removed_ids=removed_ids,
@@ -623,7 +633,8 @@ class OrElement(AndOrElement):
                          create_exist=self.create_exist, label=self.label,
                          date_action=self.date_action)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
 
         new_children, children = self.translate_children(concepts=concepts,
                                                          removed_ids=removed_ids,
@@ -746,7 +757,8 @@ class ConceptTable:
 
         # translate filter
         for filter_obj in self.filters:
-            new_filter_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=filter_obj[Keys.filter])
+            new_filter_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                conquery_id=filter_obj[Keys.filter])
             if new_filter_id.is_in_id_list([FilterId.from_str(table_filter[Keys.id])
                                             for table_filter in table[Keys.filters]]):
                 filter_objs.append(deepcopy(filter_obj))
@@ -831,7 +843,8 @@ class ConceptElement(QueryObject):
                               label=self.label)
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
-                  children_ids: List[Union[ChildId, ConceptId]]) -> Tuple[Union[ConceptElement, None], Union[ConceptElement, None]]:
+                  children_ids: List[Union[ChildId, ConceptId]]) -> Tuple[
+        Union[ConceptElement, None], Union[ConceptElement, None]]:
         """
         Translates ConceptElement to new Dataset. Ids that can not be translated, are ignored.
         The Object itself won't be changed, a translated and a remaining query are returned.
@@ -859,7 +872,8 @@ class ConceptElement(QueryObject):
         new_concept_select_ids = list()
         concept_select_ids = list()
         for concept_select_id in self.selects:
-            new_concept_select_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset, conquery_id=concept_select_id)
+            new_concept_select_id = get_copy_of_id_with_changed_dataset(new_dataset=new_dataset,
+                                                                        conquery_id=concept_select_id)
             new_root_concept_id = new_concept_select_id.get_concept_id()
             if new_concept_select_id.is_in_id_list([SelectId.from_str(select[Keys.id])
                                                     for select in concepts[new_root_concept_id.id].get(
@@ -1026,6 +1040,7 @@ class ConceptElement(QueryObject):
     def get_root_concept_id(self):
         return self.ids[0].get_concept_id()
 
+
 class SimpleQuery(QueryObject):
 
     @classmethod
@@ -1047,7 +1062,8 @@ class SimpleQuery(QueryObject):
     def exclude_from_secondary_id(self) -> None:
         pass
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]) -> \
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]) -> \
             Tuple[Union[QueryObject, None], Union[QueryObject, None]]:
         raise NotImplementedError
 
@@ -1066,7 +1082,8 @@ class SavedQuery(SimpleQuery):
         return SavedQuery(query_id=self.query_id, label=self.label,
                           exclude_from_secondary_id_bool=self.exclude_from_secondary_id_bool)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         raise SavedQueryTranslationError
 
     def exclude_from_secondary_id(self) -> None:
@@ -1102,7 +1119,8 @@ class External(SimpleQuery):
     def copy(self):
         return External(label=self.label, format_list=self.format_list, values=self.values)
 
-    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection, children_ids: List[Union[ChildId, ConceptId]]):
+    def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
+                  children_ids: List[Union[ChildId, ConceptId]]):
         raise ExternalQueryTranslationError
 
     @classmethod
@@ -1153,8 +1171,9 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
     """Converts list of dicts to list of QueryObjects"""
     return [create_query_obj(query) for query in queries]
 
+
 @typechecked
-def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[ChildId]],
+def create_query(concept_id: Union[ConceptId, str, ChildId, List[ConceptId], List[ChildId], List[str]],
                  concepts: dict,
                  concept_query: bool = False,
                  connector_ids: Union[List[ConnectorId], List[str]] = None,
@@ -1167,7 +1186,7 @@ def create_query(concept_id: Union[ConceptId, List[ConceptId], ChildId, List[Chi
                  start_date: str = None, end_date: str = None,
                  label: str = None,
                  negate: bool = False) -> QueryObject:
-
+    
     if not isinstance(concept_id, list):
         concept_ids = [concept_id]
     else:
