@@ -1173,7 +1173,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
 
 
 @typechecked
-def create_query(concept_id: Union[ConceptId, str, ChildId, List[Union[ConceptId, str, ChildId]]],
+def create_query(concept_id: Union[ConceptId, str, ChildId, List[ConceptId], List[ChildId], List[str]],
                  concepts: dict,
                  concept_query: bool = False,
                  connector_ids: Union[List[ConnectorId], List[str]] = None,
@@ -1186,9 +1186,11 @@ def create_query(concept_id: Union[ConceptId, str, ChildId, List[Union[ConceptId
                  start_date: str = None, end_date: str = None,
                  label: str = None,
                  negate: bool = False) -> QueryObject:
-
-    concept_ids: Union[List[ConceptId], List[ChildId], List[str]] = concept_id \
-        if isinstance(concept_id, list) else [concept_id]
+    
+    if not isinstance(concept_id, list):
+        concept_ids = [concept_id]
+    else:
+        concept_ids = concept_id
 
     for index, concept_element in enumerate(concept_ids):
         if isinstance(concept_element, str):
