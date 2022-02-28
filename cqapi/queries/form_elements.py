@@ -6,7 +6,7 @@ from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.queries.base_elements import QueryDescription, SingleRootQueryDescription, SingleChildQueryObject
 from cqapi.queries.validate import validate_resolutions, validate_time_unit, validate_time_count, \
     validate_index_selector, validate_index_plament
-from cqapi.conquery_ids import ConqueryId
+from cqapi.conquery_ids import ConqueryId, DateId
 
 
 class ExportForm(QueryDescription):
@@ -161,7 +161,8 @@ class RelativeExportForm(ExportForm):
 
 class FullExportForm(QueryDescription):
     def __init__(self, query_id: str,
-                 concept_id: ConqueryId, concept: dict, start_date: str = None, end_date: str = None,
+                 concept_id: ConqueryId, concept: dict, validity_date_ids: List[DateId] = None,
+                 start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], Dict[str, str]] = None):
         super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
         self.query_id = query_id
@@ -169,7 +170,8 @@ class FullExportForm(QueryDescription):
         self.start_date = start_date
         self.end_date = end_date
 
-        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept)]
+        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept,
+                                                            validity_date_ids=validity_date_ids)]
 
     @remove_null_values
     def to_dict(self) -> dict:
