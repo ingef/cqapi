@@ -1,5 +1,5 @@
 from typing import List, Union
-from cqapi.conquery_ids import get_dataset as get_dataset_from_id
+from cqapi.conquery_ids import get_dataset_from_id_string
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.validate import validate_date
 
@@ -18,7 +18,7 @@ def get_dataset_from_query(query: dict):
     query_type = map_query_type_to_enum(query[Keys.type])
 
     if query_type == QueryType.SECONDARY_ID_QUERY:
-        return get_dataset_from_id(query[Keys.secondary_id])
+        return get_dataset_from_id_string(query[Keys.secondary_id])
 
     if query_type == QueryType.CONCEPT_QUERY:
         return get_dataset_from_query(query[Keys.root])
@@ -30,13 +30,13 @@ def get_dataset_from_query(query: dict):
         return get_dataset_from_query(query[Keys.children][0])
 
     if query_type == QueryType.SAVED_QUERY:
-        return get_dataset_from_id[query[Keys.query]]
+        return get_dataset_from_id_string[query[Keys.query]]
 
     if query_type == QueryType.CONCEPT:
-        return get_dataset_from_id(query[Keys.ids][0])
+        return get_dataset_from_id_string(query[Keys.ids][0])
 
     if query_type == QueryType.EXPORT_FORM:
-        return get_dataset_from_id(query[Keys.query_group])
+        return get_dataset_from_id_string(query[Keys.query_group])
 
     if query_type == QueryType.EXTERNAL:
         raise ValueError(f"Can not guess dataset from External query")
