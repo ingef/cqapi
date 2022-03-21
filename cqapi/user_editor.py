@@ -561,10 +561,13 @@ class Conquery:
 
         return show_error(f"Anfrage hat unbekannten Status: {query_status}.")
 
-    def download(self, query_id: str = None, use_pandas: bool = True, use_arrow: bool = True,
+    def download(self, query_id: str = None, label: str = None, use_pandas: bool = True, use_arrow: bool = True,
                  preprocess_money_columns: bool = True):
 
         query_id_for_download = query_id if query_id is not None else self.executed_query_id
+
+        if label is not None:
+            query_id_for_download = self.conn.get_query_id(label=label)
 
         if query_id_for_download is None:
             return show_error("Es wurde weder eine Anfrage ausgeführt, noch eine query_id übergeben.")
