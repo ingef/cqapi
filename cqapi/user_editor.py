@@ -8,10 +8,10 @@ from IPython.display import Markdown, Javascript
 
 from cqapi.api import ConqueryConnection
 from cqapi.namespace import Keys
-from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, \
-    is_concept_select, add_dataset_id_to_conquery_id, remove_dataset_id_from_conquery_id, get_root_concept_id
+from cqapi.conquery_ids import ConqueryIdCollection, contains_dataset_id, add_dataset_id_to_conquery_id, \
+    get_concept_id_from_id_string, remove_dataset_id_from_conquery_id_string, SelectId, DateId
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
-    SecondaryIdQuery, Negation, AndElement, OrElement, create_query, QueryDescription, ConceptElement
+    SecondaryIdQuery, Negation, AndElement, OrElement, create_query, QueryDescription
 from cqapi.queries.form_elements import AbsoluteExportForm, RelativeExportForm
 from cqapi.queries.translation import translate_query
 
@@ -131,17 +131,20 @@ class EditorQuery(Query):
 
     def add_select(self, *select_ids: str):
         """Add any select to the query. All query components that can not have this select are ignored"""
+        from cqapi.conquery_ids import SelectId
         for select_id in select_ids:
             select_id = self._add_dataset(select_id)
-            if is_concept_select(select_id):
-                self.query and self.query.add_concept_select(select_id)
+            select_id_obj: SelectId = SelectId.from_str(select_id)
+
+            if select_id_obj.is_concept_select():
+                self.query and self.query.add_concept_select(select_id_obj)
             else:
-                self.query and self.query.add_connector_select(select_id)
+                self.query and self.query.add_connector_select(select_id_obj)
 
     def remove_selects(self, *select_ids: str):
         """Removes all selects given as input parameters. When none is given, all selects are removed.
         Examples of select Ids: "icd.exists", "icd.arzt_diagnose_icd_code.anzahl_arztfaelle"""
-        select_ids_list = list(select_ids)
+        select_ids_list = [SelectId.from_str(select_id) for select_id in select_ids]
         if select_ids_list:
             self.query and self.query.remove_concept_selects(concept_select_ids=select_ids_list)
             self.query and self.query.remove_connector_selects(connector_select_ids=select_ids_list)
@@ -149,7 +152,7 @@ class EditorQuery(Query):
             self.query and self.query.remove_all_selects()
 
     def set_validity_date(self, validity_date_id: str) -> None:
-        self.query and self.query.set_validity_date(validity_date_id=validity_date_id)
+        self.query and self.query.set_validity_date(validity_date_id=DateId.from_str(validity_date_id))
 
     def add_filter(self, *filter_objects: dict) -> None:
         self.query and self.query.add_filters(filter_objs=list(filter_objects))
@@ -189,21 +192,21 @@ class Concepts:
         self.dataset = next(iter(concepts)).split(".")[0] if concepts else ""
 
     def get_default_connectors(self, concept_id: str) -> List[str]:
-        concept_id = get_root_concept_id(concept_id)
+        concept_id = get_concept_id_from_id_string(concept_id)
 
         return [table[Keys.connector_id]
                 for table in self.concepts[concept_id][Keys.tables]
                 if table.get(Keys.default, False)]
 
     def get_default_concept_selects(self, concept_id: str) -> List[str]:
-        concept_id = get_root_concept_id(concept_id)
+        concept_id = get_concept_id_from_id_string(concept_id)
 
         return [select[Keys.id]
                 for select in self.concepts[concept_id][Keys.selects]
                 if select.get(Keys.default, False)]
 
     def get_default_connector_selects(self, concept_id: str, connector_ids: List[str] = None) -> List[str]:
-        concept_id = get_root_concept_id(concept_id)
+        concept_id = get_concept_id_from_id_string(concept_id)
 
         if not connector_ids:
             connector_ids = self.get_default_connectors(concept_id=concept_id)
@@ -224,7 +227,7 @@ class Concepts:
             concept_labels.append(struc_element.get("label", ""))
             concept_ids.append("")
 
-            concept_ids.extend(remove_dataset_id_from_conquery_id(concept_id)
+            concept_ids.extend(remove_dataset_id_from_conquery_id_string(concept_id)
                                for concept_id in struc_element["children"])
             concept_labels.extend([self.concepts[concept_id].get("label", "")
                                    for concept_id in struc_element["children"]])
@@ -245,14 +248,15 @@ class Concepts:
                        show_date_columns: bool = True, return_df: bool = True):
 
         connector_id = self._add_dataset_id(connector_id)
-        concept: dict = self.concepts[self._add_dataset_id(get_root_concept_id(connector_id))]
+        concept: dict = self.concepts[self._add_dataset_id(get_concept_id_from_id_string(connector_id))]
 
         try:
             connector_obj = next(connector_obj
                                  for connector_obj in concept[Keys.tables]
                                  if connector_obj[Keys.connector_id] == connector_id)
         except StopIteration:
-            raise ValueError(f"Could not find any connector with id {remove_dataset_id_from_conquery_id(connector_id)}")
+            raise ValueError(f"Could not find any connector "
+                             f"with id {remove_dataset_id_from_conquery_id_string(connector_id)}")
 
         types: List[str] = []
         labels: List[str] = []
@@ -280,7 +284,7 @@ class Concepts:
                 labels.append(filter_obj[Keys.label])
                 ids.append(filter_obj[Keys.id])
 
-        ids = [remove_dataset_id_from_conquery_id(conquery_id) for conquery_id in ids]
+        ids = [remove_dataset_id_from_conquery_id_string(conquery_id) for conquery_id in ids]
 
         if return_df:
             return Markdown(pd.DataFrame({
@@ -322,7 +326,7 @@ class Concepts:
             labels.extend(["", *connector_labels])
             ids.extend(["", *connector_ids])
 
-        ids = [remove_dataset_id_from_conquery_id(conquery_id) for conquery_id in ids]
+        ids = [remove_dataset_id_from_conquery_id_string(conquery_id) for conquery_id in ids]
 
         return Markdown(pd.DataFrame({
             "Typ": types,
@@ -358,7 +362,7 @@ class Concepts:
         if value in concept[Keys.label].lower() or \
                 (concept.get(Keys.description) and value in concept[Keys.description].lower()):
             matches.append((concept[Keys.label],
-                            remove_dataset_id_from_conquery_id(concept_id),
+                            remove_dataset_id_from_conquery_id_string(concept_id),
                             concept[Keys.description]))
 
         for child_concept_id in concept[Keys.children]:
@@ -510,8 +514,11 @@ class Conquery:
         else:
             select_ids = [self._add_dataset(select_id) for select_id in select_ids]
 
-        concept_select_ids = [select_id for select_id in select_ids if is_concept_select(select_id)]
-        connector_select_ids = [select_id for select_id in select_ids if not is_concept_select(select_id)]
+        select_id_objs = [SelectId.from_str(select_id) for select_id in select_ids]
+        concept_select_ids = [select_id for select_id, select_id_obj in zip(select_ids, select_id_objs)
+                              if select_id_obj.is_concept_select()]
+        connector_select_ids = [select_id for select_id, select_id_obj in zip(select_ids, select_id_objs)
+                                if not select_id_obj.is_concept_select()]
         concept = create_query(concept_id=concept_id, connector_ids=connector_ids,
                                concept_select_ids=concept_select_ids, connector_select_ids=connector_select_ids,
                                concepts=self.concepts.concepts)
