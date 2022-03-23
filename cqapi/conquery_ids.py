@@ -3,6 +3,7 @@ from typing import List, Union, Set, Optional
 from abc import ABC, abstractmethod
 from cqapi.namespace import Keys
 from copy import deepcopy
+import cqapi.datasets
 
 # Conquery Id Info
 conquery_id_separator = "."
@@ -286,6 +287,9 @@ class SelectId(ConqueryId):
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Select can only be a Concept or Connector")
 
+    def is_concept_select(self) -> bool:
+        return isinstance(self.base, ConceptId)
+
     def get_id_label(self, concepts: dict):
         base_label = self.base.get_id_label(concepts=concepts)
         concept_id = self.get_concept_id().id
@@ -446,5 +450,35 @@ def get_concept_id_from_id_string(id_string: str) -> str:
     return conquery_id_separator.join([id_string.split(conquery_id_separator)[0],
                                        id_string.split(conquery_id_separator)[1]])
 
+
 def get_root_concept_name(id_string: str) -> str:
     return id_string.split(conquery_id_separator)[1]
+
+
+def is_dataset_id(dataset_id: str):
+    return dataset_id in cqapi.datasets.get_dataset_list()
+
+
+def contains_dataset_id(conquery_id: str):
+    return is_dataset_id(conquery_id.split(conquery_id_separator)[0])
+
+
+def add_dataset_id_to_conquery_id(conquery_id: str, dataset_id: str) -> str:
+    if not is_dataset_id(dataset_id):
+        raise ValueError(f"{dataset_id=} is not a valid id.")
+
+    id_list = conquery_id.split(conquery_id_separator)
+
+    if contains_dataset_id(conquery_id):
+        id_list[0] = dataset_id
+        return conquery_id_separator.join(id_list)
+    else:
+        return conquery_id_separator.join((dataset_id, *id_list))
+
+
+def remove_dataset_id_from_conquery_id_string(conquery_id: str) -> str:
+    if contains_dataset_id(conquery_id):
+        id_list = conquery_id.split(conquery_id_separator)
+        return conquery_id_separator.join(id_list[1:])
+
+    return conquery_id
