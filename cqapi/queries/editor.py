@@ -105,7 +105,7 @@ class QueryEditor:
     def remove_all_selects(self):
         self.query.remove_all_selects()
 
-    def add_connector_selects(self, select_ids: List[str]) -> None:
+    def add_connector_selects(self, select_ids: List[SelectId]) -> None:
         self.query.add_connector_selects(select_ids)
 
     def unwrap(self):

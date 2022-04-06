@@ -1,83 +1,153 @@
-from cqapi.conquery_ids import ConqueryIdCollection, ConqueryId
-import cqapi.conquery_ids as con
+from cqapi.conquery_ids import ConqueryIdCollection, DatasetId, ConceptId, ConnectorId, SelectId, DateId, \
+    ChildId, DateId, get_dataset_from_id_string, get_copy_of_id_with_changed_dataset, FilterId, ChildId
 import pytest
 from cqapi.datasets import set_test_datasets
-
 set_test_datasets()
+
+concepts = dict({
+    "dataset1.khfalle": {
+        "parent": "dataset1.infonet_leistungsmengen_struc",
+        "label": "Krankenhausfälle",
+        "description": None,
+        "active": True,
+        "children": [],
+        "additionalInfos": [
+            {
+                "key": "Leistungsfälle TP4a",
+                "value": "Alle Krankenhausfälle (unabhängig, ob vollstationärer, teilstationärer, vorstationärer Fall oder ambulante Behandlung)"
+            }
+        ],
+        "matchingEntries": 100,
+        "dateRange": None,
+        "tables": [
+            {
+                "id": "dataset1.kh_fall",
+                "connectorId": "dataset1.khfalle.krankenhausf$c3$a4lle",
+                "label": "Krankenhausfälle",
+                "dateColumn": {
+                    "defaultValue": "dataset1.khfalle.krankenhausf$c3$a4lle.entlassungsdatum",
+                    "options": [
+                        {
+                            "label": "Entlassungsdatum",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.entlassungsdatum",
+                            "templateValues": None,
+                            "optionValue": None
+                        },
+                        {
+                            "label": "Aufnahmedatum",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.aufnahmedatum",
+                            "templateValues": None,
+                            "optionValue": None
+                        },
+                        {
+                            "label": "Aufenthaltsdauer",
+                            "value": "dataset1.khfalle.krankenhausf$c3$a4lle.aufenthaltsdauer",
+                            "templateValues": None,
+                            "optionValue": None
+                        }
+                    ]
+                },
+                "filters": [
+                    {
+                        "id": "dataset1.khfalle.krankenhausf$c3$a4lle.anzahl_krankenhausf$c3$a4lle",
+                        "label": "Anzahl Krankenhausfälle",
+                        "type": "INTEGER_RANGE",
+                        "unit": "Fälle",
+                        "description": "Anzahl Krankenhausfälle",
+                        "options": None,
+                        "min": 1,
+                        "max": None,
+                        "template": None,
+                        "pattern": None,
+                        "allowDropFile": None
+                    }
+                ],
+                "selects": [
+                    {
+                        "id": "dataset1.khfalle.krankenhausf$c3$a4lle.anzahl_krankenhausfaelle_select",
+                        "label": "Anzahl Krankenhausfälle",
+                        "description": "Automatisch erzeugter Zusatzwert."
+                    }
+                ]
+            }
+        ],
+        "detailsAvailable": True,
+        "codeListResolvable": False,
+        "selects": []
+    }})
 
 
 def test_compare_conquery_ids():
-    assert con.is_same_conquery_id("age", "age")
-    assert not con.is_same_conquery_id("age", "not_age")
-
-    assert con.is_same_conquery_id("age.age_select", "age.age_select")
-    assert not con.is_same_conquery_id("age", "age.age_select")
-    assert not con.is_same_conquery_id("age.not_select", "age")
-
-    assert con.is_same_conquery_id("dataset1.age.age.age_select",
-                                   "dataset2.age.age.age_select")
+    assert DatasetId("dataset1") == DatasetId("dataset1")
+    assert not DatasetId("dataset1") == DatasetId("dataset2")
+    assert ConceptId("icd", DatasetId("dataset1")) == ConceptId("icd", DatasetId("dataset1"))
 
 
-def test_contains_dataset_id():
-    assert con.contains_dataset_id("dataset2.age.age.age_select")
-    assert not con.contains_dataset_id("age.age")
-
-
-def test_id_elements_to_id():
-    assert con.id_elements_to_id(["foo", "bar"]) == f"foo{con.conquery_id_separator}bar"
-
-
-def test_get_conquery_id_element():
-    assert con.get_conquery_id_element("foo.bar.foo2.bar2", 0) == "foo"
-
-
-def test_get_conquery_id_slice():
-    assert con.get_conquery_id_slice("foo.bar.foo2.bar2") == ["foo", "bar", "foo2", "bar2"]
-    assert con.get_conquery_id_slice("foo.bar.foo2.bar2", 2, until_then=True) == ["foo", "bar"]
-    assert con.get_conquery_id_slice("foo.bar.foo2.bar2", 2, from_then_on=True) == ["foo2", "bar2"]
-    assert con.get_conquery_id_slice("foo.bar.foo2.bar2", 1, 3) == ["bar", "foo2"]
-    with pytest.raises(ValueError):
-        con.get_conquery_id_slice("foo.bar.foo2.bar2", 2, 1)
-
-
-def test_add_dataset_id_to_conquery_id():
-    with pytest.raises(ValueError):
-        con.add_dataset_id_to_conquery_id("foo", "unknown_dataset")
-    assert con.add_dataset_id_to_conquery_id("foo", "dataset2") == "dataset2.foo"
-    assert con.add_dataset_id_to_conquery_id("dataset1.foo", "dataset2") == "dataset2.foo"
-
-
-def test_remove_dataset_id_from_conquery_id():
-    assert con.remove_dataset_id_from_conquery_id("foo") == "foo"
-    assert con.remove_dataset_id_from_conquery_id("dataset2.foo") == "foo"
-
-
-def test_get_root_concept_id():
-    assert con.get_root_concept_id("dataset2.concept.connector.select") == "dataset2.concept"
-    assert con.get_root_concept_id("concept.connector.select") == "concept"
+def test_get_concept_id():
+    assert ConnectorId("conn", ConceptId("concept", DatasetId("dataset2"))).get_concept_id().id == "dataset2.concept"
+    assert ConnectorId("conn", ConceptId("concept", DatasetId("dataset2"))).get_concept_id().id != "dataset1.concept"
 
 
 def test_get_connector_id():
-    assert con.get_connector_id("dataset2.concept.connector.select") == "dataset2.concept.connector"
-    assert con.get_connector_id("concept.connector.select") == "concept.connector"
+    assert SelectId("sel", ConnectorId("conn", ConceptId("concept", DatasetId("dataset2")))).get_connector_id().id ==\
+           "dataset2.concept.conn"
+    assert SelectId("sel", ConnectorId("conn", ConceptId("concept", DatasetId("dataset2")))).get_connector_id().id !=\
+           "dataset3.concept.conn"
 
 
 def test_get_dataset():
-    with pytest.raises(ValueError):
-        con.get_dataset("concept.connector.select")
-    assert con.get_dataset("dataset2.concept.connector.select") == "dataset2"
+    assert ConceptId("concept", DatasetId("dataset2")).get_dataset() == "dataset2"
+    assert ConceptId("concept", DatasetId("dataset2")).get_dataset() != "dataset1"
 
 
-@pytest.mark.skip("Needs conquery connetion")
+def test_is_in_id_list():
+    assert ConceptId("concept", DatasetId("dataset1")).is_in_id_list([ConceptId("concept", DatasetId("dataset1"))])
+
+
+def test_change_dataset():
+    concept_id = ConceptId("concept", DatasetId("dataset1"))
+    concept_id.change_dataset(new_dataset="dataset2")
+    assert concept_id.get_dataset() == "dataset2"
+
+
+def test_from_str():
+    assert ConceptId.from_str("dataset1.concept") == ConceptId("concept", DatasetId("dataset1"))
+
+
+def test_get_dataset_from_id_string():
+    assert get_dataset_from_id_string("dataset1.concept") == "dataset1"
+
+
+def test_get_id_with_changed_dataset():
+    new_id = get_copy_of_id_with_changed_dataset(
+        new_dataset="dataset2", conquery_id=ConceptId("concept", DatasetId("dataset1")))
+    assert new_id.get_dataset() == "dataset2"
+
+
+def test_get_id_label():
+    assert DateId("entlassungsdatum", ConnectorId("krankenhausf$c3$a4lle",
+                                                  ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
+        "Krankenhausfälle - Krankenhausfälle - Entlassungsdatum"
+
+    assert FilterId("anzahl_krankenhausf$c3$a4lle", ConnectorId(
+        "krankenhausf$c3$a4lle", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
+        "Krankenhausfälle - Krankenhausfälle - Anzahl Krankenhausfälle"
+
+    assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
+           "Krankenhausfälle - E14"
+
+
+@pytest.mark.skip("Needs conquery connection")
 def test_label():
     concepts = dict()
     ids = ConqueryIdCollection()
 
-    ids.add(ConqueryId("dataset1.icd", "concept"))
-    ids.add(ConqueryId("dataset1.icd.au_fall_21c.sum_au", "connector_select"))
-    ids.add(ConqueryId("dataset1.icd.au_fall_21c.krankheitsursache", "filter"))
-    ids.add(ConqueryId("dataset1.atc.atc", "connector"))
+    ids.add(ConceptId("concept", DatasetId("dataset2")))
+    ids.add(ConceptId("concept", DatasetId("dataset3")))
+    ids.add(SelectId("sel", ConnectorId("conn", ConceptId("concept", DatasetId("dataset2")))))
 
     ids.create_label_dicts(concepts=concepts)
 
     ids.print_id_labels_as_table(concepts=concepts)
+
+
