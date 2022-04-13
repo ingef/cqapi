@@ -224,6 +224,7 @@ def test_concept_element():
     # test add connector
     query.remove_all_tables()
     query.add_connector(connector_id=connector_id, concepts=concepts)
+    query.add_connector(connector_id=connector_id, concepts=concepts)  # check that it is not added twice
 
     query.add_filter({"type": "MULTI_SELECT",
                       "value": "test",

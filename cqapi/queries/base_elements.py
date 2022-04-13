@@ -976,8 +976,9 @@ class ConceptElement(QueryObject):
                    )
 
     def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
-        self.create_tables(concept=concepts[connector_id.get_concept_id().id],
-                           connector_ids=[connector_id])
+        if connector_id not in [table.connector_id for table in self.tables]:
+            self.create_tables(concept=concepts[connector_id.get_concept_id().id],
+                               connector_ids=[connector_id])
 
     def create_tables(self, concept: dict, connector_ids: List[ConnectorId] = None,
                       selects: List[SelectId] = None, filter_objs: List[dict] = None,
