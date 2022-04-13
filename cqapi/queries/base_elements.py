@@ -76,8 +76,14 @@ class QueryObject:
     def remove_all_tables_but(self, connector_ids: List[ConnectorId]) -> None:
         pass
 
+    def remove_all_tables(self):
+        self.remove_all_tables_but(connector_ids=[])
+
     def add_concept_select(self, select_id: SelectId) -> None:
         raise NotImplementedError()
+
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        raise NotImplementedError
 
     def add_concept_selects(self, select_ids: List[SelectId]) -> None:
         for select_id in select_ids:
@@ -147,6 +153,9 @@ class QueryDescription(QueryObject):
     def from_dict(cls, query: dict) -> QueryObject:
         raise NotImplementedError
 
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        raise NotImplementedError
+
     def add_concept_select(self, select_id: SelectId) -> None:
         raise NotImplementedError
 
@@ -201,6 +210,9 @@ class SingleRootQueryDescription(QueryDescription):
 
     def add_concept_select(self, select_id: SelectId) -> None:
         self.root.add_concept_select(select_id)
+
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        self.root.add_connector(connector_id=connector_id, concepts=concepts)
 
     def add_connector_select(self, select_id: SelectId) -> None:
         self.root.add_connector_select(select_id)
@@ -264,6 +276,9 @@ class SingleChildQueryObject(QueryObject):
 
     def add_concept_select(self, select_id: SelectId) -> None:
         self.child.add_concept_select(select_id)
+
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        self.child.add_connector(connector_id=connector_id, concepts=concepts)
 
     def add_connector_select(self, select_id: SelectId) -> None:
         self.child.add_connector_select(select_id)
@@ -516,6 +531,10 @@ class AndOrElement(QueryObject):
     def remove_concept_selects(self, concept_select_ids: List[SelectId] = None):
         for child in self.children:
             child.remove_concept_selects(concept_select_ids=concept_select_ids)
+
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        for child in self.children:
+            child.add_connector(connector_id=connector_id, concepts=concepts)
 
     def add_connector_select(self, select_id: SelectId):
         for child in self.children:
@@ -956,6 +975,10 @@ class ConceptElement(QueryObject):
                    row_prefix=query.get(Keys.row_prefix)
                    )
 
+    def add_connector(self, connector_id: ConnectorId, concepts: dict) -> None:
+        self.create_tables(concept=concepts[connector_id.get_concept_id().id],
+                           connector_ids=[connector_id])
+
     def create_tables(self, concept: dict, connector_ids: List[ConnectorId] = None,
                       selects: List[SelectId] = None, filter_objs: List[dict] = None,
                       validity_date_ids: List[DateId] = None):
@@ -1192,7 +1215,6 @@ def create_query(concept_id: Union[ConceptId, str, ChildId, List[ConceptId], Lis
                  start_date: str = None, end_date: str = None,
                  label: str = None,
                  negate: bool = False) -> QueryObject:
-    
     if not isinstance(concept_id, list):
         concept_ids = [concept_id]
     else:

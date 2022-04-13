@@ -221,6 +221,10 @@ def test_concept_element():
     query = create_query(concept_id=concept_id, concepts=concepts,
                          connector_ids=[connector_id])
 
+    # test add connector
+    query.remove_all_tables()
+    query.add_connector(connector_id=connector_id, concepts=concepts)
+
     query.add_filter({"type": "MULTI_SELECT",
                       "value": "test",
                       "filter": filter_id})
