@@ -39,8 +39,7 @@ class QueryObject:
     def to_dict(self) -> dict:
         return {
             Keys.type: self.query_type.value,
-            Keys.label: self.label,
-            Keys.row_prefix: self.row_prefix
+            Keys.label: self.label
         }
 
     def print(self):
