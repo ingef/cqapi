@@ -121,6 +121,12 @@ class ConqueryId(ABC):
     def is_in_id_list(self, other_ids: List[ConqueryId]) -> bool:
         return any(self == other_id for other_id in other_ids)
 
+    def is_child_of(self, other_id: ConqueryId) -> bool:
+        return self.id.startswith(other_id.id)
+
+    def is_child_of_any(self, other_ids: List[ConqueryId]) -> bool:
+        return any(self.is_child_of(other_id=other_id) for other_id in other_ids)
+
     @abstractmethod
     def get_id_label(self, concepts: dict) -> str:
         pass
@@ -445,6 +451,7 @@ def get_concept_id_from_id_string(id_string: str) -> str:
     """
     return conquery_id_separator.join([id_string.split(conquery_id_separator)[0],
                                        id_string.split(conquery_id_separator)[1]])
+
 
 def get_root_concept_name(id_string: str) -> str:
     return id_string.split(conquery_id_separator)[1]
