@@ -138,8 +138,7 @@ def test_relativ_export_form():
     export_form = RelativeExportForm(
         query_id="dataset1.query_id",
         resolutions=["QUARTERS"],
-        before_index_queries=[query_object_1, query_object_2],
-        after_index_queries=None,
+        features=[query_object_1, query_object_2],
         time_count_after=2
     )
 
@@ -156,8 +155,7 @@ def test_relativ_export_form():
             'timeCountAfter': 2,
             'indexSelector': 'EARLIEST',
             'indexPlacement': 'BEFORE',
-            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()],
-            'outcomes': []
+            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()]
         }
     }
 
