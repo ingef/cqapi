@@ -379,7 +379,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
         root = create_query_obj(query[Keys.root])
         return cls(
             root=root,
-            secondary_id=query[Keys.secondary_id]
+            secondary_id=SecondaryId.from_str(query[Keys.secondary_id])
         )
 
 
