@@ -221,6 +221,7 @@ class ConceptId(ConqueryId):
         base = DatasetId.create_id_objects_recursively(id_list=id_list)
         return ConceptId(name=concept_id, base=base)
 
+
 class SecondaryId(ConqueryId):
     def __init__(self, name: str, base: DatasetId):
         super().__init__(name=name, base=base)
@@ -235,13 +236,14 @@ class SecondaryId(ConqueryId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> SecondaryId:
         if len(id_list) != concept_index:
-            raise ValueError(f"Provided string for Concept must be of length {concept_index} (dataset and secpndary id). "
-                             f"Provided: {id_list}")
+            raise ValueError(
+                f"Provided string for Concept must be of length {concept_index} (dataset and secpndary id). "
+                f"Provided: {id_list}")
         secondary_id = id_list.pop(-1)
         base = DatasetId.create_id_objects_recursively(id_list=id_list)
-        return SelectId(name=concept_id, base=base)
+        return SecondaryId(name=secondary_id, base=base)
 
 
 class ConnectorId(ConqueryId):

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Union, List, Tuple
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
-from cqapi.conquery_ids import SeconaryId
+from cqapi.conquery_ids import SecondaryId
 from cqapi.queries.translation import translate_query
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection
@@ -31,9 +31,9 @@ class QueryEditor:
     def concept_query(self, date_aggregation_mode: str = None):
         self.query = ConceptQuery(root=self.query, date_aggregation_mode=date_aggregation_mode)
 
-    def secondary_id_query(self, secondary_id: Union[str, SeconaryId], date_aggregation_mode: str = None):
+    def secondary_id_query(self, secondary_id: Union[str, SecondaryId], date_aggregation_mode: str = None):
         if isinstance(secondary_id, str):
-            secondary_id = SeconaryId.from_str(secondary_id)
+            secondary_id = SecondaryId.from_str(secondary_id)
 
         self.query = SecondaryIdQuery(root=self.query, date_aggregation_mode=date_aggregation_mode,
                                       secondary_id=secondary_id)
