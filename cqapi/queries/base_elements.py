@@ -2,7 +2,7 @@ from __future__ import annotations
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId, \
-    get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string
+    get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string, SecondaryId
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Union, Tuple, Type
 from copy import deepcopy
@@ -343,7 +343,7 @@ class ConceptQuery(SingleRootQueryDescription):
 @attr.s(auto_attribs=True, kw_only=True)
 class SecondaryIdQuery(SingleRootQueryDescription):
     query_type: QueryType = attr.ib(QueryType.SECONDARY_ID_QUERY, init=False)
-    secondary_id: str = None
+    secondary_id: SecondaryId = None
 
     def translate(self, concepts: dict, removed_ids: ConqueryIdCollection,
                   children_ids: List[Union[ChildId, ConceptId]]) -> \
@@ -369,7 +369,7 @@ class SecondaryIdQuery(SingleRootQueryDescription):
     def to_dict(self) -> dict:
         return {
             **super().to_dict(),
-            Keys.secondary_id: self.secondary_id,
+            Keys.secondary_id: self.secondary_id.id,
         }
 
     @classmethod
