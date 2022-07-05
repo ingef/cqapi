@@ -6,17 +6,19 @@ from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.queries.base_elements import QueryDescription, SingleRootQueryDescription, SingleChildQueryObject
 from cqapi.queries.validate import validate_resolutions, validate_time_unit, validate_time_count, \
     validate_index_selector, validate_index_plament
-from cqapi.conquery_ids import ConqueryId
+from cqapi.conquery_ids import ConqueryId, DateId
 
 
 class ExportForm(QueryDescription):
 
-    def __init__(self, query_id: str, resolutions=None, create_resolution_subdivisions: bool = True):
+    def __init__(self, query_id: str, features: List[QueryObject],
+                 resolutions=None, create_resolution_subdivisions: bool = True):
         if resolutions is None:
             resolutions = ["COMPLETE"]
         super().__init__(query_type=QueryType.EXPORT_FORM)
         validate_resolutions(resolutions)
         self.query_id = query_id
+        self.features = self.validate_and_prepare_features(features)
         self.resolutions = resolutions
         self.create_resolution_subdivisions = create_resolution_subdivisions
 
@@ -56,12 +58,11 @@ class AbsoluteExportForm(ExportForm):
     def __init__(self, query_id: str, features: List[QueryObject], resolutions: List[str] = None,
                  create_resolution_subdivisions: bool = True, date_range: Union[List[str], dict] = None,
                  start_date: str = None, end_date: str = None):
-        super().__init__(query_id=query_id, resolutions=resolutions,
+        super().__init__(query_id=query_id, features=features, resolutions=resolutions,
                          create_resolution_subdivisions=create_resolution_subdivisions)
 
         start_date, end_date = get_start_end_date(date_range=date_range, start_date=start_date, end_date=end_date)
 
-        self.features = self.validate_and_prepare_features(features)
         self.start_date = start_date
         self.end_date = end_date
 
@@ -108,11 +109,11 @@ class EntityDateExportForm(AbsoluteExportForm):
 
 
 class RelativeExportForm(ExportForm):
-    def __init__(self, query_id: str, resolutions: List[str] = None, create_resolution_subdivisions: bool = True,
-                 before_index_queries: list = None, after_index_queries: list = None,
+    def __init__(self, query_id: str, features: List[QueryObject],
+                 resolutions: List[str] = None, create_resolution_subdivisions: bool = True,
                  time_unit: str = "QUARTERS", time_count_before: int = 1, time_count_after: int = 1,
                  index_selector: str = 'EARLIEST', index_placement: str = 'BEFORE'):
-        super().__init__(query_id=query_id, resolutions=resolutions,
+        super().__init__(query_id=query_id, features=features, resolutions=resolutions,
                          create_resolution_subdivisions=create_resolution_subdivisions)
 
         validate_time_unit(time_unit)
@@ -126,22 +127,6 @@ class RelativeExportForm(ExportForm):
         validate_index_plament(index_placement)
         self.index_placement = index_placement
 
-        # extract concept from "CONCEPT_QUERY"-Objects
-        if before_index_queries is None and after_index_queries is None:
-            raise ValueError(f"Either before_index_queries or after_index_queries must be a list of QueryObjects")
-
-        if before_index_queries is None:
-            before_index_queries = list()
-        else:
-            before_index_queries = self.validate_and_prepare_features(before_index_queries)
-        self.before_index_queries = before_index_queries
-
-        if after_index_queries is None:
-            after_index_queries = list()
-        else:
-            after_index_queries = self.validate_and_prepare_features(after_index_queries)
-        self.after_index_queries = after_index_queries
-
     @remove_null_values
     def to_dict(self) -> dict:
         return {
@@ -153,15 +138,15 @@ class RelativeExportForm(ExportForm):
                 'timeCountAfter': self.time_count_after,
                 'indexSelector': self.index_selector,
                 'indexPlacement': self.index_placement,
-                'features': [query.to_dict() for query in self.before_index_queries],
-                'outcomes': [query.to_dict() for query in self.after_index_queries]
+                'features': [feature.to_dict() for feature in self.features]
             }
         }
 
 
 class FullExportForm(QueryDescription):
     def __init__(self, query_id: str,
-                 concept_id: ConqueryId, concept: dict, start_date: str = None, end_date: str = None,
+                 concept_id: ConqueryId, concept: dict, validity_date_ids: List[DateId] = None,
+                 start_date: str = None, end_date: str = None,
                  date_range: Union[List[str], Dict[str, str]] = None):
         super().__init__(query_type=QueryType.FULL_EXPORT_FORM, label=None)
         self.query_id = query_id
@@ -169,7 +154,8 @@ class FullExportForm(QueryDescription):
         self.start_date = start_date
         self.end_date = end_date
 
-        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept)]
+        self.tables: List[ConceptElement] = [ConceptElement(ids=[concept_id], concept=concept,
+                                                            validity_date_ids=validity_date_ids)]
 
     @remove_null_values
     def to_dict(self) -> dict:

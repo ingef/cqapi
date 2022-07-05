@@ -76,13 +76,13 @@ def test_and_query():
                'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
 
     query_1_out = {'type': 'DATE_RESTRICTION',
-               'child': {'type': 'CONCEPT',
-                         'ids': ['dataset1.atc.a.a10.a10a'],
-                         'selects': ['atc.atc.liste_rezepte',
-                                     'atc.atc.liste_pzn'],
-                         'tables': [{'id': 'dataset1.atc.atc',
-                                     'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'}}]},
-               'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
+                   'child': {'type': 'CONCEPT',
+                             'ids': ['dataset1.atc.a.a10.a10a'],
+                             'selects': ['atc.atc.liste_rezepte',
+                                         'atc.atc.liste_pzn'],
+                             'tables': [{'id': 'dataset1.atc.atc',
+                                         'dateColumn': {'value': 'dataset1.atc.atc.abgabedatum'}}]},
+                   'dateRange': {'min': '2020-01-01', 'max': '2020-03-31'}}
 
     query_2 = {'type': 'AND',
                'children': [{'type': 'OR',
@@ -95,15 +95,15 @@ def test_and_query():
                                                            'value': DateId.from_str(
                                                                'dataset1.alter.alter.versichertenzeit')}}]}]}]}
     query_2_out = {'type': 'AND',
-               'children': [{'type': 'OR',
-                             'children': [{'type': 'CONCEPT',
-                                           'ids': ['dataset1.alter'],
-                                           'excludeFromSecondaryIdQuery': True,
-                                           'excludeFromTimeAggregation': False,
-                                           'tables': [{'id': 'dataset1.alter.alter',
-                                                       'dateColumn': {
-                                                           'value':
-                                                               'dataset1.alter.alter.versichertenzeit'}}]}]}]}
+                   'children': [{'type': 'OR',
+                                 'children': [{'type': 'CONCEPT',
+                                               'ids': ['dataset1.alter'],
+                                               'excludeFromSecondaryIdQuery': True,
+                                               'excludeFromTimeAggregation': False,
+                                               'tables': [{'id': 'dataset1.alter.alter',
+                                                           'dateColumn': {
+                                                               'value':
+                                                                   'dataset1.alter.alter.versichertenzeit'}}]}]}]}
 
     query_editor = QueryEditor(query_1)
     query_editor.and_query(QueryEditor(query_2))
@@ -138,8 +138,7 @@ def test_relativ_export_form():
     export_form = RelativeExportForm(
         query_id="dataset1.query_id",
         resolutions=["QUARTERS"],
-        before_index_queries=[query_object_1, query_object_2],
-        after_index_queries=None,
+        features=[query_object_1, query_object_2],
         time_count_after=2
     )
 
@@ -156,8 +155,7 @@ def test_relativ_export_form():
             'timeCountAfter': 2,
             'indexSelector': 'EARLIEST',
             'indexPlacement': 'BEFORE',
-            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()],
-            'outcomes': []
+            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()]
         }
     }
 
@@ -221,6 +219,11 @@ def test_concept_element():
     query = create_query(concept_id=concept_id, concepts=concepts,
                          connector_ids=[connector_id])
 
+    # test add connector
+    query.remove_all_tables()
+    query.add_connector(connector_id=connector_id, concepts=concepts)
+    query.add_connector(connector_id=connector_id, concepts=concepts)  # check that it is not added twice
+
     query.add_filter({"type": "MULTI_SELECT",
                       "value": "test",
                       "filter": filter_id})
@@ -228,11 +231,12 @@ def test_concept_element():
     query.add_connector_select(connector_select_id)
 
     assert query.to_dict() == {'type': 'CONCEPT',
-                                               'ids': ['dataset1.icd'],
-                                               'tables': [{'id': 'dataset1.icd.kh_diagnose_icd_code',
-                                                           'filters': [{'type': 'MULTI_SELECT', 'value': 'test',
-                                                                        'filter': 'dataset1.icd.kh_diagnose_icd_code.fallzahl'}],
-                                                           'selects': ['dataset1.icd.kh_diagnose_icd_code.liste_erster_entlassungstag']}]}
+                               'ids': ['dataset1.icd'],
+                               'tables': [{'id': 'dataset1.icd.kh_diagnose_icd_code',
+                                           'filters': [{'type': 'MULTI_SELECT', 'value': 'test',
+                                                        'filter': 'dataset1.icd.kh_diagnose_icd_code.fallzahl'}],
+                                           'selects': [
+                                               'dataset1.icd.kh_diagnose_icd_code.liste_erster_entlassungstag']}]}
 
 
 def test_entity_date_export_form():
@@ -271,12 +275,14 @@ def test_full_export_form():
     concept = {Keys.tables: [{
         Keys.connector_id: "dataset1.alter.alter"
     }]}
-
+    alter_concept_id = ConceptId("alter", DatasetId("dataset1"))
+    alter_connector_id = ConnectorId("alter", alter_concept_id)
     full_export_form = FullExportForm(query_id="dataset1.query_id",
-                                      concept_id=ConceptId("alter", DatasetId("dataset1")),
+                                      concept_id=alter_concept_id,
                                       concept=concept,
                                       start_date="2020-01-01",
-                                      end_date="2020-12-31")
+                                      end_date="2020-12-31",
+                                      validity_date_ids=[DateId("alter_validity_date_id", base=alter_connector_id)])
     form_out = full_export_form.to_dict()
     form_val = {
         Keys.type: "FULL_EXPORT_FORM",
