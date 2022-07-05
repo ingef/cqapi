@@ -222,6 +222,30 @@ class ConceptId(ConqueryId):
         return ConceptId(name=concept_id, base=base)
 
 
+class SecondaryId(ConqueryId):
+    def __init__(self, name: str, base: DatasetId):
+        super().__init__(name=name, base=base)
+
+    def get_id_label(self, concepts: dict) -> str:
+        return self.name.replace("_", "").title()
+
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Connector cannot be None")
+        if not isinstance(new_base, ConceptId):
+            raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> SecondaryId:
+        if len(id_list) != concept_index:
+            raise ValueError(
+                f"Provided string for Concept must be of length {concept_index} (dataset and secpndary id). "
+                f"Provided: {id_list}")
+        secondary_id = id_list.pop(-1)
+        base = DatasetId.create_id_objects_recursively(id_list=id_list)
+        return SecondaryId(name=secondary_id, base=base)
+
+
 class ConnectorId(ConqueryId):
     def __init__(self, name: str, base: ConceptId):
         super().__init__(name=name, base=base)
