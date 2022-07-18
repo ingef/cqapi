@@ -2,7 +2,8 @@ from __future__ import annotations
 from cqapi.namespace import Keys, QueryType
 from cqapi.queries.utils import remove_null_values, get_start_end_date
 from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, ConnectorId, ChildId, DateId, SelectId, \
-    get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string, SecondaryId
+    get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string, \
+    get_concept_id_from_id_string, SecondaryId
 from cqapi.search_conquery_id import find_concept_id
 from typing import List, Union, Tuple, Type
 from copy import deepcopy
@@ -1202,7 +1203,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
 
 
 @typechecked
-def create_query(concept_id: Union[ConceptId, str, ChildId, List[ConceptId], List[ChildId], List[str]],
+def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[ConceptId], List[ChildId], list],
                  concepts: dict,
                  concept_query: bool = False,
                  connector_ids: Union[List[ConnectorId], List[str]] = None,
@@ -1222,7 +1223,10 @@ def create_query(concept_id: Union[ConceptId, str, ChildId, List[ConceptId], Lis
 
     for index, concept_element in enumerate(concept_ids):
         if isinstance(concept_element, str):
-            concept_ids[index] = ConceptId.from_str(concept_element)
+            if get_concept_id_from_id_string(id_string=concept_element) == concept_element:
+                concept_ids[index] = ConceptId.from_str(concept_element)
+            else:
+                concept_ids[index] = ChildId.from_str(concept_element)
 
     if connector_ids:
         for index, connector_element in enumerate(connector_ids):

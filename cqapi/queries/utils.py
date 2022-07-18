@@ -15,7 +15,7 @@ def get_dataset_from_query(query: dict):
     if Keys.type not in query.keys():
         raise ValueError(f"Query object {query} has no key 'type'")
 
-    query_type = map_query_type_to_enum(query.get(Keys.type))
+    query_type = map_query_type_to_enum(query[Keys.type])
 
     if query_type == QueryType.SECONDARY_ID_QUERY:
         return get_dataset_from_id_string(query[Keys.secondary_id])
