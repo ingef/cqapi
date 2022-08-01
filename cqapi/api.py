@@ -264,6 +264,8 @@ class ConqueryConnection(object):
 
     def get_number_of_results(self, query_id: str) -> int:
 
+        self.reexecute_when_status_new(query_id=query_id)
+
         self.wait_for_query_to_finish(query_id=query_id)
 
         response = self.get_query_info(query_id)
@@ -273,6 +275,14 @@ class ConqueryConnection(object):
             return -1
 
         return int(n_results)
+
+    def reexecute_when_status_new(self, query_id: str):
+        """On restart ob java backend, query_ids have status "NEW" and need to be rexecuted to retrieve data"""
+        query_info = self.get_query_info(query_id)
+
+        if query_info["status"] == "NEW":
+            self.reexecute_query(query_id)
+            sleep(0.5)
 
     def wait_for_query_to_finish(self, query_id: str, requests_per_sec: int = None):
         """Waits until query i finished and checks for NEW/FAILED"""
@@ -358,6 +368,8 @@ class ConqueryConnection(object):
         :return: str containing the returned csv's
         """
 
+        self.reexecute_when_status_new(query_id=query_id)
+
         self.wait_for_query_to_finish(query_id=query_id)
 
         response = self.get_query_info(query_id)
@@ -367,11 +379,7 @@ class ConqueryConnection(object):
         if response_status == "FAILED":
             raise Exception(f"Query with {query_id=} failed.")
         elif response_status == "NEW":
-            if already_reexecuted:
-                raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
-            self.reexecute_query(query_id)
-            sleep(0.5)
-            data = self.get_query_result(query_id, already_reexecuted=True)
+            raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
         elif response_status == "DONE":
             if return_pandas:
                 if download_with_arrow:
