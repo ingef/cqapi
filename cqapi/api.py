@@ -355,14 +355,12 @@ class ConqueryConnection(object):
         self._session.post(f"{self._url}/api/datasets/{dataset}/queries/{query_id}/reexecute", data="")
 
     def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = True,
-                         already_reexecuted: bool = False, delete_query: bool = False):
+                         delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
         :param download_with_arrow: Use apache arrow for transferring data from backend to cqapi
         :param query_id:
-        :param already_reexecuted: only needed when reexecuting query, to know when trapped in an endless loop
-        e.g. requests_per_sec = 2 -> sleep 0.5 seconds between requests
         :param return_pandas: when true, returns data as pandas.DataFrame
         :param delete_query: deletes query after getting result
         :return: str containing the returned csv's
