@@ -1206,6 +1206,7 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
 def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[ConceptId], List[ChildId], list],
                  concepts: dict,
                  concept_query: bool = False,
+                 secondary_id: Optional[Union[str, SecondaryId]] = None,
                  connector_ids: Union[List[ConnectorId], List[str]] = None,
                  concept_select_ids: Union[List[SelectId], List[str]] = None,
                  connector_select_ids: Union[List[SelectId], List[str]] = None,
@@ -1265,6 +1266,11 @@ def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[Conc
 
     if concept_query:
         return ConceptQuery(root=query, date_aggregation_mode=date_aggregation_mode)
+
+    if secondary_id is not None:
+        if isinstance(secondary_id, str):
+            secondary_id = SecondaryId.from_str(secondary_id)
+        return SecondaryIdQuery(root=query, secondary_id=secondary_id)
 
     return query
 
