@@ -5,7 +5,7 @@ from cqapi.conquery_ids import ConqueryId, ConqueryIdCollection, ConceptId, Conn
     get_copy_of_id_with_changed_dataset, FilterId, conquery_id_separator, get_dataset_from_id_string, \
     get_concept_id_from_id_string, SecondaryId
 from cqapi.search_conquery_id import find_concept_id
-from typing import List, Union, Tuple, Type
+from typing import List, Union, Tuple, Type, Optional
 from copy import deepcopy
 from cqapi.exceptions import SavedQueryTranslationError, ExternalQueryTranslationError
 import attr
