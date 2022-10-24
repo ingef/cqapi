@@ -320,11 +320,14 @@ class ConqueryConnection(object):
         if self._session is None:
             raise ValueError("No Session running")
 
-        with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
-            if response.status_code == 404:
-                return False
+        try:
+            with self._session.get(f"{self._url}/api/datasets/{dataset}/queries/{query_id}") as response:
+                if response.status_code == 404:
+                    return False
 
-            raise_for_status(response=response)
+                raise_for_status(response=response)
+        except HTTPError:
+            return False
 
         return True
 
