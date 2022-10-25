@@ -239,14 +239,14 @@ class ConqueryConnection(object):
         return result.get('query')
 
     def explode_query(self, query: dict) -> dict:
-        if "root" in query_dict:
-            query_dict["root"] = replace_saved_query_with_dict(query_dict=query_dict["root"])
-        elif "children" in query_dict:
-            for i, child_dict in enumerate(query_dict["children"]):
-                query_dict["children"][i] = replace_saved_query_with_dict(query_dict=child_dict)
-        elif query_dict["type"] == "SAVED_QUERY":
-            return self.get_query(query_id=query_dict["query"])["root"]
-        return query_dict
+        if "root" in query:
+            query["root"] = self.explode_query(query=query["root"])
+        elif "children" in query:
+            for i, child_query in enumerate(query["children"]):
+                query["children"][i] = self.explode_query(query=child_query)
+        elif query["type"] == "SAVED_QUERY":
+            return self.get_query(query_id=query["query"])["root"]
+        return query
 
     def get_stored_query_info(self, query_id: str, label: str = None) -> dict:
         dataset = get_dataset_from_id_string(query_id)
