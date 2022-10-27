@@ -238,6 +238,18 @@ class ConqueryConnection(object):
         result = self._session.get_json(f"{self._url}/api/datasets/{dataset}/queries/{query_id}")
         return result.get('query')
 
+    def explode_query(self, query: dict) -> dict:
+        if "root" in query:
+            query["root"] = self.explode_query(query=query["root"])
+        elif "child" in query:
+            query["child"] = self.explode_query(query=query["child"])
+        elif "children" in query:
+            for i, child_query in enumerate(query["children"]):
+                query["children"][i] = self.explode_query(query=child_query)
+        elif query["type"] == "SAVED_QUERY":
+            return self.get_query(query_id=query["query"])["root"]
+        return query
+
     def get_stored_query_info(self, query_id: str, label: str = None) -> dict:
         dataset = get_dataset_from_id_string(query_id)
         stored_queries = self.get_stored_queries(dataset)
