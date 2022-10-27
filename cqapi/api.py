@@ -241,6 +241,8 @@ class ConqueryConnection(object):
     def explode_query(self, query: dict) -> dict:
         if "root" in query:
             query["root"] = self.explode_query(query=query["root"])
+        elif "child" in query:
+            query["child"] = self.explode_query(query=query["child"])
         elif "children" in query:
             for i, child_query in enumerate(query["children"]):
                 query["children"][i] = self.explode_query(query=child_query)
