@@ -1,14 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from pathlib import Path
-
-Path(".") / "hi"
 
 
 class Url:
     """There is an url parsing buildin package in Python urllib.parse.urljoin,
     but it seems more complex than we need for this use case"""
-    
+
     def __init__(self, base: str, *components: str):
         self.base = base
         self.components = components
