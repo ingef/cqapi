@@ -148,6 +148,7 @@ def test_relativ_export_form():
         "queryGroup": "dataset1.query_id",
         "resolution": ["QUARTERS"],
         "alsoCreateCoarserSubdivisions": True,
+        "features": [query_object_1.to_dict(), query_object_2.root.to_dict()],
         "timeMode": {
             "value": "RELATIVE",
             "timeUnit": "QUARTERS",
@@ -155,7 +156,6 @@ def test_relativ_export_form():
             'timeCountAfter': 2,
             'indexSelector': 'EARLIEST',
             'indexPlacement': 'BEFORE',
-            'features': [query_object_1.to_dict(), query_object_2.root.to_dict()]
         }
     }
 
@@ -258,12 +258,12 @@ def test_entity_date_export_form():
         "queryGroup": "dataset1.query_id",
         "resolution": ["QUARTERS"],
         "alsoCreateCoarserSubdivisions": True,
+        "features": [query_object_1.to_dict(), query_object_2.root.to_dict()],
         "timeMode": {
             "value": "ENTITY_DATE",
             Keys.alignment_hint: "YEAR",
             "dateAggregationMode": "MERGE",
-            "dateRange": {"min": "2020-01-01", "max": "2020-12-31"},
-            "features": [query_object_1.to_dict(), query_object_2.root.to_dict()]
+            "dateRange": {"min": "2020-01-01", "max": "2020-12-31"}
         }
     }
     test = TestCase()
