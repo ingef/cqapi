@@ -1124,9 +1124,7 @@ class SavedQuery(SimpleQuery):
         return {
             **super().to_dict(),
             Keys.query: self.query_id,
-            # TODO war typo in conquery(Hotfix)
-            # Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
-            "excludeFromSecondaryId": self.exclude_from_secondary_id_bool
+            Keys.exclude_from_secondary_id: self.exclude_from_secondary_id_bool
         }
 
     @classmethod
