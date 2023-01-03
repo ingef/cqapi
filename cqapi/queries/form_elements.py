@@ -50,7 +50,8 @@ class ExportForm(QueryDescription):
             **super().to_dict(),
             Keys.query_group: self.query_id,
             Keys.resolutions: self.resolutions,
-            Keys.create_resolution_subdivisions: self.create_resolution_subdivisions
+            Keys.create_resolution_subdivisions: self.create_resolution_subdivisions,
+            Keys.features: [feature.to_dict() for feature in self.features]
         }
 
 
@@ -70,10 +71,9 @@ class AbsoluteExportForm(ExportForm):
         return {
             Keys.value: "ABSOLUTE",
             Keys.date_range: {
-                'min': self.start_date,
-                'max': self.end_date
-            },
-            'features': [feature.to_dict() for feature in self.features]
+                Keys.min: self.start_date,
+                Keys.max: self.end_date
+            }
         }
 
     @remove_null_values
@@ -133,12 +133,11 @@ class RelativeExportForm(ExportForm):
             **super().to_dict(),
             Keys.time_mode: {
                 Keys.value: 'RELATIVE',
-                'timeUnit': self.time_unit,
-                'timeCountBefore': self.time_count_before,
-                'timeCountAfter': self.time_count_after,
-                'indexSelector': self.index_selector,
-                'indexPlacement': self.index_placement,
-                'features': [feature.to_dict() for feature in self.features]
+                Keys.time_unit: self.time_unit,
+                Keys.time_count_before: self.time_count_before,
+                Keys.time_count_after: self.time_count_after,
+                Keys.index_selector: self.index_selector,
+                Keys.index_placement: self.index_placement
             }
         }
 

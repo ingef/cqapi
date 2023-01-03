@@ -2,11 +2,11 @@ stages:
   - testing
 
 testing:
-  image: python:3.9
+  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.9
   stage: testing
   interruptible: true
-  script:
-      - pytest /builds/eva4/cqapi/tests
-  
   before_script:
       - pip install /builds/eva4/cqapi/
+  
+  script:
+      - pytest /builds/eva4/cqapi/tests
