@@ -8,6 +8,8 @@ import cqapi.datasets
 # Conquery Id Info
 conquery_id_separator = "."
 dataset_index = 1
+table_index = 2
+column_index = 3
 concept_index = 2
 concept_select_index = 3
 connector_index = 3
@@ -245,6 +247,53 @@ class SecondaryId(ConqueryId):
         secondary_id = id_list.pop(-1)
         base = DatasetId.create_id_objects_recursively(id_list=id_list)
         return SecondaryId(name=secondary_id, base=base)
+
+
+class TableId(ConqueryId):
+    def __init__(self, name: str, base: DatasetId):
+        super().__init__(name=name, base=base)
+
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Table cannot be None")
+        if not isinstance(new_base, ConceptId):
+            raise ValueError(f"Base of Table can only be a Dataset. Provided: {new_base}")
+
+    def get_id_label(self, concepts: dict):
+        return self.name.replace("_", "").title()
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+        if len(id_list) != table_index:
+            raise ValueError(f"Provided string for Table must be of length {table_index} (dataset and table). "
+                             f"Provided: {id_list}")
+        table_id = id_list.pop(-1)
+        base = DatasetId.create_id_objects_recursively(id_list=id_list)
+        return TableId(name=table_id, base=base)
+
+
+class ColumnId(ConqueryId):
+    def __init__(self, name: str, base: TableId):
+        super().__init__(name=name, base=base)
+
+    def _check_valid_base(self, new_base: Optional[ConqueryId]):
+        if not new_base:
+            raise ValueError("Base of Connector cannot be None")
+        if not isinstance(new_base, ConceptId):
+            raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
+
+    def get_id_label(self, concepts: dict):
+        return self.name.replace("_", "").title()
+
+    @classmethod
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
+        if len(id_list) != column_index:
+            raise ValueError(f"Provided string for Column must be of length {column_index} "
+                             f"(dataset, table and column). "
+                             f"Provided: {id_list}")
+        column_id = id_list.pop(-1)
+        base = TableId.create_id_objects_recursively(id_list=id_list)
+        return ColumnId(name=column_id, base=base)
 
 
 class ConnectorId(ConqueryId):
