@@ -7,6 +7,7 @@ testing:
   interruptible: true
   before_script:
       - pip install poetry pytest
-      - poetry install /builds/eva4/cqapi/
+      - poetry export --format requirements.txt > /builds/eva4/cqapi/requirements.txt
+      - pip install /builds/eva4/cqapi/
   script:
       - pytest /builds/eva4/cqapi/tests
