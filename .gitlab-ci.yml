@@ -6,7 +6,7 @@ testing:
   stage: testing
   interruptible: true
   before_script:
-      - pip install /builds/eva4/cqapi/
-  
+      - pip install poetry pytest
+      - poetry install /builds/eva4/cqapi/
   script:
       - pytest /builds/eva4/cqapi/tests
