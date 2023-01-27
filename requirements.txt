@@ -5,6 +5,6 @@ numpy==1.22.0
 pyarrow==3.0.0
 pytest==6.2.4
 requests==2.25.1
-setuptools==56.0.0
+setuptools==65.5.1
 tabulate==0.8.7
 typeguard==2.12.1
