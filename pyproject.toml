@@ -14,7 +14,7 @@ requests = "^2.25.1"
 attrs = "^22.1.0"
 tabulate = "^0.8.7"
 typeguard = "^2.12.1"
-setuptools = "^56.0.0"
+setuptools = "^65.5.1"
 pyarrow = "^3.0.0"
 
 
