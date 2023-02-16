@@ -5,7 +5,13 @@
 
 ## Installation
 
-Some functionality of `cqapi` requires Python version `>= 3.7`.
+#### Requirements
+- Some functionality of `cqapi` requires Python version `>= 3.7` and `<=3.9`
+- PyCharm recommended
+- Poetry must be installed (tool for Python virtual environment)
+
+#### Steps
+- to install packages with poetry in PyCharm go to setting -> "add local interpreter" -> "Poetry Interpreter" -> select path to poetry.exe
 
 To install the latest version of `cqapi` on the `master` branch run:
 
