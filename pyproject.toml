@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["InGef - EVA Team <eva@ingef.de>"]
 readme = "README.md"
+packages = [{ include = "cqapi"}]
 
 [tool.poetry.dependencies]
 python = "^3.8"
