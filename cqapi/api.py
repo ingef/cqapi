@@ -169,6 +169,14 @@ class ConqueryConnection(object):
     def get_user_info(self) -> dict:
         return self._session.get_json(self.conquery_api_urls.me().parse())
 
+    def user_has_group(self, group_id: str) -> bool:
+        """Checks if user has group with id group_id"""
+        groups = self.get_user_info().get('groups', [])
+
+        group_ids = [group.get('id') for group in groups]
+
+        return group_id in group_ids
+
     def get_concepts(self, dataset: str = None, remove_structure_elements: bool = True) -> dict:
         dataset = self._get_dataset(dataset)
         response = self._session.get_json(self.conquery_api_urls.concepts(dataset=dataset).parse())
