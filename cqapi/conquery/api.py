@@ -59,9 +59,9 @@ class ConqueryApiUrls:
     def query_result(self, query_id: str, file_format: str = "csv", file_suffix: Optional[str] = None) -> Url:
         if file_suffix is None:
             if file_format == "arrow":
-                file_suffix = "arrf"
+                file_suffix = ".arrf"
             elif file_format in {"csv", "xlsx"}:
-                file_suffix = file_format
+                file_suffix = f".{file_format}"
             else:
                 raise ValueError(f"Unknown file format {file_format}")
 
