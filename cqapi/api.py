@@ -369,12 +369,12 @@ class ConqueryConnection(object):
     def reexecute_query(self, query_id: str) -> None:
         self._session.post(self.conquery_api_urls.query_reexecute(query_id=query_id), data="")
 
-    def get_query_result(self, query_id: str, return_pandas: bool = True, download_with_arrow: bool = True,
+    def get_query_result(self, query_id: str, return_pandas: bool = True, file_format: str = "arrow",
                          delete_query: bool = False):
         """ Returns results for given query.
         Blocks until the query is DONE.
 
-        :param download_with_arrow: Use apache arrow for transferring data from backend to cqapi
+        :param file_format: Options are arrow, csv
         :param query_id:
         :param return_pandas: when true, returns data as pandas.DataFrame
         :param delete_query: deletes query after getting result
@@ -394,21 +394,18 @@ class ConqueryConnection(object):
         elif response_status == "NEW":
             raise Exception(f"Query {query_id} still in state NEW after reexecuting..")
         elif response_status == "DONE":
-            if return_pandas:
-                if download_with_arrow:
-                    result_url_arrow = self._get_result_url(response=response, file_type="arrf")
-                    # if date_as_object=False, date columns will be in numpy Int64 / pd.Timestamp format
-                    data = \
-                        pa.ipc.open_file(self._session.get(result_url_arrow).content).read_pandas(date_as_object=False)
-                else:
-                    result_url_csv = self._get_result_url(response=response, file_type="csv")
-                    result_string = self._download_query_results(result_url_csv)
-                    data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+            result_url = self.conquery_api_urls.query_result(query_id=query_id, file_format=file_format).parse()
+
+            if file_format == "arrow":
+                data = pa.ipc.open_file(self._session.get(result_url).content).read_pandas(date_as_object=False)
 
             else:
-                result_url_csv = self._get_result_url(response=response, file_type="csv")
-                result_string = self._download_query_results(result_url_csv)
-                data = list(csv.reader(result_string.splitlines(), delimiter=';'))
+                result_string = self._download_query_results(result_url)
+                if return_pandas:
+                    data = pd.read_csv(StringIO(result_string), sep=";", dtype=str, keep_default_na=False)
+                else:
+                    data = list(csv.reader(result_string.splitlines(), delimiter=';'))
+
         else:
             raise ValueError(f"Unknown response status {response_status}")
 

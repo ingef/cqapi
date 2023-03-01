@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from typing import Optional
 
 
 class Url:
@@ -54,6 +55,17 @@ class ConqueryApiUrls:
 
     def query_id(self, query_id: str) -> Url:
         return self.queries() / query_id
+
+    def query_result(self, query_id: str, file_format: str = "csv", file_suffix: Optional[str] = None) -> Url:
+        if file_suffix is None:
+            if file_format == "arrow":
+                file_suffix = "arrf"
+            elif file_format in {"csv", "xlsx"}:
+                file_suffix = file_format
+            else:
+                raise ValueError(f"Unknown file format {file_format}")
+
+        return self.api / "result" / file_format / f"{query_id}{file_suffix}"
 
     def query_reexecute(self, query_id: str) -> Url:
         return self.query_id(query_id=query_id) / "reexecute"
