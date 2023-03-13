@@ -169,6 +169,14 @@ class ConqueryConnection(object):
     def get_user_info(self) -> dict:
         return self._session.get_json(self.conquery_api_urls.me().parse())
 
+    def user_has_group(self, group_id: str) -> bool:
+        """Checks if user has group with id group_id"""
+        groups = self.get_user_info().get('groups', [])
+
+        group_ids = [group.get('id') for group in groups]
+
+        return group_id in group_ids
+
     def get_concepts(self, dataset: str = None, remove_structure_elements: bool = True) -> dict:
         dataset = self._get_dataset(dataset)
         response = self._session.get_json(self.conquery_api_urls.concepts(dataset=dataset).parse())
@@ -190,17 +198,13 @@ class ConqueryConnection(object):
         return secondary_id in [_.get("id") for _ in secondary_ids]
 
     def get_concept(self, concept_id: Union[str, ConqueryId],
-                    return_raw_format: bool = False) -> Union[List[dict], dict]:
+                    return_raw_format: bool = False) -> dict:
         if isinstance(concept_id, ConqueryId):
             concept_id = concept_id.id
 
         response_dict = self._session.get_json(self.conquery_api_urls.concept_id(concept_id=concept_id).parse())
 
-        if return_raw_format:
-            return response_dict
-
-        response_list = [dict(attrs, **{"ids": [c_id]}) for c_id, attrs in response_dict.items()]
-        return response_list
+        return response_dict
 
     def get_stored_queries(self, dataset: str = None) -> list:
         dataset = self._get_dataset(dataset)

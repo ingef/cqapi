@@ -5,9 +5,10 @@ testing:
   image: ocireg.spectrumk.de/hub.docker.com/library/python:3.9
   stage: testing
   interruptible: true
+  variables:
+    POETRY_VIRTUALENVS_CREATE: "false"
   before_script:
-      - pip install poetry pytest
-      - poetry export --format requirements.txt > /builds/eva4/cqapi/requirements.txt
-      - pip install /builds/eva4/cqapi/
+      - pip install poetry
+      - poetry install --with test
   script:
       - pytest /builds/eva4/cqapi/tests
