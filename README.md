@@ -38,7 +38,7 @@ When the user drops that query_id in a Jupyend-Form, we receive that query_id as
 
 We can access meta information about that query:
 ```python
-query = cq.get_query_info(query_id)
+cq.get_query_info(query_id)
 ```
 
 We can also get the data of all the people in the query group with the selected covariates:
