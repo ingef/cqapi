@@ -23,7 +23,7 @@ Refer to [the docs](doc/doc.md) for usage examples.
 
 `python -m pytest tests/`
 
-## Usage of EvaConnection
+## Usage
 There are multiple Notebooks for Guidance in the examples-Folder in the Forms-Repo
 
 ### Basic functionality
@@ -43,7 +43,7 @@ query = cq.get_query_info(query_id)
 
 We can also get the data of all the people in the query group with the selected covariates:
 ```python
-data, column_descriptions = cq.get_query_result(query_id)
+data = cq.get_query_result(query_id)
 ```
 # TODO:
 - ConqueryIds
