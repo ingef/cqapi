@@ -581,7 +581,7 @@ class Conquery:
 
         data: pd.DataFrame = self.conn.get_query_result(query_id=query_id_for_download,
                                                         return_pandas=use_pandas,
-                                                        download_with_arrow=use_arrow)
+                                                        file_format="arrow")
 
         # preprocess money columns
         if preprocess_money_columns:
