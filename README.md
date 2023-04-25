@@ -1,40 +1,19 @@
 # cqapi
 
-[![Build Status](https://dev.azure.com/bakdata/public/_apis/build/status/bakdata.cqapi?branchName=master)](https://dev.azure.com/bakdata/public/_build/latest?definitionId=11&branchName=master)
-
+cqapi (ConqueryApi) is a Python Api for the [conquery backend](https://github.com/ingef/conquery).  
+Next to interacting with Conquery via the ConqueryConnection-Class it has functionality to 
+read, edit and write the conquery queries which are specified in json. 
 
 ## Installation
+- Some functionality of `cqapi` requires Python version `>= 3.8` and `<=3.9`
+- Installation is done with poetry. Poetry is a dependency manager for python. It is used to install all dependencies and to create a virtual environment. To install poetry, follow the instructions on the [poetry website](https://python-poetry.org/docs/#installation). 
+  After installing poetry, run the following commands in the root directory of the project:
 
-Some functionality of `cqapi` requires Python version `>= 3.7`.
-
-To install the latest version of `cqapi` on the `master` branch run:
-
-```
-pip install git+ssh://git@github.com/bakdata/cqapi@master
-```
-
-Note that you can specify any branch or tag using the `@branch/tag-name` syntax, but the `master` branch is where we
-attempt to keep a working version of this library.
-
-### Usage
-
-```python
-from cqapi import ConqueryConnection
-
-async with ConqueryConnection("http://conquery-base.url:9082") as cq:
-    query = await cq.get_query_info("demo", "query.id")
-    query_execution_id = await cq.execute_query("demo", query)
-    query_result = await cq.get_query_result("demo", query_execution_id)
+```bash
+poetry install
 ```
 
 ## Notes on Jupyter Notebooks
-
-This package can be used just the same in a Jupyter Notebook given that the underlying kernel supports top-level
-`async` calls.
-
-The IPython shell and IPykernel have
-[added support for top-level `async` since version 7.0](https://blog.jupyter.org/ipython-7-0-async-repl-a35ce050f7f7).
-To make sure you're running the latest versions of both run `pip install ipython ipykernel --upgrade`.
 
 ## Documentation
 
@@ -43,3 +22,36 @@ Refer to [the docs](doc/doc.md) for usage examples.
 ## Running Tests
 
 `python -m pytest tests/`
+
+## Usage
+There are multiple Notebooks for Guidance in the examples-Folder in the Forms-Repo
+
+### Basic functionality
+Establish a connection to a conquery instance
+```python
+from cqapi import ConqueryConnection
+
+cq = ConqueryConnection("http://conquery-base.url:9082")
+```
+When a user builds and executes a query in the Conquery Editor, that query is then stored in the eva backend with a unique query_id.
+When the user drops that query_id in a Jupyend-Form, we receive that query_id as a string.
+
+We can access meta information about that query:
+```python
+cq.get_query_info(query_id)
+```
+
+We can also get the data of all the people in the query group with the selected covariates:
+```python
+data = cq.get_query_result(query_id)
+```
+# TODO:
+- ConqueryIds
+- QueryEditor
+- Create Query
+- Query vs Query Id
+- Which queries are executable
+- Types of queries (and their corresponding editor queries)
+
+
+

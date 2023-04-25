@@ -126,6 +126,9 @@ class QueryObject:
     def get_concept_ids(self):
         raise NotImplementedError
 
+    def get_connector_ids(self):
+        raise NotImplementedError
+
     def remove_connector_selects(self, connector_select_ids: List[SelectId] = None):
         pass
 
@@ -177,6 +180,8 @@ class QueryDescription(QueryObject):
     def get_concept_ids(self):
         raise NotImplementedError()
 
+    def get_connector_ids(self):
+        raise NotImplementedError()
 
 @attr.s(auto_attribs=True, kw_only=True)
 class SingleRootQueryDescription(QueryDescription):
@@ -237,6 +242,9 @@ class SingleRootQueryDescription(QueryDescription):
 
     def get_concept_ids(self):
         return self.root.get_concept_ids()
+
+    def get_connector_ids(self):
+        return self.root.get_connector_ids()
 
     def get_concept_elements(self):
         return self.root.get_concept_elements()
@@ -300,6 +308,9 @@ class SingleChildQueryObject(QueryObject):
 
     def get_concept_ids(self):
         return self.child.get_concept_ids()
+
+    def get_connector_ids(self):
+        return self.child.get_connector_ids()
 
     def get_concept_elements(self):
         return self.child.get_concept_elements()
@@ -578,6 +589,12 @@ class AndOrElement(QueryObject):
         for child in self.children:
             root_concept_ids = root_concept_ids.union(child.get_concept_ids())
         return root_concept_ids
+
+    def get_connector_ids(self):
+        connector_ids = set()
+        for child in self.children:
+            connector_ids = connector_ids.union(child.get_connector_ids())
+        return connector_ids
 
     def get_concept_elements(self):
         return [concept_element for child in self.children for concept_element in child.get_concept_elements()]
@@ -1052,7 +1069,10 @@ class ConceptElement(QueryObject):
         }
 
     def get_concept_ids(self):
-        return set([conquery_id for conquery_id in self.ids])
+        return set(self.ids)
+
+    def get_connector_ids(self):
+        return set([table.connector_id for table in self.tables])
 
     def get_concept_elements(self):
         return [self]
@@ -1098,6 +1118,9 @@ class SimpleQuery(QueryObject):
         raise NotImplementedError
 
     def get_concept_ids(self):
+        pass
+
+    def get_connector_ids(self):
         pass
 
 

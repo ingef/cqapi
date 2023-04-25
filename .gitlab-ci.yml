@@ -2,11 +2,13 @@ stages:
   - testing
 
 testing:
-  image: python:3.9
+  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.9
   stage: testing
   interruptible: true
+  variables:
+    POETRY_VIRTUALENVS_CREATE: "false"
+  before_script:
+      - pip install poetry
+      - poetry install --with test
   script:
       - pytest /builds/eva4/cqapi/tests
-  
-  before_script:
-      - pip install /builds/eva4/cqapi/
