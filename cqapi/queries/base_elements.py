@@ -1015,8 +1015,16 @@ class ConceptElement(QueryObject):
             if validity_date_ids is not None:
                 validity_date_ids = [validity_date_id for validity_date_id in validity_date_ids
                                      if table_connector_id == validity_date_id.get_connector_id()]
+                if len(validity_date_ids) != 1:
+                    raise ValueError(f"No or more than one validity date for connector {table_connector_id} given:\n"
+                                     f"{validity_date_ids=}")
+                validity_date_id = validity_date_ids[0]
+            else:
+                validity_date_id = None
+
 
             self.tables.append(ConceptTable(table_connector_id,
+                                            date_column_id=validity_date_id,
                                             select_ids=connector_selects,
                                             filter_objs=connector_filters))
 
