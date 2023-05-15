@@ -1001,30 +1001,34 @@ class ConceptElement(QueryObject):
                       selects: List[SelectId] = None, filter_objs: List[dict] = None,
                       validity_date_ids: List[DateId] = None):
 
+        selects = selects or list()
+        filter_objs = filter_objs or list()
+        validity_date_ids = validity_date_ids or list()
+
         for table in concept[Keys.tables]:
             table_connector_id = ConnectorId.from_str(table[Keys.connector_id])
             if connector_ids is not None and not table_connector_id.is_in_id_list(connector_ids):
                 continue
-            selects = selects or list()
+
             connector_selects = [select for select in selects
                                  if table_connector_id == select.get_connector_id()]
-            filter_objs = filter_objs or list()
+
             connector_filters = [filter_obj for filter_obj in filter_objs
                                  if table_connector_id == filter_obj[Keys.filter].get_connector_id()]
 
-            if validity_date_ids is not None:
-                validity_date_ids = [validity_date_id for validity_date_id in validity_date_ids
+            connector_validity_date_ids = [validity_date_id for validity_date_id in validity_date_ids
                                      if table_connector_id == validity_date_id.get_connector_id()]
-                if len(validity_date_ids) != 1:
-                    raise ValueError(f"No or more than one validity date for connector {table_connector_id} given:\n"
-                                     f"{validity_date_ids=}")
-                validity_date_id = validity_date_ids[0]
-            else:
-                validity_date_id = None
 
+            if len(validity_date_ids) == 0:
+                connector_validity_date_id = None
+            elif len(validity_date_ids) == 1:
+                connector_validity_date_id = connector_validity_date_ids[0]
+            else:
+                raise ValueError(f"More than one validity date for connector {table_connector_id} given:\n"
+                                 f"{validity_date_ids=}")
 
             self.tables.append(ConceptTable(table_connector_id,
-                                            date_column_id=validity_date_id,
+                                            date_column_id=connector_validity_date_id,
                                             select_ids=connector_selects,
                                             filter_objs=connector_filters))
 
