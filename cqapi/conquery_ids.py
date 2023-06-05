@@ -131,8 +131,53 @@ class ConqueryId(ABC):
         return any(self.is_child_of(other_id=other_id) for other_id in other_ids)
 
     @abstractmethod
-    def get_id_label(self, concepts: dict) -> str:
+    def _get_label(self, concepts: dict) -> str:
         pass
+
+    def get_id_label(self, concepts: dict) -> str:
+        """
+        Recursively joins label for conquery id with base labels
+        """
+        current_label = self._get_label(concepts=concepts)
+        if not current_label:
+            return ""
+
+        base_label = self.base.get_id_label(concepts=concepts)
+        if not base_label:
+            return current_label
+
+        return " - ".join([base_label, current_label])
+
+
+    def get_label_dict(self, concepts: dict):
+        """
+        Recursively creates dictionary of types of conquery ids and their labels
+        """
+        if type(self.base) == ConceptId:
+            type_label = "concept"
+        elif type(self.base) == SelectId:
+            if type(self.base.base) == ConceptId:
+                type_label = "concept_select"
+            else:
+                type_label = "connector_select"
+        elif type(self.base) == ConnectorId:
+            type_label = "connector"
+        elif type(self.base) == FilterId:
+            type_label = "filter"
+        elif type(self.base) == DateId:
+            type_label = "date"
+        else:
+            type_label = None
+
+        if type_label:
+            current_label_dict = {type_label: self.get_id_label(concepts=concepts)}
+        else:
+            current_label_dict = {}
+
+        if type_label in ["select", "filter", "date"]:
+            return {**self.base.get_label_dict(concepts=concepts) , **current_label_dict}
+        else:
+            return current_label_dict
 
     @classmethod
     @abstractmethod
@@ -188,8 +233,8 @@ class DatasetId(ConqueryId):
         if new_base:
             raise ValueError("Dataset cannot have base")
 
-    def get_id_label(self, concepts: dict):
-        return self.name.upper()
+    def _get_label(self, concepts: dict):
+        return None
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> DatasetId:
@@ -209,7 +254,7 @@ class ConceptId(ConqueryId):
         if not isinstance(new_base, DatasetId):
             raise ValueError(f"Base of Concept can only be a Dataset. Provided: {new_base.id}")
 
-    def get_id_label(self, concepts: dict):
+    def _get_label(self, concepts: dict):
         concept_id = self.id
         concept_obj = concepts[concept_id]
         concept_label = concept_obj[Keys.label]
@@ -229,7 +274,7 @@ class SecondaryId(ConqueryId):
     def __init__(self, name: str, base: DatasetId):
         super().__init__(name=name, base=base)
 
-    def get_id_label(self, concepts: dict) -> str:
+    def _get_label(self, concepts: dict) -> str:
         return self.name.replace("_", "").title()
 
     def _check_valid_base(self, new_base: Optional[ConqueryId]):
@@ -259,11 +304,11 @@ class TableId(ConqueryId):
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Table can only be a Dataset. Provided: {new_base}")
 
-    def get_id_label(self, concepts: dict):
+    def _get_label(self, concepts: dict):
         return self.name.replace("_", "").title()
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConceptId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> TableId:
         if len(id_list) != table_index:
             raise ValueError(f"Provided string for Table must be of length {table_index} (dataset and table). "
                              f"Provided: {id_list}")
@@ -282,11 +327,11 @@ class ColumnId(ConqueryId):
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
 
-    def get_id_label(self, concepts: dict):
+    def _get_label(self, concepts: dict):
         return self.name.replace("_", "").title()
 
     @classmethod
-    def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
+    def create_id_objects_recursively(cls, id_list: List[str]) -> ColumnId:
         if len(id_list) != column_index:
             raise ValueError(f"Provided string for Column must be of length {column_index} "
                              f"(dataset, table and column). "
@@ -306,14 +351,13 @@ class ConnectorId(ConqueryId):
         if not isinstance(new_base, ConceptId):
             raise ValueError(f"Base of Connector can only be a Concept. Provided: {new_base}")
 
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
+    def _get_label(self, concepts: dict):
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.id
         connector_label = self.filter_concept_obj(filter_obj=concept_obj[Keys.tables], filter_key=Keys.connector_id,
                                                   compare_string=connector_id, return_key=Keys.label)
-        return " - ".join([base_label, connector_label])
+        return connector_label
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ConnectorId:
@@ -336,10 +380,8 @@ class ChildId(ConqueryId):
         if not isinstance(new_base, ConceptId) and not isinstance(new_base, ChildId):
             raise ValueError("Base of Child can only be a Concept or Child")
 
-    def get_id_label(self, concepts: dict):
-        base_label = self.get_concept_id().get_id_label(concepts=concepts)
-        child_label = self.name.upper()
-        return " - ".join([base_label, child_label])
+    def _get_label(self, concepts: dict):
+        return self.name.title()
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> ChildId:
@@ -369,8 +411,7 @@ class SelectId(ConqueryId):
     def is_concept_select(self) -> bool:
         return isinstance(self.base, ConceptId)
 
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
+    def _get_label(self, concepts: dict):
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
 
@@ -386,7 +427,7 @@ class SelectId(ConqueryId):
         else:
             select_label = self.filter_concept_obj(filter_obj=concept_obj[Keys.selects], filter_key=Keys.id,
                                                    compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return " - ".join([base_label, select_label])
+        return select_label
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> SelectId:
@@ -413,8 +454,7 @@ class FilterId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Filter can only be a Connector")
 
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
+    def _get_label(self, concepts: dict):
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.get_connector_id().id
@@ -424,7 +464,7 @@ class FilterId(ConqueryId):
             # type: ignore
         filter_label = self.filter_concept_obj(filter_obj=table_filters, filter_key=Keys.id,
                                                compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return " - ".join([base_label, filter_label])
+        return filter_label
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> FilterId:
@@ -437,7 +477,7 @@ class FilterId(ConqueryId):
         return FilterId(name=filter_id, base=base)
 
 
-class DateId(ConqueryId):
+class DateId(ConqueryId, ABC):
     def __init__(self, name: str, base: ConnectorId):
         super().__init__(name=name, base=base)
 
@@ -447,8 +487,7 @@ class DateId(ConqueryId):
         if not isinstance(new_base, ConnectorId):
             raise ValueError("Base of Date can only be a Connector")
 
-    def get_id_label(self, concepts: dict):
-        base_label = self.base.get_id_label(concepts=concepts)
+    def _get_label(self, concepts: dict):
         concept_id = self.get_concept_id().id
         concept_obj = concepts[concept_id]
         connector_id = self.get_connector_id().id
@@ -459,7 +498,7 @@ class DateId(ConqueryId):
 
         date_label = self.filter_concept_obj(filter_obj=table_dates[Keys.options], filter_key=Keys.value,
                                              compare_string=self.id, return_key=Keys.label)  # type: ignore
-        return " - ".join([base_label, date_label])
+        return date_label
 
     @classmethod
     def create_id_objects_recursively(cls, id_list: List[str]) -> DateId:
@@ -498,13 +537,32 @@ class ConqueryIdCollection:
             raise NotImplementedError
 
     def create_label_dicts(self, concepts: dict):
-        # TODO implement
-        pass
+        label_dicts = list()
+        for conquery_id in self.conquery_ids:
+            label_dicts.append(conquery_id.get_label_dict(concepts=concepts))
+        return label_dicts
 
     def print_id_labels_as_table(self, concepts: dict):
-        # TODO implement
-        pass
+        import pandas as pd
+        header_mapping = {
+            "Konzept": "concept",
+            "Zusatzwert (Konzept)": "concept_select",
+            "Quelle": "connector",
+            "Zusatzwert (Quelle)": "connector_select",
+            "Filter": "filter",
+            "Relevanter Zeitraum": "date"
+        }
+        label_dicts = self.create_label_dicts(concepts=concepts)
+        table_as_dict = {header: [label_dict.get(key, "") for label_dict in label_dicts]
+                         for header, key in header_mapping.items()}
+        sort_by_cols = list()
+        for header in header_mapping.keys():
+            if set(table_as_dict[header]) == {""}:
+                table_as_dict.pop(header)
+            else:
+                sort_by_cols.append(header)
 
+        return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
 
 def get_copy_of_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryId):
     """

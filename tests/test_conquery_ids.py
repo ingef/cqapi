@@ -134,7 +134,7 @@ def test_get_id_label():
         "Krankenhausfälle - Krankenhausfälle - Anzahl Krankenhausfälle"
 
     assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
-           "Krankenhausfälle - E14"
+           "Krankenhausfälle - E14-E18 - E14"
 
 
 @pytest.mark.skip("Needs conquery connection")
