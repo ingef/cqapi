@@ -116,9 +116,8 @@ def check_concept_ids_in_concepts_for_new_dataset(concept_ids: List[Union[Concep
                                  for child_concept_id in child_concept_ids]
 
         concept = conquery_conn.get_concept(new_root_concept_id.id)
-        concept_ids_in_concept = [child_id for child in concept for child_id in child[Keys.ids]]
 
         children_ids.extend([child_concept_id for child_concept_id in new_child_concept_ids
-                             if child_concept_id.id in concept_ids_in_concept])
+                             if child_concept_id.id in concept.keys()])
 
     return children_ids
