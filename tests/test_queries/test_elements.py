@@ -277,12 +277,13 @@ def test_full_export_form():
     }]}
     alter_concept_id = ConceptId("alter", DatasetId("dataset1"))
     alter_connector_id = ConnectorId("alter", alter_concept_id)
+    validity_date_id = DateId("alter_validity_date_id", base=alter_connector_id)
     full_export_form = FullExportForm(query_id="dataset1.query_id",
                                       concept_id=alter_concept_id,
                                       concept=concept,
                                       start_date="2020-01-01",
                                       end_date="2020-12-31",
-                                      validity_date_ids=[DateId("alter_validity_date_id", base=alter_connector_id)])
+                                      validity_date_ids=[validity_date_id])
     form_out = full_export_form.to_dict()
     form_val = {
         Keys.type: "FULL_EXPORT_FORM",
@@ -290,7 +291,9 @@ def test_full_export_form():
         Keys.date_range: {"min": "2020-01-01", "max": "2020-12-31"},
         Keys.tables: [{Keys.type: QueryType.CONCEPT.value,
                        Keys.ids: ["dataset1.alter"],
-                       Keys.tables: [{Keys.id: "dataset1.alter.alter"}]}]
+                       Keys.tables: [{Keys.id: "dataset1.alter.alter",
+                                      Keys.date_column: {Keys.value: validity_date_id.id}}]
+                       }]
     }
     test_case = TestCase()
     test_case.maxDiff = None
