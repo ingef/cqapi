@@ -31,9 +31,18 @@ class ConqueryId(ABC):
         return hash(self.id)
 
     def __eq__(self, other_id):
-        if isinstance(other_id, ConqueryId):
-            return self.id == other_id.id
-        raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
+        if not isinstance(other_id, ConqueryId):
+            raise ValueError("Can only compare to another instance of ConqueryId or its subclasses")
+
+        if type(self) == type(other_id) and self.name == other_id.name:
+            # same ids but only with different datasets are defined equal
+            if isinstance(self.base, DatasetId):
+                return True
+
+            return self.base == other_id.base
+
+        return False
+
 
     def __repr__(self):
         return self.id
