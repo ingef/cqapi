@@ -36,7 +36,7 @@ class ConqueryId(ABC):
 
         if type(self) == type(other_id) and self.name == other_id.name:
             # same ids but only with different datasets are defined equal
-            if isinstance(self.base, DatasetId):
+            if isinstance(self, DatasetId) or isinstance(self.base, DatasetId):
                 return True
 
             return self.base == other_id.base

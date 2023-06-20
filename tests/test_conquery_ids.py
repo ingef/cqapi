@@ -81,6 +81,8 @@ def test_compare_conquery_ids():
     assert DatasetId("dataset1") == DatasetId("dataset1")
     assert not DatasetId("dataset1") == DatasetId("dataset2")
     assert ConceptId("icd", DatasetId("dataset1")) == ConceptId("icd", DatasetId("dataset1"))
+    assert ConceptId("icd", DatasetId("dataset1")) == ConceptId("icd", DatasetId("dataset2"))
+    assert ConceptId("icd1", DatasetId("dataset1")) != ConceptId("icd2", DatasetId("dataset1"))
 
 
 def test_get_concept_id():
