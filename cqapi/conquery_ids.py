@@ -162,18 +162,18 @@ class ConqueryId(ABC):
         """
         Recursively creates dictionary of types of conquery ids and their labels
         """
-        if type(self.base) == ConceptId:
+        if type(self) == ConceptId:
             type_label = "concept"
-        elif type(self.base) == SelectId:
-            if type(self.base.base) == ConceptId:
+        elif type(self) == SelectId:
+            if type(self.base) == ConceptId:
                 type_label = "concept_select"
             else:
                 type_label = "connector_select"
-        elif type(self.base) == ConnectorId:
+        elif type(self) == ConnectorId:
             type_label = "connector"
-        elif type(self.base) == FilterId:
+        elif type(self) == FilterId:
             type_label = "filter"
-        elif type(self.base) == DateId:
+        elif type(self) == DateId:
             type_label = "date"
         else:
             type_label = None
