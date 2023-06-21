@@ -81,6 +81,8 @@ def test_compare_conquery_ids():
     assert DatasetId("dataset1") == DatasetId("dataset1")
     assert not DatasetId("dataset1") == DatasetId("dataset2")
     assert ConceptId("icd", DatasetId("dataset1")) == ConceptId("icd", DatasetId("dataset1"))
+    assert ConceptId("icd", DatasetId("dataset1")) == ConceptId("icd", DatasetId("dataset2"))
+    assert ConceptId("icd1", DatasetId("dataset1")) != ConceptId("icd2", DatasetId("dataset1"))
 
 
 def test_get_concept_id():
@@ -134,7 +136,7 @@ def test_get_id_label():
         "Krankenhausfälle - Krankenhausfälle - Anzahl Krankenhausfälle"
 
     assert ChildId("e14", ChildId("e14-e18", ConceptId("khfalle", DatasetId("dataset1")))).get_id_label(concepts) == \
-           "Krankenhausfälle - E14"
+           "Krankenhausfälle - E14-E18 - E14"
 
 
 @pytest.mark.skip("Needs conquery connection")
