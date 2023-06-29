@@ -13,18 +13,12 @@ read, edit and write the conquery queries which are specified in json.
 poetry install
 ```
 
-## Notes on Jupyter Notebooks
-
-## Documentation
-
-Refer to [the docs](doc/doc.md) for usage examples.
-
 ## Running Tests
 
 `python -m pytest tests/`
 
 ## Usage
-There are multiple Notebooks for Guidance in the examples-Folder in the Forms-Repo
+**Note: There are multiple Notebooks for Guidance in the examples-Folder in the Forms-Repo**
 
 ### Basic functionality
 Establish a connection to a conquery instance
@@ -46,7 +40,7 @@ We can also get the data of all the people in the query group with the selected 
 data = cq.get_query_result(query_id)
 ```
 
-### Concepts (described by ConqueryIds)
+### Concepts
 Concepts are listed on the left hand side in Conquery.
 Each Concept is described by an ID.
 
@@ -105,7 +99,7 @@ ops_exists_select = SelectId("exists", ops_concept)
 
 ### Editor Queries
 In the Editor we can put together queries and evaluate them to get the group of insurants that fulfil the
-specifications.
+specifications including covariates that are specified by the selects.
 We can specify the same queries (with some more liberties than we have in the graphical editor) with the cqapi.
 
 An editor query can consist of multiple building blocks.
@@ -154,7 +148,7 @@ For example, take this editor query:
 ![img.png](img.png)
 
 **Note: This is a very base level approach, which is explained only to illustrate the functionality.
-There are more user-friendly ways of creating queries, which are described in "Create Query" and "Query Editor",
+There are more user-friendly ways of creating queries, which are described in "Creating Queries",
 however those functions use the same functionality under the hood.**
 
 First we have to initiate the building blocks and then use the ```OrElement, AndElement``` to make a logical statement
@@ -162,25 +156,23 @@ which we can then wrap in a ConceptQuery.
 
 ```python
 from cqapi.queries.base_elements import ConceptElement, OrElement, AndElement, ConceptQuery, ConceptTable
-from cqapi.conquery_ids import ChildId, SelectId, ConnectorId
+from cqapi.conquery_ids import ChildId, ConnectorId
 
 # ConceptElement ATC A
 atc_a = ChildId.from_str("fdb_demo.atc.a")
-atc_exists = SelectId.from_str("fdb_demo.atc.exists")
 atc_connector = ConnectorId.from_str("fdb_demo.atc.atc")
-atc_a_concept_element = ConceptElement(ids=[atc_a], concept_selects=[atc_exists],
+atc_a_concept_element = ConceptElement(ids=[atc_a], 
                                        tables=[ConceptTable(connector_id=atc_connector)])
 
 # Concept Element ICD C00-D48
 icd_c00_d48 = ChildId.from_str("fdb_demo.icd.c00-d48")
-icd_exists = SelectId.from_str("fdb_demo.icd.exists")
 icd_kh_connector = ConnectorId.from_str("fdb_demo.icd.kh_diagnose_icd_code")
-icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], concept_selects=[icd_exists],
+icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], 
                                        tables=[ConceptTable(connector_id=icd_kh_connector)])
 
 # Concept Element ATC B
 atc_b = ChildId.from_str("fdb_demo.atc.b")
-atc_b_concept_element = ConceptElement(ids=[atc_b], concept_selects=[atc_exists],
+atc_b_concept_element = ConceptElement(ids=[atc_b], 
                                        tables=[ConceptTable(connector_id=atc_connector)])
 
 # Or Element, AndElement
@@ -196,15 +188,214 @@ query_id = cq.execute_query(query=concept_query)
 
 ```
 
+**Note: All of the classes we used here (ConceptElement, AndElement, ConceptQuery, etc.) all inherit from QueryObject. 
+QueryObject is the base class for all types of queries**
+
 ### Form Queries
+#### Absolute Export Form
+We can choose specific covariates to include in the data using the editor, such as costs, diagnosis, residence, etc. 
+However, we only receive those covariates for the group of insurants that satisfy the logical statement specified in 
+the editor. For instance, if we want to identify all individuals living in Bavaria and determine if they had Diabetes, 
+we would select the concepts "Bavaria" and "Diabetes" with the condition "exists." By including 
+Diabetes in our logical statement, we narrow down the insurant group to only those who had Diabetes. 
+This is where form queries come in.
+
+The most basic form query is the AbsoluteExportForm.
+
+**Note: Again, queries can be created more easily, they are just used here to demonstrate the ExportForms**
+```python
+from cqapi.queries.form_elements import AbsoluteExportForm
+from cqapi.queries.base_elements import ConceptElement, ConceptTable, ConceptQuery
+from cqapi.conquery_ids import ChildId, ConnectorId, SelectId
+
+# create query with all people in bavaria
+bavaria_concept = ChildId.from_str("fdb_demo.bundesland_und_kgs.09")
+bavaria_connector = ConnectorId.from_str("fdb_demo.bundesland_und_kgs.bundesland_regionale_daten")
+bavaria_concept_element = ConceptElement(ids=[bavaria_concept], 
+                                         tables=[ConceptTable(connector_id=bavaria_connector)])
+bavaria_query_id = cq.execute_query(query=ConceptQuery(root=bavaria_concept_element))
+
+# create concept element of diabetes
+icd_diabetes = ChildId.from_str("fdb_demo.icd.e00-e90.e10-e14")
+icd_select_exists = SelectId.from_str("fdb_demo.icd.exists")
+icd_connector = ConnectorId.from_str("fdb_demo.icd.arzt_diagnose_icd_code")
+icd_diabetes_concept_element = ConceptElement(ids=[icd_diabetes], 
+                                              concept_selects=[icd_select_exists],
+                                              tables=[ConceptTable(connector_id=icd_connector)])
+
+# get form query of all people in bavaria and whether they have diabetes
+form_query = AbsoluteExportForm(query_id=bavaria_query_id, features=[icd_diabetes_concept_element])
+
+form_query_id = cq.execute_query(query=form_query)
 
 
+# other optional parameters
+resolutions: List[str]  # ["COMPLETE", "YEARS", "QUARTERS", "DAYS"]
+create_resolution_subdivisions: bool  # if chosen exactly one resolution, this also creates the coarser subdivisions
+date_range: Union[List[str], dict]
+start_date: str
+end_date: str
+```
 
-# TODO:
-- Types of queries (and their corresponding editor queries)
-- Create Query
-- QueryEditor
-- Query vs Query Id
-- Which queries are executable
-- what can you put in get data (for each query, flussdiagramm examples from create query to get data)
+#### Relative Export Form
+With the relative export form, we don't specify an absolute time period, but the time period is relative to an index 
+date that is chosen from a list of dates. The list of dates for each insurant are provided in the data.
+The date can be retrieved from the list of dates by the earliest, latest or random.
+```python
+index_selector: str = 'EARLIEST'
+# other options: LATEST, RANDOM
+```
 
+Then, it can be specified, which time unit is used, and how many units before and after the index date we want to get 
+the data from. Also, it needs to be specified whether the index date should be counted to the time before, the time 
+after or whether it should be neutral and therefore in neither of those date ranges.
+
+```python
+time_unit: str = "QUARTERS"
+# other options: DAYS
+
+time_count_before: int = 1
+time_count_after: int = 1
+# must be positive
+
+index_placement: str = 'BEFORE'
+# other options: AFTER, NEUTRAL
+```
+
+Now I want to take the query group of Bavarians we used in the previous example, and now I want to get 
+the four quarters before and four quarters after their Diabetes diagnosis. I want to include the index date 
+in the after-index-date-period, because they probably already received treatment in the quarter of diagnosis.
+
+```python
+from cqapi.queries.form_elements import RelativeExportForm
+
+form_query = RelativeExportForm(query_id=bavaria_query_id, features=[icd_diabetes_concept_element],
+                                time_count_before=4, time_count_after=4, index_placement="AFTER")
+# I don't have to specify that I want quarters as my time period and that the index selector is the earliest, 
+# since those are the default values.
+
+form_query_id = cq.execute_query(query=form_query)
+
+```
+
+#### Entity Date Export Form
+The Entity Date Export Form is a type of Absolute Export Form. 
+The only difference is, that the EntityDateForm only returns data points that are within the date periods in the data.
+
+#### Full Export Form
+The Full Export Form returns the data in the form of the tables, that provide the data.
+It is a raw export and rarely used.
+
+### Creating Queries
+With the function create_query we can create queries much more easily than initiating
+all the objects ourselves. Mostly, it is not necessary to specify a table. However, if only a specific connector (like kh or arzt) should be used, it can be speficied using connector_ids.
+
+Here is the full parameter list, which explains the functionality by itself:
+```python
+from cqapi.queries.base_elements import create_query
+
+def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[ConceptId], List[ChildId], list],
+                 concepts: dict,
+                 concept_query: bool = False,
+                 secondary_id: Optional[Union[str, SecondaryId]] = None,
+                 connector_ids: Union[List[ConnectorId], List[str]] = None,
+                 concept_select_ids: Union[List[SelectId], List[str]] = None,
+                 connector_select_ids: Union[List[SelectId], List[str]] = None,
+                 filter_objs: List[dict] = None,
+                 exclude_from_secondary_id: bool = None,
+                 exclude_from_time_aggregation: bool = None,
+                 date_aggregation_mode: str = None,
+                 start_date: str = None, end_date: str = None,
+                 label: str = None,
+                 negate: bool = False) -> QueryObject
+```
+Let's say, we want to create the Diabetes query again. Since we don't need to provide a table here, we can simply define 
+the query as follows:
+```python
+icd_diabetes = ChildId.from_str("fdb_demo.icd.e00-e90.e10-e14")
+icd_select_exists = SelectId.from_str("fdb_demo.icd.exists")
+
+create_query(concept_id=icd_diabetes, concept_select_ids=[icd_select_exists], concepts=concepts)
+```
+#### Query Editor
+Once we have created our query, we can use the QueryEditor to manipulate the query, without much overhead.
+Here is just part of the functionality available:
+```
+- date_restriction
+  
+- concept_query
+  
+- negate
+  
+- and_query
+
+- add_concept_select
+
+- add_connector_select
+
+- remove_all_selects
+
+- translate
+
+- remove_all_tables_but
+
+- ...
+```
+
+Now we take the first concept query we made and recreate it using ```create_query``` and ```QueryEditor```:
+
+```python
+
+from cqapi.queries.editor import QueryEditor
+from cqapi.queries.base_elements import create_query
+from cqapi.conquery_ids import ChildId
+
+# ConceptElement ATC A
+atc_a = ChildId.from_str("fdb_demo.atc.a")
+
+atc_a_query = create_query(concept_id=atc_a, concepts=concepts)
+
+# Concept Element ICD C00-D48
+icd_c00_d48 = ChildId.from_str("fdb_demo.icd.c00-d48")
+
+atc_c00_d48_query = create_query(concept_id=icd_c00_d48, concepts=concepts)
+
+# Concept Element ATC B
+atc_b = ChildId.from_str("fdb_demo.atc.b")
+
+atc_b_query = create_query(concept_id=atc_b, concepts=concepts)
+
+# Or Element, And Element
+query_editor = QueryEditor(atc_c00_d48_query)
+
+query_editor.or_query(atc_b_query)
+
+query_editor.and_query(atc_a_query)
+
+# ConceptQuery
+query_editor.concept_query()
+
+# Execute query
+query = query_editor.query
+
+query_id = cq.execute_query(query=query)
+
+```
+
+### FAQ
+- _What is the difference between a query and a query id?_
+  
+  When we build a query we do that by creating a QueryObject. This is only an instance of a class. When we have executed 
+that query using the conquery backend, we get back a query_id, which is a string.
+
+
+- _Which queries are executable?_
+  
+  Only ConceptQuery, SecondaryIdQuery and all types of ExportForms are executable.
+
+
+- _Why is the query group in an Export Form described by a query_id but the features are QueryObjects?_
+
+  The query group is the population for which we want to get the data (therefore we need to execute the query). 
+The features are just information that we want about that group. QueryObjects can either describe groups of
+insurants or they can describe features about a group.
