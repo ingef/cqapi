@@ -18,7 +18,7 @@ poetry install
 `python -m pytest tests/`
 
 ## Usage
-**Note: There are multiple Notebooks for Guidance in the examples-Folder in the Forms-Repo**
+**Note: There are multiple Notebooks for guidance in the examples-folder in the Forms-Repo**
 
 ### Basic functionality
 Establish a connection to a conquery instance
@@ -200,7 +200,9 @@ we would select the concepts "Bavaria" and "Diabetes" with the condition "exists
 Diabetes in our logical statement, we narrow down the insurant group to only those who had Diabetes. 
 This is where form queries come in.
 
-The most basic form query is the AbsoluteExportForm.
+With a forms query, we can specify the group we want to look at (query_id), and also specify the features we want to
+get for each insurant in the group.
+The most basic form query is the AbsoluteExportForm, which looks at a fixed time period.
 
 **Note: Again, queries can be created more easily, they are just used here to demonstrate the ExportForms**
 ```python
@@ -246,7 +248,7 @@ index_selector: str = 'EARLIEST'
 # other options: LATEST, RANDOM
 ```
 
-Then, it can be specified, which time unit is used, and how many units before and after the index date we want to get 
+Then it can be specified which time unit is used, and how many units before and after the index date we want to get 
 the data from. Also, it needs to be specified whether the index date should be counted to the time before, the time 
 after or whether it should be neutral and therefore in neither of those date ranges.
 
@@ -262,8 +264,8 @@ index_placement: str = 'BEFORE'
 # other options: AFTER, NEUTRAL
 ```
 
-Now I want to take the query group of Bavarians we used in the previous example, and now I want to get 
-the four quarters before and four quarters after their Diabetes diagnosis. I want to include the index date 
+Now we want to take the query group of Bavarians we used in the previous example, and now I want to get 
+the four quarters before and four quarters after their Diabetes diagnosis. We want to include the index date 
 in the after-index-date-period, because they probably already received treatment in the quarter of diagnosis.
 
 ```python
