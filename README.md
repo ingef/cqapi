@@ -2,7 +2,7 @@
 
 cqapi (ConqueryApi) is a Python Api for the [conquery backend](https://github.com/ingef/conquery).  
 Next to interacting with Conquery via the ConqueryConnection-Class it has functionality to 
-read, edit and write the conquery queries which are specified in json. 
+read, edit and write the conquery queries which are specified in json.
 
 ## Installation
 - Some functionality of `cqapi` requires Python version `>= 3.8` and `<=3.9`
@@ -18,7 +18,9 @@ poetry install
 `python -m pytest tests/`
 
 ## Usage
-**Note: There are multiple Notebooks for guidance in the examples-folder in the Forms-Repo**
+**Note: There are multiple Notebooks for guidance in the examples-folder in the Forms-Repo.**
+
+**Disclaimer: The examples use health data, but the cqapi can be used for any type of data.**
 
 ### Basic functionality
 Establish a connection to a conquery instance
@@ -52,47 +54,47 @@ are possible.
 To provide an overview, these are the possible ID combinations including examples.
 ```
 Dataset - Concept
--> fdb_demo.alter
+-> dataset.alter
 
 Dataset - Concept - Connector
--> fdb_demo.icd.kh_diagnose_icd_code
+-> dataset.icd.kh_diagnose_icd_code
  
 Dataset - Child - Child - (...)
--> fdb_demo.icd.c00-d48.c00-c14.c01
+-> dataset.icd.c00-d48.c00-c14.c01
 
 Dataset - Concept - Select
--> fdb_demo.ops.exists
+-> dataset.ops.exists
  
 Dataset - Concept - Connector - Select
--> fdb_demo.icd.au_fall.anzahl_au_faelle
+-> dataset.icd.au_fall.anzahl_au_faelle
 
 Dataset - Concept - Connector - Date
--> fdb_demo.atc.atc.verordnungsdatum
+-> dataset.atc.atc.verordnungsdatum
 
 Dataset - Concept - Connector - Filter
--> fdb_demo.icd.arzt_diagnose_icd_code.diagnosesicherheit
+-> dataset.icd.arzt_diagnose_icd_code.diagnosesicherheit
 
 Dataset - SecondaryId
--> fdb_demo.drg
+-> dataset.drg
 
 Dataset - Table - Column  # only am_300
--> fdb_demo.am300_belegpositionen.beleg_brutto_summe
+-> dataset.am300_belegpositionen.beleg_brutto_summe
 ```
 Each ConqueryId only describes one part of the ID, such as the ConnectorId, and defines a base
 that it is built on, such as a ConceptId. This goes down to the DatasetId, which cannot have a base.
 
-To initiate a ConqueryId such as ```fdb_demo.ops.exists``` either use the from_str method
+To initiate a ConqueryId such as ```dataset.ops.exists``` either use the from_str method
 or initiate all the bases of the ID.
 
 Example:
 ```python
 from cqapi.conquery_ids import DatasetId, ConceptId, SelectId
 
-ops_exists_select = SelectId.from_str("fdb_demo.ops.exists")
+ops_exists_select = SelectId.from_str("dataset.ops.exists")
 
 # or
 
-dataset = DatasetId("fdb_demo")
+dataset = DatasetId("dataset")
 ops_concept = ConceptId("ops", dataset)
 ops_exists_select = SelectId("exists", ops_concept)
 ```
@@ -159,19 +161,19 @@ from cqapi.queries.base_elements import ConceptElement, OrElement, AndElement, C
 from cqapi.conquery_ids import ChildId, ConnectorId
 
 # ConceptElement ATC A
-atc_a = ChildId.from_str("fdb_demo.atc.a")
-atc_connector = ConnectorId.from_str("fdb_demo.atc.atc")
+atc_a = ChildId.from_str("dataset.atc.a")
+atc_connector = ConnectorId.from_str("dataset.atc.atc")
 atc_a_concept_element = ConceptElement(ids=[atc_a], 
                                        tables=[ConceptTable(connector_id=atc_connector)])
 
 # Concept Element ICD C00-D48
-icd_c00_d48 = ChildId.from_str("fdb_demo.icd.c00-d48")
-icd_kh_connector = ConnectorId.from_str("fdb_demo.icd.kh_diagnose_icd_code")
+icd_c00_d48 = ChildId.from_str("dataset.icd.c00-d48")
+icd_kh_connector = ConnectorId.from_str("dataset.icd.kh_diagnose_icd_code")
 icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], 
                                        tables=[ConceptTable(connector_id=icd_kh_connector)])
 
 # Concept Element ATC B
-atc_b = ChildId.from_str("fdb_demo.atc.b")
+atc_b = ChildId.from_str("dataset.atc.b")
 atc_b_concept_element = ConceptElement(ids=[atc_b], 
                                        tables=[ConceptTable(connector_id=atc_connector)])
 
@@ -211,16 +213,16 @@ from cqapi.queries.base_elements import ConceptElement, ConceptTable, ConceptQue
 from cqapi.conquery_ids import ChildId, ConnectorId, SelectId
 
 # create query with all people in bavaria
-bavaria_concept = ChildId.from_str("fdb_demo.bundesland_und_kgs.09")
-bavaria_connector = ConnectorId.from_str("fdb_demo.bundesland_und_kgs.bundesland_regionale_daten")
+bavaria_concept = ChildId.from_str("dataset.bundesland_und_kgs.09")
+bavaria_connector = ConnectorId.from_str("dataset.bundesland_und_kgs.bundesland_regionale_daten")
 bavaria_concept_element = ConceptElement(ids=[bavaria_concept], 
                                          tables=[ConceptTable(connector_id=bavaria_connector)])
 bavaria_query_id = cq.execute_query(query=ConceptQuery(root=bavaria_concept_element))
 
 # create concept element of diabetes
-icd_diabetes = ChildId.from_str("fdb_demo.icd.e00-e90.e10-e14")
-icd_select_exists = SelectId.from_str("fdb_demo.icd.exists")
-icd_connector = ConnectorId.from_str("fdb_demo.icd.arzt_diagnose_icd_code")
+icd_diabetes = ChildId.from_str("dataset.icd.e00-e90.e10-e14")
+icd_select_exists = SelectId.from_str("dataset.icd.exists")
+icd_connector = ConnectorId.from_str("dataset.icd.arzt_diagnose_icd_code")
 icd_diabetes_concept_element = ConceptElement(ids=[icd_diabetes], 
                                               concept_selects=[icd_select_exists],
                                               tables=[ConceptTable(connector_id=icd_connector)])
@@ -314,8 +316,8 @@ def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[Conc
 Let's say, we want to create the Diabetes query again. Since we don't need to provide a table here, we can simply define 
 the query as follows:
 ```python
-icd_diabetes = ChildId.from_str("fdb_demo.icd.e00-e90.e10-e14")
-icd_select_exists = SelectId.from_str("fdb_demo.icd.exists")
+icd_diabetes = ChildId.from_str("dataset.icd.e00-e90.e10-e14")
+icd_select_exists = SelectId.from_str("dataset.icd.exists")
 
 create_query(concept_id=icd_diabetes, concept_select_ids=[icd_select_exists], concepts=concepts)
 ```
@@ -353,17 +355,17 @@ from cqapi.queries.base_elements import create_query
 from cqapi.conquery_ids import ChildId
 
 # ConceptElement ATC A
-atc_a = ChildId.from_str("fdb_demo.atc.a")
+atc_a = ChildId.from_str("dataset.atc.a")
 
 atc_a_query = create_query(concept_id=atc_a, concepts=concepts)
 
 # Concept Element ICD C00-D48
-icd_c00_d48 = ChildId.from_str("fdb_demo.icd.c00-d48")
+icd_c00_d48 = ChildId.from_str("dataset.icd.c00-d48")
 
 atc_c00_d48_query = create_query(concept_id=icd_c00_d48, concepts=concepts)
 
 # Concept Element ATC B
-atc_b = ChildId.from_str("fdb_demo.atc.b")
+atc_b = ChildId.from_str("dataset.atc.b")
 
 atc_b_query = create_query(concept_id=atc_b, concepts=concepts)
 
