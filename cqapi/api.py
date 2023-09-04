@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 from time import sleep
-from typing import Union, List, Dict, NoReturn
+from typing import Union, List, Dict, NoReturn, Optional
 
 import requests
 from requests import Response
@@ -235,7 +235,9 @@ class ConqueryConnection(object):
         result = self._session.get_json(self.conquery_api_urls.form_config_id(form_config_id=form_config_id).parse())
         return result
 
-    def get_query(self, query_id: str) -> dict:
+    def get_query(self, query_id: str) -> Optional[dict]:
+        if not query_id:
+            return None
         result = self._session.get_json(self.conquery_api_urls.query_id(query_id=query_id).parse())
         return result.get('query')
 
