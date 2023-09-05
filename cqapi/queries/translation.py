@@ -3,8 +3,8 @@ from typing import Union, Tuple, List
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection, ConceptId, ChildId, get_copy_of_id_with_changed_dataset, \
     get_dataset_from_id_string
-from cqapi.exceptions import QueryTranslationError
-from cqapi.namespace import Keys
+from cqapi.exceptions import QueryTranslationError, ExternalQueryTranslationError
+from cqapi.namespace import QueryType
 from cqapi.queries.base_elements import create_query_obj, QueryObject
 
 
@@ -73,6 +73,11 @@ def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery
     # translate queryGroup
     original_query = conquery_conn.get_query(query_id)
     original_query = create_query_obj(original_query)
+
+    # external queries just contain the IDs and therefore do not make sense to be translated
+    if original_query.unwrap().query_type == QueryType.EXTERNAL:
+        raise ExternalQueryTranslationError({
+            "query_name": conquery_conn.get_stored_query_info(query_id).get("label", query_id)})
 
     translated_query, original_query, removed_ids = \
         translate_query(query=original_query,
