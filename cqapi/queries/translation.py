@@ -76,8 +76,7 @@ def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery
 
     # external queries just contain the IDs and therefore do not make sense to be translated
     if original_query.unwrap().query_type == QueryType.EXTERNAL:
-        raise ExternalQueryTranslationError({
-            "query_name": conquery_conn.get_stored_query_info(query_id).get("label", query_id)})
+        raise ExternalQueryTranslationError()
 
     translated_query, original_query, removed_ids = \
         translate_query(query=original_query,
