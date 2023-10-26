@@ -18,7 +18,6 @@ poetry install
 `python -m pytest tests/`
 
 ## Usage
-**Note: There are multiple Notebooks for guidance in the examples-folder in the Forms-Repo.**
 
 **Disclaimer: The examples use health data, but the cqapi can be used for any type of data.**
 
