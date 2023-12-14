@@ -26,7 +26,10 @@ Establish a connection to a conquery instance
 ```python
 from cqapi import ConqueryConnection
 
-cq = ConqueryConnection("http://conquery-base.url:9082")
+cq = ConqueryConnection(url="http://localhost:8080", token=token)
+
+# in forms, token is the conquery_debug_token
+
 ```
 When a user builds and executes a query in the Conquery Editor, that query is then stored in the conquery backend with a unique query_id.
 When the user drops that query_id in a Jupyend-Form, we receive that query_id as a string.
@@ -317,6 +320,8 @@ the query as follows:
 ```python
 icd_diabetes = ChildId.from_str("dataset.icd.e00-e90.e10-e14")
 icd_select_exists = SelectId.from_str("dataset.icd.exists")
+
+concepts = cq.get_concepts()  # concepts is a representation of all concepts in the conquery instance
 
 create_query(concept_id=icd_diabetes, concept_select_ids=[icd_select_exists], concepts=concepts)
 ```
