@@ -107,15 +107,13 @@ specifications including covariates that are specified by the selects.
 We can specify the same queries (with some more liberties than we have in the graphical editor) with the cqapi.
 
 An editor query can consist of multiple building blocks.
-One possible building block are ConceptElement's. A ConceptElement must contain at least an Id and a ConceptTable, 
-that describes which table the Id is based on.
+One possible building block are ConceptElement's. A ConceptElement must contain at least an Id and a connector, on which the ids are built on.
 Other building blocks are ExternalQuery's (user-uploaded queries in the backend) and SavedQuery's (previously executed and 
 stored queries in the backend).
 
 ```
 Building blocks:
 - ConceptElement
-    - ConceptTable
 - ExternalQuery
 - SavedQuery
 ```
@@ -159,25 +157,22 @@ First we have to initiate the building blocks and then use the ```OrElement, And
 which we can then wrap in a ConceptQuery.
 
 ```python
-from cqapi.queries.base_elements import ConceptElement, OrElement, AndElement, ConceptQuery, ConceptTable
+from cqapi.queries.base_elements import ConceptElement, OrElement, AndElement, ConceptQuery
 from cqapi.conquery_ids import ChildId, ConnectorId
 
 # ConceptElement ATC A
 atc_a = ChildId.from_str("dataset.atc.a")
 atc_connector = ConnectorId.from_str("dataset.atc.atc")
-atc_a_concept_element = ConceptElement(ids=[atc_a], 
-                                       tables=[ConceptTable(connector_id=atc_connector)])
+atc_a_concept_element = ConceptElement(ids=[atc_a], connector_ids=[atc_connector])
 
 # Concept Element ICD C00-D48
 icd_c00_d48 = ChildId.from_str("dataset.icd.c00-d48")
 icd_kh_connector = ConnectorId.from_str("dataset.icd.kh_diagnose_icd_code")
-icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], 
-                                       tables=[ConceptTable(connector_id=icd_kh_connector)])
+icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], connector_ids=[icd_kh_connector])
 
 # Concept Element ATC B
 atc_b = ChildId.from_str("dataset.atc.b")
-atc_b_concept_element = ConceptElement(ids=[atc_b], 
-                                       tables=[ConceptTable(connector_id=atc_connector)])
+atc_b_concept_element = ConceptElement(ids=[atc_b], connector_ids=[atc_connector])
 
 # Or Element, AndElement
 or_query = OrElement(children=[icd_c00_d48_concept_element, atc_b_concept_element])
@@ -211,14 +206,14 @@ The most basic form query is the AbsoluteExportForm, which looks at a fixed time
 **Note: Again, queries can be created more easily, they are just used here to demonstrate the ExportForms**
 ```python
 from cqapi.queries.form_elements import AbsoluteExportForm
-from cqapi.queries.base_elements import ConceptElement, ConceptTable, ConceptQuery
+from cqapi.queries.base_elements import ConceptElement, ConceptQuery
 from cqapi.conquery_ids import ChildId, ConnectorId, SelectId
 
 # create query with all people in bavaria
 bavaria_concept = ChildId.from_str("dataset.bundesland_und_kgs.09")
 bavaria_connector = ConnectorId.from_str("dataset.bundesland_und_kgs.bundesland_regionale_daten")
 bavaria_concept_element = ConceptElement(ids=[bavaria_concept], 
-                                         tables=[ConceptTable(connector_id=bavaria_connector)])
+                                         connector_ids=bavaria_connector)
 bavaria_query_id = cq.execute_query(query=ConceptQuery(root=bavaria_concept_element))
 
 # create concept element of diabetes
@@ -226,8 +221,8 @@ icd_diabetes = ChildId.from_str("dataset.icd.e00-e90.e10-e14")
 icd_select_exists = SelectId.from_str("dataset.icd.exists")
 icd_connector = ConnectorId.from_str("dataset.icd.arzt_diagnose_icd_code")
 icd_diabetes_concept_element = ConceptElement(ids=[icd_diabetes], 
-                                              concept_selects=[icd_select_exists],
-                                              tables=[ConceptTable(connector_id=icd_connector)])
+                                              connector_ids=[icd_connector],
+                                              concept_selects=[icd_select_exists])
 
 # get form query of all people in bavaria and whether they have diabetes
 form_query = AbsoluteExportForm(query_id=bavaria_query_id, features=[icd_diabetes_concept_element])
@@ -294,7 +289,7 @@ It is a raw export and rarely used.
 
 ### Creating Queries
 With the function create_query we can create queries much more easily than initiating
-all the objects ourselves. Mostly, it is not necessary to specify a table. However, if only a specific connector (like kh or arzt) should be used, it can be speficied using connector_ids.
+all the objects ourselves. However, if only a specific connector (like kh or arzt) should be used, it can be speficied using connector_ids.
 
 Here is the full parameter list, which explains the functionality by itself:
 ```python
@@ -315,8 +310,7 @@ def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[Conc
                  label: str = None,
                  negate: bool = False) -> QueryObject
 ```
-Let's say, we want to create the Diabetes query again. Since we don't need to provide a table here, we can simply define 
-the query as follows:
+Let's say, we want to create the Diabetes query again, we can simply define the query as follows:
 ```python
 icd_diabetes = ChildId.from_str("dataset.icd.e00-e90.e10-e14")
 icd_select_exists = SelectId.from_str("dataset.icd.exists")
