@@ -26,9 +26,12 @@ Establish a connection to a conquery instance
 ```python
 from cqapi import ConqueryConnection
 
-cq = ConqueryConnection(url="http://localhost:8080", token=token)
+conquery_debug_token=""  # can be found in Passwordsafe
 
-# in forms, token is the conquery_debug_token
+# in forms, token is the conquery_debug_token and dataset is "adb_novitas"
+cq = ConqueryConnection(url="http://localhost:8080", dataset="adb_novitas", token=conquery_debug_token)
+
+
 
 ```
 When a user builds and executes a query in the Conquery Editor, that query is then stored in the conquery backend with a unique query_id.
@@ -167,8 +170,26 @@ atc_a_concept_element = ConceptElement(ids=[atc_a], connector_ids=[atc_connector
 
 # Concept Element ICD C00-D48
 icd_c00_d48 = ChildId.from_str("dataset.icd.c00-d48")
-icd_kh_connector = ConnectorId.from_str("dataset.icd.kh_diagnose_icd_code")
-icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], connector_ids=[icd_kh_connector])
+icd_kh_connector = ConnectorId.from_str("dataset.icd.kh_diagnose_icd_code") # Connector for hospital cases
+icd_arzt_connector = ConnectorId.from_str("dataset.icd.arzt_diagnose_icd_code") # Connector dor doctor cases
+icd_kh_select = SelectId.from_str("dataset.icd.kh_diagnose_icd_code.exists") 
+icd_arzt_select = SelectId.from_str("dataset.icd.arzt_diagnose_icd_code.exists")
+
+icd_c00_d48_concept_element = ConceptElement(ids=[icd_c00_d48], 
+                                             concept=concepts["dataset.icd"], # table for the concept
+                                             connector_ids=[icd_kh_connector, icd_arzt_connector],
+                                             connector_selects=[icd_kh_select, icd_arzt_select])
+
+# ConceptElement Krankhausdiagnosen 
+icd = ConceptId.from_str("dataset.icd")
+icd_connector = ConnectorId.from_str("dataset.icd.kh_diagnose_icd_code")
+icd_code_selector =  SelectId.from_str("dataset.icd.codes") # disease list
+icd_exists_selector =  SelectId.from_str("dataset.icd.exists") # if insurant had diseases
+icd_concept_element = ConceptElement(ids=[icd], 
+                                          concept=concepts["dataset.icd"], # table for the concept
+                                          connector_ids=[icd_connector],
+                                          concept_selects=[icd_exists_selector, 
+                                          icd_code_selector])
 
 # Concept Element ATC B
 atc_b = ChildId.from_str("dataset.atc.b")
