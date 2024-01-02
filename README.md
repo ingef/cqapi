@@ -32,6 +32,7 @@ conquery_debug_token=""  # can be found in Passwordsafe
 cq = ConqueryConnection(url="http://localhost:8080", dataset="adb_novitas", token=conquery_debug_token)
 
 
+concepts = cq.get_concepts() # get concept tables
 
 ```
 When a user builds and executes a query in the Conquery Editor, that query is then stored in the conquery backend with a unique query_id.
