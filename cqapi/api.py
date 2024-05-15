@@ -298,8 +298,8 @@ class ConqueryConnection(object):
             self.reexecute_query(query_id)
             sleep(0.5)
 
-    def wait_for_query_to_finish(self, query_id: str, requests_per_sec: int = None):
-        """Waits until query i finished and checks for NEW/FAILED"""
+    def wait_for_query_ignore_final_status(self, query_id: str, requests_per_sec: int = None):
+        """Waits until query i finished, no additional checks"""
         query_info = self.get_query_info(query_id)
 
         while query_info['status'] == 'RUNNING':
@@ -307,6 +307,14 @@ class ConqueryConnection(object):
             if requests_per_sec is None:
                 continue
             sleep(1 / requests_per_sec)
+
+        return query_info
+
+
+    def wait_for_query_to_finish(self, query_id: str, requests_per_sec: int = None):
+        """Waits until query i finished and checks for NEW/FAILED"""
+
+        query_info = self.wait_for_query_ignore_final_status(query_id=query_id, requests_per_sec=requests_per_sec)
 
         if query_info['status'] in ["NEW", "FAILED"]:
             raise Exception(f"Query Status: {query_info['status']} for query {query_info['id']}")
@@ -344,7 +352,7 @@ class ConqueryConnection(object):
         return True
 
     def execute_query(self, query: Union[dict, QueryObject], dataset: str = None,
-                      label: str = None) -> str:
+                      label: str = None, wait: bool= True) -> str:
         try:
             query = query.to_dict()  # type:ignore
         except AttributeError:
@@ -359,7 +367,11 @@ class ConqueryConnection(object):
         try:
             if label is not None:
                 self._session.patch(self.conquery_api_urls.query_id(query_id=result['id']).parse(), {"label": label})
-            return result['id']
+
+            query_id = result['id']
+            if wait:
+                self.wait_for_query_ignore_final_status(query_id=query_id, requests_per_sec=10)
+            return query_id
 
         except KeyError:
             raise ValueError("Error encountered when executing query", result.get('message'), result.get('details'))
