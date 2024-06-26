@@ -1,4 +1,4 @@
-from typing import Union, Tuple, List, Any
+from typing import Union, Tuple, List, Optional
 
 from cqapi.api import ConqueryConnection
 from cqapi.conquery_ids import ConqueryIdCollection, ConceptId, ChildId, get_copy_of_id_with_changed_dataset, \
@@ -64,7 +64,7 @@ def translate_queries(queries: List[QueryObject], concepts: dict, conquery_conn:
 
 def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery_conn: ConqueryConnection,
                                        concepts_new_dataset: dict = None, return_removed_ids: bool = False) -> \
-        Union[None, tuple[str, Any], str]:
+        Optional[None, tuple[str, ConqueryIdCollection], str]:
     """Gets stored query, translates it to new dataset and executes the query."""
 
     if concepts_new_dataset is None:
