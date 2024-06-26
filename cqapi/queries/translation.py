@@ -64,7 +64,7 @@ def translate_queries(queries: List[QueryObject], concepts: dict, conquery_conn:
 
 def translate_and_execute_stored_query(query_id: str, new_dataset: str, conquery_conn: ConqueryConnection,
                                        concepts_new_dataset: dict = None, return_removed_ids: bool = False) -> \
-        Optional[None, tuple[str, ConqueryIdCollection], str]:
+        Optional[Union[tuple[str, ConqueryIdCollection], str]]:
     """Gets stored query, translates it to new dataset and executes the query."""
 
     if concepts_new_dataset is None:
