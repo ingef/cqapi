@@ -21,3 +21,20 @@ class ConqueryClientConnectionError(CqApiError):
 
 class QueryNotFoundError(BaseException):
     pass
+
+
+class RetryCountExceeded(BaseException):
+    def __init__(self, msg):
+        self.message = msg
+    pass
+
+
+class ConqueryTimeout(BaseException):
+    """
+        Defines a Timeout Exception for Conquery.
+        This is use to return a less verbose Error message compared to requests.exceptions.timeout
+    """
+    def __init__(self, msg):
+        self.message = msg
+
+    pass

@@ -10,9 +10,9 @@ import pandas as pd
 import pyarrow as pa
 
 import cqapi.datasets
-from cqapi.conquery.api import ConqueryApiUrls
+from cqapi.conquery.api import ConqueryApiUrls, Url
 from cqapi.conquery_ids import get_dataset_from_id_string, ConqueryId
-from cqapi.exceptions import QueryNotFoundError
+from cqapi.exceptions import QueryNotFoundError, RetryCountExceeded, ConqueryTimeout
 from cqapi.queries.utils import get_dataset_from_query
 from cqapi.queries.base_elements import QueryObject
 
@@ -36,10 +36,12 @@ class ConqueryConnectionSession:
     """Session object to communicate with conquery.
     This could be a bundle of static methods if it wasn't for the token update in the header"""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, timeout_s: int, retry_count_get: int):
         self.token: str = token
         self._session = requests.session()
         self._session.headers.update(self.header)
+        self._timeout_s = timeout_s
+        self._retry_count_get = retry_count_get
 
     def open(self):
         self.close()
@@ -60,24 +62,58 @@ class ConqueryConnectionSession:
 
     # Basic Request-Methods
     def get(self, url, params: dict = None):
-        with self._session.get(url, params=params) as response:
-            raise_for_status(response)
-            return response
+        retry_count = 0
+
+        while retry_count <= self._retry_count_get:
+            try:
+                response = self._session.get(url, params=params, timeout=self._timeout_s)
+                # exit loop if no exception rises
+                break
+            except requests.exceptions.Timeout as e:
+                retry_count = retry_count + 1
+
+        if retry_count > self._retry_count_get:
+            raise RetryCountExceeded(f"GET-Request {url=} exceeded limit: {self._retry_count_get=}")
+
+        raise_for_status(response)
+        return response
+
 
     def post(self, url, data):
-        with self._session.post(url=url, json=data) as response:
-            raise_for_status(response)
-            return response.json()
+        try:
+            with self._session.post(url=url, json=data, timeout=self._timeout_s) as response:
+                raise_for_status(response)
+                return response.json()
+        except requests.exceptions.Timeout:
+            #do nothing here, raise ConqueryTimeout to get a less verbose message
+            pass
+        if isinstance(url, Url):
+            url = url.parse()
+        raise ConqueryTimeout(f"POST-Request {url=} timeout: {self._timeout_s=}")
 
     def patch(self, url, data):
-        with self._session.patch(url, json=data) as response:
-            raise_for_status(response)
-            return response.json()
+        try:
+            with self._session.patch(url, json=data, timeout=self._timeout_s) as response:
+                raise_for_status(response)
+                return response.json()
+        except requests.exceptions.Timeout:
+            # do nothing here, raise ConqueryTimeout to get a less verbose message
+            pass
+        if isinstance(url, Url):
+            url = url.parse()
+        raise ConqueryTimeout(f"PATCH-Request {url=} timeout: {self._timeout_s=}")
 
     def delete(self, url):
-        with self._session.delete(url) as response:
-            raise_for_status(response)
-            return response.text
+        try:
+            with self._session.delete(url, timeout=self._timeout_s) as response:
+                raise_for_status(response)
+                return response.text
+        except requests.exceptions.Timeout:
+            # do nothing here, raise ConqueryTimeout to get a less verbose message
+            pass
+        if isinstance(url, Url):
+            url = url.parse()
+        raise ConqueryTimeout(f"DELETE-Request {url=} timeout: {self._timeout_s=}")
 
     # Methods on top of basic methods
     def get_json(self, url):
@@ -90,18 +126,26 @@ class ConqueryConnectionSession:
 class ConqueryConnection(object):
     _dataset = None
 
-    def __init__(self, url: str, token: str = "",
-                 requests_timout: int = 5, dataset: str = None):
+    def __init__(self, url: str,
+                 token: str = "",
+                 requests_timout_s: int = 10,
+                 requests_retry_count: int = 2,
+                 dataset: str = None):
 
         self.conquery_api_urls = ConqueryApiUrls(conquery_url=url.strip("/"))
         self._token = token
-        self._session: ConqueryConnectionSession = ConqueryConnectionSession(token=token)
-
-        self._timeout: int = requests_timout
         self._datasets_with_permission: List[str] = []
+
+        self._session: ConqueryConnectionSession = ConqueryConnectionSession(token=token,
+                                                                             timeout_s=requests_timout_s,
+                                                                             retry_count_get=requests_retry_count)
 
         if token:
             self._set_up_datasets(dataset=dataset)
+
+
+    def close(self):
+        self._session.close()
 
     def _set_up_datasets(self, dataset: str = None):
         """Create new session and set datasets with permission globally"""
@@ -152,7 +196,9 @@ class ConqueryConnection(object):
         return self._dataset
 
     def get_datasets(self) -> list:
-        response_list = self._session.get_json(self.conquery_api_urls.datasets().parse())
+        dataset = self.conquery_api_urls.datasets()
+        dataset_parsed = dataset.parse()
+        response_list = self._session.get_json(dataset_parsed)
         return [d['id'] for d in response_list]
 
     def get_datasets_label_dict(self) -> Dict[str, str]:
@@ -179,7 +225,8 @@ class ConqueryConnection(object):
 
     def get_concepts(self, dataset: str = None, remove_structure_elements: bool = True) -> dict:
         dataset = self._get_dataset(dataset)
-        response = self._session.get_json(self.conquery_api_urls.concepts(dataset=dataset).parse())
+        obj = self.conquery_api_urls.concepts(dataset=dataset).parse()
+        response = self._session.get_json(obj)
 
         if remove_structure_elements:
             return {concept_id: concept for (
@@ -426,6 +473,15 @@ class ConqueryConnection(object):
 
     def _download_query_results(self, url):
         return self._session.get_text(url, params={"pretty": "false"})
+
+
+    def send_custom_get(self, resource: str, params: dict = None):
+        url = self.conquery_api_urls.conquery_url + resource
+        return self._session.get(url=url, params=params)
+
+    def send_custom_post(self, resource: str, data):
+        url = self.conquery_api_urls.conquery_url + resource
+        return self._session.post(url=url, data=data)
 
     @staticmethod
     def _get_result_url(response, file_type: str = "csv"):
