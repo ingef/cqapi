@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cqapi"
-version = "0.4.0"
+version = "0.4.1"
 description = "A Conquery REST API library."
 authors = ["InGef - EVA Team <eva@ingef.de>"]
 readme = "README.md"
