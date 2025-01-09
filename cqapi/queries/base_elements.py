@@ -142,8 +142,6 @@ class QueryObject:
     def remove_filters(self, filter_ids: List[FilterId] = None):
         pass
 
-    def remove_all_filters(self):
-        self.remove_filters()
 
 
 class QueryDescription(QueryObject):
