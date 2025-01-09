@@ -139,6 +139,12 @@ class QueryObject:
         self.remove_concept_selects()
         self.remove_connector_selects()
 
+    def remove_filters(self, filter_ids: List[FilterId] = None):
+        pass
+
+    def remove_all_filters(self):
+        self.remove_filters()
+
 
 class QueryDescription(QueryObject):
 
@@ -228,6 +234,9 @@ class SingleRootQueryDescription(QueryDescription):
     def remove_connector_selects(self, connector_select_ids: List[SelectId] = None):
         self.root.remove_connector_selects(connector_select_ids=connector_select_ids)
 
+    def remove_filters(self, filter_ids: List[FilterId] = None):
+        self.root.remove_filters(filter_ids=filter_ids)
+
     def unwrap(self) -> QueryObject:
         return self.root
 
@@ -296,6 +305,9 @@ class SingleChildQueryObject(QueryObject):
 
     def remove_connector_selects(self, connector_select_ids: List[SelectId] = None):
         self.child.remove_connector_selects(connector_select_ids=connector_select_ids)
+
+    def remove_filters(self, filter_ids: List[FilterId] = None):
+        self.child.remove_filters(filter_ids=filter_ids)
 
     def exclude_from_secondary_id(self) -> None:
         self.child.exclude_from_secondary_id()
@@ -562,6 +574,10 @@ class AndOrElement(QueryObject):
     def add_filter(self, filter_obj: dict) -> None:
         for child in self.children:
             child.add_filter(filter_obj)
+
+    def remove_filters(self, filter_ids: List[FilterId] = None):
+        for child in self.children:
+            child.remove_filters(filter_ids=filter_ids)
 
     def exclude_from_time_aggregation(self) -> None:
         for child in self.children:
