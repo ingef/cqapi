@@ -755,9 +755,15 @@ class ConceptTable:
         for filter_obj in filter_objs:
             self.add_filter(filter_obj=filter_obj)
 
-    def remove_filters(self, filter_objs: List[dict]):
+    def remove_filter_objs(self, filter_objs: List[dict]):
         for filter_obj in filter_objs:
             self.filters.remove(filter_obj)
+
+    def remove_filters(self, filters: List[FilterId]):
+        remove_filters_str = [filter.id for filter in filters]
+        for filter_obj in self.filters:
+            if filter_obj["filter"] in remove_filters_str:
+                self.filters.remove(filter_obj)
 
     def translate(self, concepts: dict,
                   removed_ids: ConqueryIdCollection) -> Tuple[Union[ConceptTable, None], Union[ConceptTable, None]]:
