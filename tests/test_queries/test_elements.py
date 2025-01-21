@@ -131,6 +131,24 @@ def test_remove_selects():
     assert query_editor.query.root.children[0].tables[0].selects == list()
 
 
+def test_remove_filters():
+    concept1 = ConceptId("concept1", DatasetId("dataset1"))
+    table1 = ConnectorId("table1", concept1)
+    filter1 = FilterId("select1", table1)
+    query_object_1 = ConceptElement(ids=[concept1],
+                                    tables=[ConceptTable(connector_id=table1,
+                                                         filter_objs=[{
+        "filter": filter1,
+        "type": "MULTI_SELECT",
+        "value": "test"
+    }])])
+    or_query = OrElement(children=[query_object_1.copy()])
+    concept_query = ConceptQuery(root=or_query)
+    query_editor = QueryEditor(query=concept_query)
+    query_editor.remove_filters(filter_ids=[filter1])
+    assert query_editor.query.root.children[0].tables[0].filters == list()
+
+
 def test_relativ_export_form():
     query_object_1 = ConceptElement(ids=[ConceptId("concept1", DatasetId("dataset1"))])
     query_object_2 = ConceptQuery(root=ConceptElement(ids=[ConceptId("concept2", DatasetId("dataset1"))]))
