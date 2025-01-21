@@ -760,9 +760,8 @@ class ConceptTable:
             self.filters.remove(filter_obj)
 
     def remove_filters(self, filters: List[FilterId]):
-        remove_filters_str = [filter.id for filter in filters]
         for filter_obj in self.filters:
-            if filter_obj["filter"] in remove_filters_str:
+            if filter_obj["filter"] in filters:
                 self.filters.remove(filter_obj)
 
     def translate(self, concepts: dict,
@@ -1082,6 +1081,10 @@ class ConceptElement(QueryObject):
         for table in self.tables:
             if filter_obj[Keys.filter].get_connector_id() == table.connector_id:
                 table.add_filter(filter_obj)
+
+    def remove_filters(self, filter_ids: List[FilterId] = None):
+        for table in self.tables:
+            table.remove_filters(filters=filter_ids)
 
     def exclude_from_secondary_id(self) -> None:
         self._exclude_from_secondary_id = True
