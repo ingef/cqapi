@@ -73,7 +73,7 @@ class ConqueryConnectionSession:
                 retry_count = retry_count + 1
 
         if retry_count > self._retry_count_get:
-            raise RetryCountExceeded(f"GET-Request {url=} exceeded limit: {self._retry_count_get=}")
+            raise RetryCountExceeded(f"GET-Request {url=} exceeded limit. {self._retry_count_get=} {self._timeout_s=}")
 
         raise_for_status(response)
         return response
