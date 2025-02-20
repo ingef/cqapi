@@ -54,7 +54,7 @@ class QueryObject:
         self.label = label
 
     def get_concept_elements(self) -> List[ConceptElement]:
-        pass
+        return []
 
     def get_selects(self):
         return [*self.get_concept_selects(), *self.get_connector_selects()]
@@ -1196,6 +1196,9 @@ class SavedQuery(SimpleQuery):
             label=query.get(Keys.label)
         )
 
+    def get_concept_elements(self) -> List[ConceptElement]:
+        return []
+
 
 @attr.s(auto_attribs=True, kw_only=True)
 class External(SimpleQuery):
@@ -1228,6 +1231,9 @@ class External(SimpleQuery):
             Keys.format: self.format_list,
             Keys.values: self.values
         }
+
+    def get_concept_elements(self) -> List[ConceptElement]:
+        return []
 
 
 def get_query_obj_from_query_type(query: dict) -> Type[QueryObject]:
