@@ -1269,18 +1269,19 @@ def create_query_obj_list(queries: List[dict]) -> List[QueryObject]:
 @typechecked
 def create_query(concept_id: Union[str, ConceptId, ChildId, List[str], List[ConceptId], List[ChildId], list],
                  concepts: dict,
-                 concept_query: bool = False,
+                 concept_query: Optional[bool] = False,
                  secondary_id: Optional[Union[str, SecondaryId]] = None,
-                 connector_ids: Union[List[ConnectorId], List[str]] = None,
-                 concept_select_ids: Union[List[SelectId], List[str]] = None,
-                 connector_select_ids: Union[List[SelectId], List[str]] = None,
-                 filter_objs: List[dict] = None,
-                 exclude_from_secondary_id: bool = None,
-                 exclude_from_time_aggregation: bool = None,
-                 date_aggregation_mode: str = None,
-                 start_date: str = None, end_date: str = None,
-                 label: str = None,
-                 negate: bool = False) -> QueryObject:
+                 connector_ids: Optional[Union[List[ConnectorId], List[str]]] = None,
+                 concept_select_ids: Optional[Union[List[SelectId], List[str]]] = None,
+                 connector_select_ids: Optional[Union[List[SelectId], List[str]]] = None,
+                 filter_objs: Optional[List[dict]] = None,
+                 exclude_from_secondary_id: Optional[bool] = None,
+                 exclude_from_time_aggregation: Optional[bool] = None,
+                 date_aggregation_mode: Optional[str] = None,
+                 start_date: Optional[str] = None,
+                 end_date: Optional[str] = None,
+                 label: Optional[str] = None,
+                 negate: Optional[bool] = False) -> QueryObject:
     if not isinstance(concept_id, list):
         concept_ids = [concept_id]
     else:
