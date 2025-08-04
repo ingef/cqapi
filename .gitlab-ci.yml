@@ -5,7 +5,7 @@ stages:
 
 testing:
   stage: testing
-  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.9
+  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.13.5-bullseye
   interruptible: true
   variables:
     POETRY_VIRTUALENVS_CREATE: "false"
@@ -18,7 +18,7 @@ testing:
 
 publish:
   stage: publish
-  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.9
+  image: ocireg.spectrumk.de/hub.docker.com/library/python:3.13.5-bullseye
   rules:
     - if: '$CI_COMMIT_TAG != null && $CI_PIPELINE_SOURCE == "push"'
   before_script:
