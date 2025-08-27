@@ -83,7 +83,10 @@ class ConqueryConnectionSession:
         try:
             with self._session.post(url=url, json=data, timeout=self._timeout_s) as response:
                 raise_for_status(response)
-                return response.json()
+                if response.content:
+                    return response.json()
+                else:
+                    return None
         except requests.exceptions.Timeout:
             #do nothing here, raise ConqueryTimeout to get a less verbose message
             pass
