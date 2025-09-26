@@ -70,6 +70,9 @@ class ConqueryApiUrls:
     def query_reexecute(self, query_id: str) -> Url:
         return self.query_id(query_id=query_id) / "reexecute"
 
+    def query_cancel(self, query_id: str) -> Url:
+        return self.query_id(query_id=query_id) / "cancel"
+
     def form_configs(self, dataset: str = None):
         if dataset is None:
             return self.api / "form-configs"
