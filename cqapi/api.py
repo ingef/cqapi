@@ -429,6 +429,9 @@ class ConqueryConnection(object):
     def reexecute_query(self, query_id: str) -> None:
         self._session.post(self.conquery_api_urls.query_reexecute(query_id=query_id), data="")
 
+    def cancel_query(self, query_id: str) -> None:
+        self._session.post(self.conquery_api_urls.query_cancel(query_id=query_id), data="")
+
     def get_query_result(self, query_id: str, return_pandas: bool = True, file_format: str = "arrow",
                          delete_query: bool = False):
         """ Returns results for given query.
