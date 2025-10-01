@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 from cqapi.queries.base_elements import QueryObject, create_query_obj, SavedQuery, DateRestriction, ConceptQuery, \
     SecondaryIdQuery, Negation, AndElement, OrElement, QueryDescription, ConceptElement, create_query
 from cqapi.conquery_ids import SecondaryId
