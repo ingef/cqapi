@@ -179,11 +179,11 @@ class ConqueryId(ABC):
             type_label = None
 
         if type_label:
-            current_label_dict = {type_label: self.get_id_label(concepts=concepts)}
+            current_label_dict = {type_label: self._get_label(concepts=concepts)}
         else:
             current_label_dict = {}
 
-        if type_label in ["select", "filter", "date"]:
+        if type_label in ["connector", "concept_select", "connector_select", "filter", "date"]:
             return {**self.base.get_label_dict(concepts=concepts) , **current_label_dict}
         else:
             return current_label_dict
@@ -225,7 +225,7 @@ class ConqueryId(ABC):
 
     @staticmethod
     def filter_concept_obj(filter_obj: list, filter_key: str, compare_string: str, return_key: str) \
-            -> Union[str, list]:
+            -> Union[str, list, dict]:
         """
         Method used in add_self_label_to_dict in subclasses.
         Filters a list of dictionaries (filter_obj) based on if for each element, the value of the dict for filter_key
@@ -571,7 +571,7 @@ class ConqueryIdCollection:
             else:
                 sort_by_cols.append(header)
 
-        return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols)
+        return pd.DataFrame(table_as_dict).sort_values(by=sort_by_cols).reset_index(drop=True)
 
 def get_copy_of_id_with_changed_dataset(new_dataset: str, conquery_id: ConqueryId):
     """

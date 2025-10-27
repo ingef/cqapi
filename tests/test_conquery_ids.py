@@ -1,7 +1,13 @@
+import json
+from pathlib import Path
+import pandas as pd
+
 from cqapi.conquery_ids import ConqueryIdCollection, DatasetId, ConceptId, ConnectorId, SelectId, DateId, \
-    ChildId, DateId, get_dataset_from_id_string, get_copy_of_id_with_changed_dataset, FilterId, ChildId
-import pytest
+    get_dataset_from_id_string, get_copy_of_id_with_changed_dataset, FilterId, ChildId
+
 from cqapi.datasets import set_test_datasets
+
+
 set_test_datasets()
 
 concepts = dict({
@@ -139,17 +145,23 @@ def test_get_id_label():
            "Krankenhausfälle - E14-E18 - E14"
 
 
-@pytest.mark.skip("Needs conquery connection")
-def test_label():
-    concepts = dict()
+def test_print_id_labels_as_table():
+    validation_table = pd.DataFrame(
+        {
+            "Konzept": ["ATC (WIDO)", "ATC (WIDO)", "ATC (WIDO)", "ICD"],
+            "Zusatzwert (Konzept)": ["", "", "ATC (Wido) liegt vor", ""],
+            "Quelle": ["", "ATC", "", ""],
+            "Zusatzwert (Quelle)": ["", "Anzahl Rezepte", "", ""]
+        }
+    )
+
     ids = ConqueryIdCollection()
+    ids.add(ConceptId("atc_wido", DatasetId("dataset1")))
+    ids.add(ConceptId("icd", DatasetId("dataset1")))
+    ids.add(SelectId("exists", ConceptId("atc_wido", DatasetId("dataset1"))))
+    ids.add(SelectId("anzahl_rezepte", ConnectorId("atc", ConceptId("atc_wido", DatasetId("dataset1")))))
 
-    ids.add(ConceptId("concept", DatasetId("dataset2")))
-    ids.add(ConceptId("concept", DatasetId("dataset3")))
-    ids.add(SelectId("sel", ConnectorId("conn", ConceptId("concept", DatasetId("dataset2")))))
-
-    ids.create_label_dicts(concepts=concepts)
-
-    ids.print_id_labels_as_table(concepts=concepts)
-
-
+    with open(Path("concepts") / "dataset1_concepts.json", "r", encoding="utf-8") as f:
+        dataset1_concepts = json.load(f)
+        table = ids.print_id_labels_as_table(concepts=dataset1_concepts)
+        pd.testing.assert_frame_equal(table, validation_table)
