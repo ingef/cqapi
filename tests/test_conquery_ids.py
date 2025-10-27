@@ -155,13 +155,22 @@ def test_print_id_labels_as_table():
         }
     )
 
+    def get_tests_path() -> Path:
+        for path in Path(__file__).parents:
+            if path.name == "tests":
+                return path
+        else:
+            return Path("tests")
+
+    test_path = get_tests_path()
+
     ids = ConqueryIdCollection()
     ids.add(ConceptId("atc_wido", DatasetId("dataset1")))
     ids.add(ConceptId("icd", DatasetId("dataset1")))
     ids.add(SelectId("exists", ConceptId("atc_wido", DatasetId("dataset1"))))
     ids.add(SelectId("anzahl_rezepte", ConnectorId("atc", ConceptId("atc_wido", DatasetId("dataset1")))))
 
-    with open(Path("concepts") / "dataset1_concepts.json", "r", encoding="utf-8") as f:
+    with open(test_path / "concepts" / "dataset1_concepts.json", "r", encoding="utf-8") as f:
         dataset1_concepts = json.load(f)
         table = ids.print_id_labels_as_table(concepts=dataset1_concepts)
         pd.testing.assert_frame_equal(table, validation_table)
