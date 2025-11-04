@@ -308,7 +308,7 @@ def test_full_export_form():
         Keys.query_group: "dataset1.query_id",
         Keys.date_range: {"min": "2020-01-01", "max": "2020-12-31"},
         Keys.tables: [{Keys.type: QueryType.CONCEPT.value,
-                       Keys.ids: ["dataset1.alter"],
+                       Keys.ids: ["dataset1.alter_vks"],
                        Keys.tables: [{Keys.id: "dataset1.alter_vks.alter",
                                       Keys.date_column: {Keys.value: validity_date_id.id}}]
                        }]
