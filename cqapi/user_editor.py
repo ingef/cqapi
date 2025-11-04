@@ -445,10 +445,11 @@ class Conquery:
                   start_date: str = None, end_date: str = None) -> EditorQuery:
         """
         Create query from a eva ids.
-        :param concept_id: E.g. "alter", "geschlecht", "icd", "atc"
-        :param connector_ids: Optional: E.g. "alter.alter", "geschlecht.geschlecht", "icd.arzt_diagnose_icd_code".
+        :param concept_id: E.g. "alter_vks", "geschlecht_vks", "icd", "atc"
+        :param connector_ids: Optional: E.g. "alter_vks.alter", "geschlecht_vks.geschlecht",
+        "icd.arzt_diagnose_icd_code".
                               When none is given, defaults are selected
-        :param select_ids: Optional: E.g. "alter.alter.alter_select", "geschlecht.geschlecht.geschlecht_text",
+        :param select_ids: Optional: E.g. "alter_vks.alter.alter_select", "geschlecht_vks.geschlecht.geschlecht_text",
                            icd.arzt_diagnose_icd_code.anzahl_arztfaelle"
                            When none is given, defaults are selected
         :param start_date: Optional: E.g. "01.01.2020"

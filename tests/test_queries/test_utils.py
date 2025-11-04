@@ -8,7 +8,7 @@ set_dataset_list(["dataset1", "dataset2"])
 
 def test_create_query():
     concepts = {
-        "dataset1.alter": {'parent': 'dataset1.sozdem_infonet_struc',
+        "dataset1.alter_vks": {'parent': 'dataset1.sozdem_infonet_struc',
                            'label': 'Alter',
                            'description': None,
                            'active': True,
@@ -17,22 +17,22 @@ def test_create_query():
                            'matchingEntries': 0,
                            'dateRange': {'min': None, 'max': None},
                            'tables': [{'id': 'dataset1.vers_stamm',
-                                       'connectorId': 'dataset1.alter.alter',
+                                       'connectorId': 'dataset1.alter_vks.alter',
                                        'label': 'Alter',
-                                       'dateColumn': {'defaultValue': 'dataset1.alter.alter.versichertenzeit',
+                                       'dateColumn': {'defaultValue': 'dataset1.alter_vks.alter.versichertenzeit',
                                                       'options': [{'label': 'Versichertenzeit',
-                                                                   'value': 'dataset1.alter.alter.versichertenzeit',
+                                                                   'value': 'dataset1.alter_vks.alter.versichertenzeit',
                                                                    'templateValues': None,
                                                                    'optionValue': None},
                                                                   {'label': 'Erster Tag',
-                                                                   'value': 'dataset1.alter.alter.erster_tag',
+                                                                   'value': 'dataset1.alter_vks.alter.erster_tag',
                                                                    'templateValues': None,
                                                                    'optionValue': None},
                                                                   {'label': 'Letzter Tag',
-                                                                   'value': 'dataset1.alter.alter.letzter_tag',
+                                                                   'value': 'dataset1.alter_vks.alter.letzter_tag',
                                                                    'templateValues': None,
                                                                    'optionValue': None}]},
-                                       'filters': [{'id': 'dataset1.alter.alter.alterseinschr$c3$a4nkung',
+                                       'filters': [{'id': 'dataset1.alter_vks.alter.alterseinschr$c3$a4nkung',
                                                     'label': 'Alterseinschränkung',
                                                     'type': 'INTEGER_RANGE',
                                                     'unit': None,
@@ -43,15 +43,15 @@ def test_create_query():
                                                     'template': None,
                                                     'pattern': None,
                                                     'allowDropFile': None}],
-                                       'selects': [{'id': 'dataset1.alter.alter.alter_select',
+                                       'selects': [{'id': 'dataset1.alter_vks.alter.alter_select',
                                                     'label': 'Ausgabe Alter',
                                                     'description': 'Automatisch erzeugter Zusatzwert.',
                                                     'resultType': {'type': 'INTEGER'}},
-                                                   {'id': 'dataset1.alter.alter.liste_geburtsdatum',
+                                                   {'id': 'dataset1.alter_vks.alter.liste_geburtsdatum',
                                                     'label': 'Ausgabe Geburtsdatum',
                                                     'description': None,
                                                     'resultType': {'type': 'DATE'}},
-                                                   {'id': 'dataset1.alter.alter.dates',
+                                                   {'id': 'dataset1.alter_vks.alter.dates',
                                                     'label': 'Datumswerte',
                                                     'description': None,
                                                     'resultType': {'type': 'LIST',
@@ -59,18 +59,18 @@ def test_create_query():
                                        'supportedSecondaryIds': []}],
                            'detailsAvailable': True,
                            'codeListResolvable': False,
-                           'selects': [{'id': 'dataset1.alter.dates',
+                           'selects': [{'id': 'dataset1.alter_vks.dates',
                                         'label': 'Datumswerte',
                                         'description': None,
                                         'resultType': {'type': 'LIST', 'elementType': {'type': 'DATE_RANGE'}}}]}
     }
 
-    query_val = {"type": "CONCEPT", "ids": ["dataset1.alter"],
+    query_val = {"type": "CONCEPT", "ids": ["dataset1.alter_vks"],
                  "tables": [
-                     {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter.alter.ausgabe_alter"]}]}
+                     {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter_vks.alter.ausgabe_alter"]}]}
 
     query_out = create_query(concept_id=ConceptId.from_str("dataset1.alter"), concepts=concepts,
-                             connector_select_ids=[SelectId.from_str("dataset1.alter.alter.ausgabe_alter")]).to_dict()
+                             connector_select_ids=[SelectId.from_str("dataset1.alter_vks.alter.ausgabe_alter")]).to_dict()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
 

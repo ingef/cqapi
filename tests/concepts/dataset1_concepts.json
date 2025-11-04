@@ -1370,7 +1370,7 @@
     ],
     "matchingEntities": 19364
   },
-  "dataset1.alter": {
+  "dataset1.alter_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Alter",
     "description": null,
@@ -1382,26 +1382,26 @@
     "tables": [
       {
         "id": "dataset1.vers_stamm",
-        "connectorId": "dataset1.alter.alter",
+        "connectorId": "dataset1.alter_vks.alter",
         "label": "Alter",
         "dateColumn": {
-          "defaultValue": "dataset1.alter.alter.versichertenzeit",
+          "defaultValue": "dataset1.alter_vks.alter.versichertenzeit",
           "options": [
             {
               "label": "Versichertenzeit",
-              "value": "dataset1.alter.alter.versichertenzeit",
+              "value": "dataset1.alter_vks.alter.versichertenzeit",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.alter.alter.erster_tag",
+              "value": "dataset1.alter_vks.alter.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.alter.alter.letzter_tag",
+              "value": "dataset1.alter_vks.alter.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -1409,7 +1409,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.alter.alter.alterseinschr$c3$a4nkung",
+            "id": "dataset1.alter_vks.alter.alterseinschr$c3$a4nkung",
             "label": "Alterseinschränkung",
             "type": "INTEGER_RANGE",
             "unit": null,
@@ -1424,12 +1424,12 @@
         ],
         "selects": [
           {
-            "id": "dataset1.alter.alter.alter_select",
+            "id": "dataset1.alter_vks.alter.alter_select",
             "label": "Ausgabe Alter",
             "description": "Automatisch erzeugter Zusatzwert."
           },
           {
-            "id": "dataset1.alter.alter.liste_geburtsdatum",
+            "id": "dataset1.alter_vks.alter.liste_geburtsdatum",
             "label": "Ausgabe Geburtsdatum",
             "description": null
           }
@@ -4475,71 +4475,6 @@
           {
             "id": "dataset1.biosimiliar_atc.arzneimittel.arzneimittelklassifizierung_select",
             "label": "Ausgabe Klassifizierung Biosimilar",
-            "description": "Automatisch erzeugter Zusatzwert."
-          }
-        ]
-      }
-    ],
-    "detailsAvailable": true,
-    "codeListResolvable": false,
-    "selects": []
-  },
-  "dataset1.kgs": {
-    "parent": "dataset1.sozdem_infonet_struc",
-    "label": "Gemeindeschlüssel",
-    "description": null,
-    "active": true,
-    "children": [],
-    "additionalInfos": [],
-    "matchingEntries": 100,
-    "dateRange": null,
-    "tables": [
-      {
-        "id": "dataset1.vers_region",
-        "connectorId": "dataset1.kgs.kgs",
-        "label": "KGS",
-        "dateColumn": {
-          "defaultValue": "dataset1.kgs.kgs.dauer",
-          "options": [
-            {
-              "label": "Dauer",
-              "value": "dataset1.kgs.kgs.dauer",
-              "templateValues": null,
-              "optionValue": null
-            },
-            {
-              "label": "Erster Tag",
-              "value": "dataset1.kgs.kgs.erster_tag",
-              "templateValues": null,
-              "optionValue": null
-            },
-            {
-              "label": "Letzter Tag",
-              "value": "dataset1.kgs.kgs.letzter_tag",
-              "templateValues": null,
-              "optionValue": null
-            }
-          ]
-        },
-        "filters": [
-          {
-            "id": "dataset1.kgs.kgs.kreise",
-            "label": "Kreise",
-            "type": "BIG_MULTI_SELECT",
-            "unit": null,
-            "description": null,
-            "options": null,
-            "min": null,
-            "max": null,
-            "template": null,
-            "pattern": null,
-            "allowDropFile": true
-          }
-        ],
-        "selects": [
-          {
-            "id": "dataset1.kgs.kgs.kreise_select",
-            "label": "Ausgabe KGS",
             "description": "Automatisch erzeugter Zusatzwert."
           }
         ]
@@ -8250,7 +8185,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.verstorbene_ct": {
+  "dataset1.verstorbene_ct_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Verstorbene",
     "description": null,
@@ -8262,18 +8197,18 @@
     "tables": [
       {
         "id": "dataset1.verstorbene_t",
-        "connectorId": "dataset1.verstorbene_ct.verstorben",
+        "connectorId": "dataset1.verstorbene_ct_vks.verstorben",
         "label": "Verstorben",
         "dateColumn": null,
         "filters": [],
         "selects": [
           {
-            "id": "dataset1.verstorbene_ct.verstorben.exists",
+            "id": "dataset1.verstorbene_ct_vks.verstorben.exists",
             "label": "Verstorbene",
             "description": null
           },
           {
-            "id": "dataset1.verstorbene_ct.verstorben.liste_sterbedatum",
+            "id": "dataset1.verstorbene_ct_vks.verstorben.liste_sterbedatum",
             "label": "Ausgabe Sterbedatum",
             "description": null
           }
@@ -9124,7 +9059,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.ausland": {
+  "dataset1.ausland_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Ausland",
     "description": null,
@@ -9136,26 +9071,26 @@
     "tables": [
       {
         "id": "dataset1.vers_region",
-        "connectorId": "dataset1.ausland.ausland_regionale_daten",
+        "connectorId": "dataset1.ausland_vks.ausland_regionale_daten",
         "label": "Ausland",
         "dateColumn": {
-          "defaultValue": "dataset1.ausland.ausland_regionale_daten.dauer",
+          "defaultValue": "dataset1.ausland_vks.ausland_regionale_daten.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.ausland.ausland_regionale_daten.dauer",
+              "value": "dataset1.ausland_vks.ausland_regionale_daten.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.ausland.ausland_regionale_daten.erster_tag",
+              "value": "dataset1.ausland_vks.ausland_regionale_daten.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.ausland.ausland_regionale_daten.letzter_tag",
+              "value": "dataset1.ausland_vks.ausland_regionale_daten.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -9163,7 +9098,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.ausland.ausland_regionale_daten.ausland",
+            "id": "dataset1.ausland_vks.ausland_regionale_daten.ausland",
             "label": "Ausland",
             "type": "MULTI_SELECT",
             "unit": null,
@@ -9191,7 +9126,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.ausland.ausland_regionale_daten.ausland_select",
+            "id": "dataset1.ausland_vks.ausland_regionale_daten.ausland_select",
             "label": "Ausgabe Ausland",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -11021,7 +10956,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.versichertentage": {
+  "dataset1.versichertentage_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Versichertentage",
     "description": null,
@@ -11033,12 +10968,12 @@
     "tables": [
       {
         "id": "dataset1.vers_tage_range",
-        "connectorId": "dataset1.versichertentage.versichertentage",
+        "connectorId": "dataset1.versichertentage_vks.versichertentage",
         "label": "Versichertentage",
         "dateColumn": null,
         "filters": [
           {
-            "id": "dataset1.versichertentage.versichertentage.versichertentage",
+            "id": "dataset1.versichertentage_vks.versichertentage.versichertentage",
             "label": "Versichertentage",
             "type": "INTEGER_RANGE",
             "unit": "Tage",
@@ -11053,12 +10988,12 @@
         ],
         "selects": [
           {
-            "id": "dataset1.versichertentage.versichertentage.versichertentage_periods",
+            "id": "dataset1.versichertentage_vks.versichertentage.versichertentage_periods",
             "label": "Ausgabe Versichertenzeiträume",
             "description": "Gibt die Versichertentage als Zeiträume aus."
           },
           {
-            "id": "dataset1.versichertentage.versichertentage.versichertentage_select",
+            "id": "dataset1.versichertentage_vks.versichertentage.versichertentage_select",
             "label": "Ausgabe Versichertentage",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -11117,7 +11052,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.kv": {
+  "dataset1.kv_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Wohnort-KV",
     "description": null,
@@ -11129,26 +11064,26 @@
     "tables": [
       {
         "id": "dataset1.vers_region",
-        "connectorId": "dataset1.kv.wohnort-kv",
+        "connectorId": "dataset1.kv_vks.wohnort-kv",
         "label": "Wohnort-KV",
         "dateColumn": {
-          "defaultValue": "dataset1.kv.wohnort-kv.dauer",
+          "defaultValue": "dataset1.kv_vks.wohnort-kv.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.kv.wohnort-kv.dauer",
+              "value": "dataset1.kv_vks.wohnort-kv.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.kv.wohnort-kv.erster_tag",
+              "value": "dataset1.kv_vks.wohnort-kv.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.kv.wohnort-kv.letzter_tag",
+              "value": "dataset1.kv_vks.wohnort-kv.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -11156,7 +11091,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.kv.wohnort-kv.wohnort-kv",
+            "id": "dataset1.kv_vks.wohnort-kv.wohnort-kv",
             "label": "Wohnort-KV",
             "type": "MULTI_SELECT",
             "unit": null,
@@ -11274,7 +11209,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.kv.wohnort-kv.wohnort-kv_select",
+            "id": "dataset1.kv_vks.wohnort-kv.wohnort-kv_select",
             "label": "Ausgabe Wohnort-KV",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -13375,7 +13310,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.bundesland": {
+  "dataset1.bundesland_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Bundesland",
     "description": null,
@@ -13390,17 +13325,17 @@
         "connectorId": "dataset1.bundesland.bundesland",
         "label": "Bundesland",
         "dateColumn": {
-          "defaultValue": "dataset1.bundesland.bundesland.dauer",
+          "defaultValue": "dataset1.bundesland_vks.bundesland.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.bundesland.bundesland.dauer",
+              "value": "dataset1.bundesland_vks.bundesland.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.bundesland.bundesland.erster_tag",
+              "value": "dataset1.bundesland_vks.bundesland.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
@@ -13414,7 +13349,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.bundesland.bundesland.bundesland",
+            "id": "dataset1.bundesland_vks.bundesland.bundesland",
             "label": "Bundesland",
             "type": "MULTI_SELECT",
             "unit": null,
@@ -13532,7 +13467,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.bundesland.bundesland.bundesland_select",
+            "id": "dataset1.bundesland_vks.bundesland.bundesland_select",
             "label": "Ausgabe Bundesland",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -16756,26 +16691,26 @@
     "tables": [
       {
         "id": "dataset1.vers_stamm",
-        "connectorId": "dataset1.geschlecht.geschlecht",
+        "connectorId": "dataset1.geschlecht_vks.geschlecht",
         "label": "Geschlecht",
         "dateColumn": {
-          "defaultValue": "dataset1.geschlecht.geschlecht.versichertenzeit",
+          "defaultValue": "dataset1.geschlecht_vks.geschlecht.versichertenzeit",
           "options": [
             {
               "label": "Versichertenzeit",
-              "value": "dataset1.geschlecht.geschlecht.versichertenzeit",
+              "value": "dataset1.geschlecht_vks.geschlecht.versichertenzeit",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.geschlecht.geschlecht.erster_tag",
+              "value": "dataset1.geschlecht_vks.geschlecht.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.geschlecht.geschlecht.letzter_tag",
+              "value": "dataset1.geschlecht_vks.geschlecht.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -16783,7 +16718,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.geschlecht.geschlecht.geschlecht",
+            "id": "dataset1.geschlecht_vks.geschlecht.geschlecht",
             "label": "Geschlecht",
             "type": "MULTI_SELECT",
             "unit": null,
@@ -16811,7 +16746,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.geschlecht.geschlecht.geschlecht_text_select",
+            "id": "dataset1.geschlecht_vks.geschlecht.geschlecht_text_select",
             "label": "Ausgabe Geschlecht",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -17000,7 +16935,7 @@
       }
     ]
   },
-  "dataset1.versichertenstatus": {
+  "dataset1.versichertenstatus_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Versichertenstatus",
     "description": null,
@@ -17012,26 +16947,26 @@
     "tables": [
       {
         "id": "dataset1.vers_sozdem",
-        "connectorId": "dataset1.versichertenstatus.soziodemografische_daten",
+        "connectorId": "dataset1.versichertenstatus_vks.soziodemografische_daten",
         "label": "Soziodemografische Daten",
         "dateColumn": {
-          "defaultValue": "dataset1.versichertenstatus.soziodemografische_daten.dauer",
+          "defaultValue": "dataset1.versichertenstatus_vks.soziodemografische_daten.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.versichertenstatus.soziodemografische_daten.dauer",
+              "value": "dataset1.versichertenstatus_vks.soziodemografische_daten.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.versichertenstatus.soziodemografische_daten.erster_tag",
+              "value": "dataset1.versichertenstatus_vks.soziodemografische_daten.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.versichertenstatus.soziodemografische_daten.letzter_tag",
+              "value": "dataset1.versichertenstatus_vks.soziodemografische_daten.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -17039,7 +16974,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.versichertenstatus.soziodemografische_daten.versichertenstatus",
+            "id": "dataset1.versichertenstatus_vks.soziodemografische_daten.versichertenstatus",
             "label": "Versichertenstatus",
             "type": "MULTI_SELECT",
             "unit": null,
@@ -17073,7 +17008,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.versichertenstatus.soziodemografische_daten.versichertenstatus_select",
+            "id": "dataset1.versichertenstatus_vks.soziodemografische_daten.versichertenstatus_select",
             "label": "Ausgabe Versichertenstatus",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -19993,7 +19928,7 @@
       }
     ]
   },
-  "dataset1.plz": {
+  "dataset1.plz_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "PLZ",
     "description": null,
@@ -20005,26 +19940,26 @@
     "tables": [
       {
         "id": "dataset1.vers_region",
-        "connectorId": "dataset1.plz.regionale_daten",
+        "connectorId": "dataset1.plz_vks.regionale_daten",
         "label": "PLZ",
         "dateColumn": {
-          "defaultValue": "dataset1.plz.regionale_daten.dauer",
+          "defaultValue": "dataset1.plz_vks.regionale_daten.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.plz.regionale_daten.dauer",
+              "value": "dataset1.plz_vks.regionale_daten.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.plz.regionale_daten.erster_tag",
+              "value": "dataset1.plz_vks.regionale_daten.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.plz.regionale_daten.letzter_tag",
+              "value": "dataset1.plz_vks.regionale_daten.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -20032,7 +19967,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.plz.regionale_daten.plz",
+            "id": "dataset1.plz_vks.regionale_daten.plz",
             "label": "PLZ",
             "type": "BIG_MULTI_SELECT",
             "unit": null,
@@ -20047,7 +19982,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.plz.regionale_daten.plz_select",
+            "id": "dataset1.plz_vks.regionale_daten.plz_select",
             "label": "Ausgabe PLZ",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -20232,7 +20167,7 @@
     "codeListResolvable": false,
     "selects": []
   },
-  "dataset1.arbeitgebernummer": {
+  "dataset1.arbeitgebernummer_vks": {
     "parent": "dataset1.sozdem_infonet_struc",
     "label": "Arbeitgebernummer",
     "description": null,
@@ -20244,26 +20179,26 @@
     "tables": [
       {
         "id": "dataset1.vers_sozdem",
-        "connectorId": "dataset1.arbeitgebernummer.arbeitgeber",
+        "connectorId": "dataset1.arbeitgebernummer_vks.arbeitgeber",
         "label": "Arbeitgeber",
         "dateColumn": {
-          "defaultValue": "dataset1.arbeitgebernummer.arbeitgeber.dauer",
+          "defaultValue": "dataset1.arbeitgebernummer_vks.arbeitgeber.dauer",
           "options": [
             {
               "label": "Dauer",
-              "value": "dataset1.arbeitgebernummer.arbeitgeber.dauer",
+              "value": "dataset1.arbeitgebernummer_vks.arbeitgeber.dauer",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Erster Tag",
-              "value": "dataset1.arbeitgebernummer.arbeitgeber.erster_tag",
+              "value": "dataset1.arbeitgebernummer_vks.arbeitgeber.erster_tag",
               "templateValues": null,
               "optionValue": null
             },
             {
               "label": "Letzter Tag",
-              "value": "dataset1.arbeitgebernummer.arbeitgeber.letzter_tag",
+              "value": "dataset1.arbeitgebernummer_vks.arbeitgeber.letzter_tag",
               "templateValues": null,
               "optionValue": null
             }
@@ -20271,7 +20206,7 @@
         },
         "filters": [
           {
-            "id": "dataset1.arbeitgebernummer.arbeitgeber.arbeitgebernummer",
+            "id": "dataset1.arbeitgebernummer_vks.arbeitgeber.arbeitgebernummer",
             "label": "Arbeitgebernummer",
             "type": "BIG_MULTI_SELECT",
             "unit": null,
@@ -20286,7 +20221,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.arbeitgebernummer.arbeitgeber.arbeitgebernummer_select",
+            "id": "dataset1.arbeitgebernummer_vks.arbeitgeber.arbeitgebernummer_select",
             "label": "Ausgabe Arbeitgebernummer",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -20373,18 +20308,17 @@
     "description": "aus dem Infonet",
     "active": false,
     "children": [
-      "dataset1.alter",
-      "dataset1.geschlecht",
-      "dataset1.versichertenstatus",
-      "dataset1.versichertentage",
-      "dataset1.plz",
-      "dataset1.kv",
-      "dataset1.bundesland_und_kgs",
-      "dataset1.kgs",
-      "dataset1.bundesland",
-      "dataset1.ausland",
-      "dataset1.arbeitgebernummer",
-      "dataset1.verstorbene_ct"
+      "dataset1.alter_vks",
+      "dataset1.geschlecht_vks",
+      "dataset1.versichertenstatus_vks",
+      "dataset1.versichertentage_vks",
+      "dataset1.plz_vks",
+      "dataset1.kv_vks",
+      "dataset1.bundesland_und_kgs_vks",
+      "dataset1.bundesland_vks",
+      "dataset1.ausland_vks",
+      "dataset1.arbeitgebernummer_vks",
+      "dataset1.verstorbene_ct_vks"
     ],
     "additionalInfos": [
       {

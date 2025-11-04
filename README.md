@@ -60,7 +60,7 @@ are possible.
 To provide an overview, these are the possible ID combinations including examples.
 ```
 Dataset - Concept
--> dataset.alter
+-> dataset.alter_vks
 
 Dataset - Concept - Connector
 -> dataset.icd.kh_diagnose_icd_code

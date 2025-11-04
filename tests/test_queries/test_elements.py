@@ -36,14 +36,14 @@ def test_from_write_query():
                      {
                          "type": "CONCEPT",
                          "ids": [
-                             "dataset1.alter"],
+                             "dataset1.alter_vks"],
                          "tables": [
                              {
-                                 "id": "dataset1.alter.alter",
+                                 "id": "dataset1.alter_vks.alter",
                                  "dateColumn": {
-                                     "value": "dataset1.alter.alter.versichertenzeit"}, }],
+                                     "value": "dataset1.alter_vks.alter.versichertenzeit"}, }],
                          "selects": [
-                             "dataset1.alter.dates"]}]}
+                             "dataset1.alter_vks.dates"]}]}
 
     TestCase().assertDictEqual(or_element, OrElement.from_dict(or_element).to_dict())
 
@@ -87,23 +87,23 @@ def test_and_query():
     query_2 = {'type': 'AND',
                'children': [{'type': 'OR',
                              'children': [{'type': 'CONCEPT',
-                                           'ids': [ConceptId.from_str('dataset1.alter')],
+                                           'ids': [ConceptId.from_str('dataset1.alter_vks')],
                                            'excludeFromSecondaryIdQuery': True,
                                            'excludeFromTimeAggregation': False,
-                                           'tables': [{'id': ConnectorId.from_str('dataset1.alter.alter'),
+                                           'tables': [{'id': ConnectorId.from_str('dataset1.alter_vks.alter'),
                                                        'dateColumn': {
                                                            'value': DateId.from_str(
-                                                               'dataset1.alter.alter.versichertenzeit')}}]}]}]}
+                                                               'dataset1.alter_vks.alter.versichertenzeit')}}]}]}]}
     query_2_out = {'type': 'AND',
                    'children': [{'type': 'OR',
                                  'children': [{'type': 'CONCEPT',
-                                               'ids': ['dataset1.alter'],
+                                               'ids': ['dataset1.alter_vks'],
                                                'excludeFromSecondaryIdQuery': True,
                                                'excludeFromTimeAggregation': False,
-                                               'tables': [{'id': 'dataset1.alter.alter',
+                                               'tables': [{'id': 'dataset1.alter_vks.alter',
                                                            'dateColumn': {
                                                                'value':
-                                                                   'dataset1.alter.alter.versichertenzeit'}}]}]}]}
+                                                                   'dataset1.alter_vks.alter.versichertenzeit'}}]}]}]}
 
     query_editor = QueryEditor(query_1)
     query_editor.and_query(QueryEditor(query_2))
@@ -291,9 +291,9 @@ def test_entity_date_export_form():
 
 def test_full_export_form():
     concept = {Keys.tables: [{
-        Keys.connector_id: "dataset1.alter.alter"
+        Keys.connector_id: "dataset1.alter_vks.alter"
     }]}
-    alter_concept_id = ConceptId("alter", DatasetId("dataset1"))
+    alter_concept_id = ConceptId("alter_vks", DatasetId("dataset1"))
     alter_connector_id = ConnectorId("alter", alter_concept_id)
     validity_date_id = DateId("alter_validity_date_id", base=alter_connector_id)
     full_export_form = FullExportForm(query_id="dataset1.query_id",
@@ -309,7 +309,7 @@ def test_full_export_form():
         Keys.date_range: {"min": "2020-01-01", "max": "2020-12-31"},
         Keys.tables: [{Keys.type: QueryType.CONCEPT.value,
                        Keys.ids: ["dataset1.alter"],
-                       Keys.tables: [{Keys.id: "dataset1.alter.alter",
+                       Keys.tables: [{Keys.id: "dataset1.alter_vks.alter",
                                       Keys.date_column: {Keys.value: validity_date_id.id}}]
                        }]
     }

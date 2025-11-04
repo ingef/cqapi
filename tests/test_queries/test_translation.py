@@ -87,33 +87,33 @@ def test_translate_query():
                                 {
                                     "type": "CONCEPT",
                                     "ids": [
-                                        "dataset1.alter"
+                                        "dataset1.alter_vks"
                                     ],
                                     "tables": [
                                         {
-                                            "id": "dataset1.alter.alter",
+                                            "id": "dataset1.alter_vks.alter",
                                             "dateColumn": {
-                                                "value": "dataset1.alter.alter.versichertenzeit"
+                                                "value": "dataset1.alter_vks.alter.versichertenzeit"
                                             },
                                             "filters": [
-                                                {'filter': "dataset1.alter.alter.alterseinschr$c3$a4nkung",
+                                                {'filter': "dataset1.alter_vks.alter.alterseinschr$c3$a4nkung",
                                                  'type': 'INTEGER_RANGE',
                                                  'value': {'min': 21, 'max': None}}
                                             ]}]}]}}]}}
         concepts_new_dataset = {
-            "dataset2.alter": {
+            "dataset2.alter_vks": {
                 'children': [],
                 'tables': [{'id': 'dataset2.vers_stamm',
-                            'connectorId': 'dataset2.alter.alter',
-                            'dateColumn': {'defaultValue': 'dataset2.alter.alter.versichertenzeit',
+                            'connectorId': 'dataset2.alter_vks.alter',
+                            'dateColumn': {'defaultValue': 'dataset2.alter_vks.alter.versichertenzeit',
                                            'options': [{'label': 'Versichertenzeit',
-                                                        'value': 'dataset2.alter.alter.versichertenzeit'},
+                                                        'value': 'dataset2.alter_vks.alter.versichertenzeit'},
                                                        {'label': 'Erster Tag',
-                                                        'value': 'dataset2.alter.alter.erster_tag'},
+                                                        'value': 'dataset2.alter_vks.alter.erster_tag'},
                                                        {'label': 'Letzter Tag',
-                                                        'value': 'dataset2.alter.alter.letzter_tag'}]},
+                                                        'value': 'dataset2.alter_vks.alter.letzter_tag'}]},
                             "filters": [{
-                                "id": "dataset2.alter.alter.alterseinschr$c3$a4nkung",
+                                "id": "dataset2.alter_vks.alter.alterseinschr$c3$a4nkung",
                                 "label": "Alterseinschränkung",
                                 "type": "INTEGER_RANGE",
                                 "unit": None,
