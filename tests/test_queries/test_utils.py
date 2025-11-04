@@ -67,9 +67,9 @@ def test_create_query():
 
     query_val = {"type": "CONCEPT", "ids": ["dataset1.alter_vks"],
                  "tables": [
-                     {'id': 'dataset1.alter.alter', 'selects': ["dataset1.alter_vks.alter.ausgabe_alter"]}]}
+                     {'id': 'dataset1.alter_vks.alter', 'selects': ["dataset1.alter_vks.alter.ausgabe_alter"]}]}
 
-    query_out = create_query(concept_id=ConceptId.from_str("dataset1.alter"), concepts=concepts,
+    query_out = create_query(concept_id=ConceptId.from_str("dataset1.alter_vks"), concepts=concepts,
                              connector_select_ids=[SelectId.from_str("dataset1.alter_vks.alter.ausgabe_alter")]).to_dict()
     TestCase().assertDictEqual(d1=query_val, d2=query_out)
 
