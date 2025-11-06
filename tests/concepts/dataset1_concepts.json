@@ -16746,7 +16746,7 @@
         ],
         "selects": [
           {
-            "id": "dataset1.geschlecht_vks.geschlecht.geschlecht_text_select",
+              "id": "dataset1.geschlecht_vks.geschlecht.geschlecht_text_select",
             "label": "Ausgabe Geschlecht",
             "description": "Automatisch erzeugter Zusatzwert."
           }
@@ -17233,7 +17233,7 @@
           }
         ],
         "supportedSecondaryIds": [
-          "dataset1.pzn", "dataset1.beh_fall_id", "dataset1.bs_nr", "dataset1.lanr", "dataset1.quartal", "dataset1.kv",
+          "dataset1.pzn", "dataset1.beh_fall_id", "dataset1.bs_nr", "dataset1.lanr", "dataset1.quartal", "dataset1.kvs",
           "dataset1.rezept_id"
         ],
         "default": true
