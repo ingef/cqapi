@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cqapi"
-version = "0.6.6"
+version = "0.6.7"
 description = "A Conquery REST API library."
 authors = ["InGef - EVA Team <eva@ingef.de>"]
 readme = "README.md"
@@ -14,7 +14,7 @@ pandas = "^2.3"
 numpy = "2.2.6"
 pyarrow = "^20.0.0"
 requests = "^2.32"
-tabulate = "^0.8.7"
+tabulate = "^0.9"
 typeguard = "^4.4"
 
 [tool.poetry.group.test]
