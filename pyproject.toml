@@ -13,7 +13,7 @@ ipython = "^9.3"
 pandas = "^2.3"
 numpy = "2.2.6"
 pyarrow = "^20.0.0"
-requests = "^2.32"
+requests = ">=2.32,<2.33"
 tabulate = "^0.9"
 typeguard = "^4.4"
 
