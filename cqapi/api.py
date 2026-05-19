@@ -36,25 +36,32 @@ class ConqueryConnectionSession:
     """Session object to communicate with conquery.
     This could be a bundle of static methods if it wasn't for the token update in the header"""
 
-    def __init__(self, token: str, timeout_s: int, retry_count_get: int):
+    def __init__(self, token: str, timeout_s: int, retry_count_get: int, session: requests.Session = None):
         self.token: str = token
-        self._session = requests.session()
+
+        if session:
+            # when a session is given, do not use the token
+            self.token = None
+            self._session = session
+        else:
+            self._session = requests.session()
         self._session.headers.update(self.header)
         self._timeout_s = timeout_s
         self._retry_count_get = retry_count_get
-
-    def open(self):
-        self.close()
-        self._session = requests.session()
 
     def close(self):
         self._session.close()
 
     @property
     def header(self):
-        return {'Authorization': f'Bearer {self.token}',
+        if self.token:
+            return {'Authorization': f'Bearer {self.token}',
                 'Accept-Language': 'de-DE,de;q=0.9',
                 'pretty': 'false'}
+        else:
+            return {'Accept-Language': 'de-DE,de;q=0.9',
+                    'pretty': 'false'}
+
 
     def update_token(self, new_token: str):
         self.token = new_token
@@ -133,7 +140,8 @@ class ConqueryConnection(object):
                  token: str = "",
                  requests_timout_s: int = 10,
                  requests_retry_count: int = 2,
-                 dataset: str = None):
+                 dataset: str | None = None,
+                 session: requests.Session | None = None):
 
         self.conquery_api_urls = ConqueryApiUrls(conquery_url=url.strip("/"))
         self._token = token
@@ -141,7 +149,8 @@ class ConqueryConnection(object):
 
         self._session: ConqueryConnectionSession = ConqueryConnectionSession(token=token,
                                                                              timeout_s=requests_timout_s,
-                                                                             retry_count_get=requests_retry_count)
+                                                                             retry_count_get=requests_retry_count,
+                                                                             session=session)
 
         if token:
             self._set_up_datasets(dataset=dataset)
