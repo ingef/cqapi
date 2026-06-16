@@ -84,8 +84,9 @@ def find_concept_id(concept_id: ConqueryId, concepts: dict, children_ids: List[U
 
     if isinstance(concept_id, ChildId) and isinstance(concept_id.base, ConceptId):
         # children of root concepts can be looked up in concepts object
-        if concept_id.id in concepts[root_concept_id.id].get("children", []):
-            return True
+        if root_concept_id.id in concepts.keys():
+            if concept_id.id in concepts[root_concept_id.id].get("children", []):
+                return True
         return False
 
     return concept_id in children_ids
