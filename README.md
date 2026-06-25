@@ -5,7 +5,7 @@ Next to interacting with Conquery via the ConqueryConnection-Class it has functi
 read, edit and write the conquery queries which are specified in json.
 
 ## Installation
-- Some functionality of `cqapi` requires Python version `>= 3.8` and `<=3.9`
+-  requires Python version `3.13`
 - Installation is done with poetry. Poetry is a dependency manager for python. It is used to install all dependencies and to create a virtual environment. To install poetry, follow the instructions on the [poetry website](https://python-poetry.org/docs/#installation). 
   After installing poetry, run the following commands in the root directory of the project:
 
